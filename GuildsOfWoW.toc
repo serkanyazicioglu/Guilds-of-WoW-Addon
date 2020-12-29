@@ -1,0 +1,10 @@
+## Interface: 90002
+## Title: Guilds of WoW
+## Notes: Guilds of WoW guild herald
+## Author: Nhea
+## Version: 0.0.1
+## SavedVariables: GoWDB
+
+embed.xml
+
+Core.lua
