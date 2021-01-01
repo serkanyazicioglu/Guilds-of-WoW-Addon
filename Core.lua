@@ -16,18 +16,48 @@ local isProcessing = false
 local isPropogatingUpdate = false
 local eventContainer = {}
 local eventContainerScroll = {}
+local showWindow = true
+
+GOW.defaults = {
+	profile = {
+		version = 1,
+        minimap = {hide = false}
+    }
+}
 
 function GOW:OnInitialize()
 	self.GUI = LibStub("AceGUI-3.0")
-	--self.DB = LibStub("AceDB-3.0"):New("GoWDB")
+	self.DB = LibStub("AceDB-3.0"):New("GoWDB", GOW.defaults, "Default")
+	self.LDB = LibStub("LibDataBroker-1.1")
+	self.LDBIcon = LibStub("LibDBIcon-1.0")
 	self.CONSOLE = LibStub("AceConsole-3.0")
 	
 	local consoleCommandFunc = function(msg, editbox)
-		isProcessing = false
-		Core:CreateUpcomingEvents()
+		if (msg == "minimap") then
+			Core:ToggleMinimap()
+		else
+			Core:ToggleWindow()
+		end
 	end
 	
-	self.CONSOLE:RegisterChatCommand("gow", consoleCommandFunc)
+	self.CONSOLE:RegisterChatCommand("gow", consoleCommandFunc);
+
+	local dataobj = self.LDB:NewDataObject("gowicon", {
+		type = "data source",
+		label = "Guilds of WoW",
+		text = "Guilds of WoW",
+		icon = "Interface\\Icons\\vas_guildfactionchange",
+		OnTooltipShow = function(tooltip)
+			tooltip:SetText("Guilds of WoW")
+			if (ns.UPCOMING_EVENTS ~= nil) then
+				tooltip:AddDoubleLine("Upcoming Events", ns.UPCOMING_EVENTS.totalEvents)
+			end
+			tooltip:Show()
+		end,
+		OnClick = function() Core:ToggleWindow() end
+	})
+
+	self.LDBIcon:Register("gowicon", dataobj, self.DB.profile.minimap);
 
 	string.lpad = function(str, len, char)
 		if char == nil then char = ' ' end
@@ -37,8 +67,8 @@ function GOW:OnInitialize()
 	eventContainer = GOW.GUI:Create("Frame")
 	eventContainer:SetLayout("Fill")
 	eventContainer:SetHeight(550)
-	eventContainer:SetTitle("Guilds of WoW Event Creation")
-	eventContainer:SetStatusText("Guilds of WoW. Type /gow for quick access")
+	eventContainer:SetTitle("Guilds of WoW")
+	eventContainer:SetStatusText("Type /gow for quick access")
 	eventContainer:SetCallback("OnClose", function(widget) eventContainer:Hide() end)
 	eventContainer:SetCallback("OnEscapePressed", function(widget) eventContainer:Hide() end)
 	--tinsert(UISpecialFrames, eventContainer:GetName())
@@ -87,17 +117,24 @@ f:SetScript("OnEvent", function(self,event, ...)
 	end
 end)
 
+function Core:ToggleWindow()
+	if (eventContainer:IsShown()) then
+		eventContainer:Hide()
+	else
+		isPropogatingUpdate = true
+		isProcessing = false
+		Core:CreateUpcomingEvents()
+		eventContainer:Show()
+	end
+end
+
 function Core:CreateUpcomingEvents()
 	local isInGuild = IsInGuild()
 
-	if (isInGuild) then
-		print("IsInGuild.")
-	else
+	if (isInGuild == false) then
 		isProcessing = true
 		return
 	end
-
-	eventContainerScroll:ReleaseChildren()
 
 	local guildName, _, _, realmName = GetGuildInfo("player")
 
@@ -106,6 +143,7 @@ function Core:CreateUpcomingEvents()
 	end
 
 	isProcessing = true
+	eventContainerScroll:ReleaseChildren()
 
 	if (realmName == nil) then
 		realmName = GetRealmName()
@@ -114,9 +152,7 @@ function Core:CreateUpcomingEvents()
 
 	local regionId = GetCurrentRegion()
 
-	print("totalEvents: " .. ns.UPCOMING_EVENTS.totalEvents)
-
-	if (IsInGuild() and ns.UPCOMING_EVENTS.totalEvents > 0) then
+	if (isInGuild and ns.UPCOMING_EVENTS.totalEvents > 0) then
 		for i=1, ns.UPCOMING_EVENTS.totalEvents do
 			local upcomingEvent = ns.UPCOMING_EVENTS.events[i]
 
@@ -124,21 +160,22 @@ function Core:CreateUpcomingEvents()
 				--Core:CreateCalendarEvent(upcomingEvent)
 				Core:AppendCalendarList(upcomingEvent)
 			else
-				print("guildName: ".. guildName)
-				print("realmName: ".. realmName)
-				print("regionId: ".. regionId)
+				--print("guildName: ".. guildName)
+				--print("realmName: ".. realmName)
+				--print("regionId: ".. regionId)
 
-				print("guildName: ".. upcomingEvent.guild)
-				print("realmName: ".. upcomingEvent.guildRealm)
-				print("regionId: ".. upcomingEvent.guildRegionId)
+				--print("guildName: ".. upcomingEvent.guild)
+				--print("realmName: ".. upcomingEvent.guildRealm)
+				--print("regionId: ".. upcomingEvent.guildRegionId)
 
-				print("Event belongs to another guild")
+				print("Event belongs to another guild: " .. upcomingEvent.title)
 			end
 		end
 
-		eventContainerScroll:DoLayout()
+		--eventContainerScroll:DoLayout()
 	end
 
+	showWindow = false
 	isPropogatingUpdate = false
 end
 
@@ -224,20 +261,34 @@ function Core:AppendCalendarList(event)
 
 	local eventIndex = Core:searchForEvent(event)
 
-	local button = GOW.GUI:Create("Button")
+	local buttonsGroup = GOW.GUI:Create("SimpleGroup")
+	buttonsGroup:SetLayout("Flow")
+	eventGroup:AddChild(buttonsGroup)
+
+	local eventButton = GOW.GUI:Create("Button")
 
 	if eventIndex >= 0 then
-		button:SetText("Event Created")
-		button:SetDisabled(true)
+		eventButton:SetText("Event Created")
+		eventButton:SetDisabled(true)
 	else
-		button:SetText("Create Event")
-		button:SetCallback("OnClick", function()
+		eventButton:SetText("Create Event")
+		eventButton:SetCallback("OnClick", function()
 			eventContainer:Hide()
 			Core:CreateCalendarEvent(event)
 		end)
-		eventContainer:Show()
+
+		if (showWindow == true) then
+			eventContainer:Show()
+		end
 	end
-	eventGroup:AddChild(button)
+	buttonsGroup:AddChild(eventButton)
+
+	local copyLinkButton = GOW.GUI:Create("Button")
+	copyLinkButton:SetText("Copy Event Link")
+	copyLinkButton:SetCallback("OnClick", function()
+		
+	end)
+	buttonsGroup:AddChild(copyLinkButton)
 
 	eventContainerScroll:AddChild(eventGroup)
 end
@@ -270,7 +321,17 @@ function Core:CreateCalendarEvent(event)
 				end
 			end
 			
-			StaticPopup_Show ("CONFIRM_EVENT_CREATION")
+			StaticPopup_Show("CONFIRM_EVENT_CREATION")
 		end
+	end
+end
+
+function Core:ToggleMinimap()
+	GOW.DB.profile.minimap.hide = not GOW.DB.profile.minimap.hide
+	if GOW.DB.profile.minimap.hide then
+		GOW.LDBIcon:Hide("gowicon");
+	  	--prettyPrint(L["Use /wa minimap to show the minimap icon again."])
+	else
+		GOW.LDBIcon:Show("gowicon");
 	end
 end
