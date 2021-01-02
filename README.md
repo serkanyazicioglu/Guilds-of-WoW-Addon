@@ -40,7 +40,7 @@ SOON TO BE DEVELOPED
 
  
 
-Guilds of WoW website: guildsofwow.com
+Guilds of WoW website: https://guildsofwow.com
 
 Guilds of WoW support: https://guildsofwow.com/feedback
 
