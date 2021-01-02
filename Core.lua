@@ -1,5 +1,4 @@
 local ADDON_NAME = "GuildsOfWoW"
-local VERSION = "v0.0.1beta"
 local GOW = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME)
 GuildsOfWow = GOW
 
@@ -241,6 +240,7 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 	end
 	if event == "GUILD_ROSTER_UPDATE" then
 		if (isProcessing == false) then
+			Core:CreateRecruitmentApplications()
 			Core:CreateUpcomingEvents()
 		end
 	end
