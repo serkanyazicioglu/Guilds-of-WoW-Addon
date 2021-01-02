@@ -1,6 +1,11 @@
 local ADDON_NAME = "GuildsOfWoW"
 local VERSION = "v0.0.1beta"
 local GOW = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME)
+GuildsOfWow = GOW
+
+GOW.consts = {}
+GOW.consts.INVITE_INTERVAL = 5
+
 local ns = select(2, ...)
 
 local Core = {}
@@ -12,11 +17,18 @@ f:RegisterEvent("CALENDAR_UPDATE_EVENT")
 f:RegisterEvent("CALENDAR_UPDATE_EVENT_LIST")
 f:RegisterEvent("CALENDAR_UPDATE_GUILD_EVENTS")
 f:RegisterEvent("CALENDAR_CLOSE_EVENT")
+--f:RegisterEvent("CALENDAR_ACTION_PENDING")
+--f:RegisterEvent("CALENDAR_UPDATE_INVITE_LIST")
 local isProcessing = false
 local isPropogatingUpdate = false
 local eventContainer = {}
 local eventContainerScroll = {}
 local showWindow = true
+local isDialogOpen = false
+local workQueue = nil
+
+local currentEventsCount = 0
+local currentMultiInvitingEvent = nil
 
 GOW.defaults = {
 	profile = {
@@ -31,6 +43,11 @@ function GOW:OnInitialize()
 	self.LDB = LibStub("LibDataBroker-1.1")
 	self.LDBIcon = LibStub("LibDBIcon-1.0")
 	self.CONSOLE = LibStub("AceConsole-3.0")
+	self.timers = {}
+	LibStub("AceTimer-3.0"):Embed(self.timers)
+	self.events = {}
+	LibStub("AceEvent-3.0"):Embed(self.events)
+	workQueue = self.WorkQueue.new()
 	
 	local consoleCommandFunc = function(msg, editbox)
 		if (msg == "minimap") then
@@ -50,7 +67,7 @@ function GOW:OnInitialize()
 		OnTooltipShow = function(tooltip)
 			tooltip:SetText("Guilds of WoW")
 			if (ns.UPCOMING_EVENTS ~= nil) then
-				tooltip:AddDoubleLine("Upcoming Events", ns.UPCOMING_EVENTS.totalEvents)
+				tooltip:AddDoubleLine("Upcoming Events", currentEventsCount)
 			end
 			tooltip:Show()
 		end,
@@ -62,6 +79,14 @@ function GOW:OnInitialize()
 	string.lpad = function(str, len, char)
 		if char == nil then char = ' ' end
 		return str .. string.rep(char, len - #str)
+	end
+
+	string.splitByDelimeter = function(str, delimiter)
+		result = {};
+		for match in (str..delimiter):gmatch("(.-)"..delimiter) do
+			table.insert(result, match);
+		end
+		return result;
 	end
 
 	eventContainer = GOW.GUI:Create("Frame")
@@ -87,15 +112,24 @@ function GOW:OnInitialize()
 		button2 = "No",
 		OnAccept = function()
 			C_Calendar.AddEvent()
+			if(currentMultiInvitingEvent ~= nil) then
+				Core:InviteMultiplePeopleToEvent()
+			end
+			Core:DialogClosed()			
+		end,
+		OnCancel = function ()
+			currentMultiInvitingEvent = nil
+			Core:DialogClosed()
+			C_Calendar.CloseEvent()
 		end,
 		timeout = 0,
 		whileDead = true,
 		hideOnEscape = true,
-		preferredIndex = 3,
+		preferredIndex = 1
 	  }
 end
 
-f:SetScript("OnEvent", function(self,event, ...)
+f:SetScript("OnEvent", function(self,event, arg1, arg2)
 	if event == "PLAYER_LOGIN" then
 		isProcessing = false
 	end
@@ -115,6 +149,21 @@ f:SetScript("OnEvent", function(self,event, ...)
 			Core:CreateUpcomingEvents()
 		end
 	end
+
+	-- if event == "CALENDAR_ACTION_PENDING" then
+	-- 	--print("CALENDAR_ACTION_PENDING")
+	-- 	if (not arg1) then
+	-- 		print("CALENDAR_ACTION_PENDING: false")
+	-- 		Core:InviteMultiplePeopleToEvent()
+	-- 	else
+	-- 		print("CALENDAR_ACTION_PENDING: true")
+	-- 	end
+	-- end
+
+	-- if event == "CALENDAR_UPDATE_INVITE_LIST" then
+	-- 	print("CALENDAR_UPDATE_INVITE_LIST")
+	-- 	Core:InviteMultiplePeopleToEvent()
+	-- end
 end)
 
 function Core:ToggleWindow()
@@ -131,6 +180,10 @@ end
 function Core:CreateUpcomingEvents()
 	local isInGuild = IsInGuild()
 
+	if (isDialogOpen) then
+		return
+	end
+
 	if (isInGuild == false) then
 		isProcessing = true
 		return
@@ -142,6 +195,7 @@ function Core:CreateUpcomingEvents()
 		return
 	end
 
+	currentEventsCount = 0
 	isProcessing = true
 	eventContainerScroll:ReleaseChildren()
 
@@ -180,11 +234,17 @@ function Core:CreateUpcomingEvents()
 end
 
 function Core:searchForEvent(event)
+	local serverTime = GetServerTime()
+
+	if (event.eventDate < serverTime) then
+		return 0
+	end
+
 	C_Calendar.SetAbsMonth(event.month, event.year)
 
 	local numDayEvents = C_Calendar.GetNumDayEvents(0, event.day)
 
-	print("events found: " .. numDayEvents .. " : " .. event.day .. "/" .. event.month .. "/" .. event.year)
+	--print("events found: " .. numDayEvents .. " : " .. event.day .. "/" .. event.month .. "/" .. event.year)
 
 	if (numDayEvents > 0) then
 		for i=1, numDayEvents do
@@ -263,19 +323,23 @@ function Core:AppendCalendarList(event)
 
 	local buttonsGroup = GOW.GUI:Create("SimpleGroup")
 	buttonsGroup:SetLayout("Flow")
-	eventGroup:AddChild(buttonsGroup)
+	buttonsGroup:SetFullWidth(true)
 
 	local eventButton = GOW.GUI:Create("Button")
 
-	if eventIndex >= 0 then
+	if eventIndex == 0 then
+		eventButton:SetText("Event Passed")
+		eventButton:SetDisabled(true)
+	elseif eventIndex > 0 then
 		eventButton:SetText("Event Created")
 		eventButton:SetDisabled(true)
 	else
 		eventButton:SetText("Create Event")
 		eventButton:SetCallback("OnClick", function()
-			eventContainer:Hide()
 			Core:CreateCalendarEvent(event)
 		end)
+
+		currentEventsCount = currentEventsCount + 1
 
 		if (showWindow == true) then
 			eventContainer:Show()
@@ -289,40 +353,111 @@ function Core:AppendCalendarList(event)
 		
 	end)
 	buttonsGroup:AddChild(copyLinkButton)
+	eventGroup:AddChild(buttonsGroup)
 
 	eventContainerScroll:AddChild(eventGroup)
 end
 
+function Core:OpenDialog(dialogName)
+	isDialogOpen = true
+	StaticPopup_Show(dialogName)
+end
+
+function Core:DialogClosed()
+	isDialogOpen = false
+end
+
 function Core:CreateCalendarEvent(event)
+	if not workQueue:isEmpty() then
+		print("|cffFF0000Another event is being formed right now! Please wait for a while and try again...")
+		return
+	end
+
+	isDialogOpen = true
 	local eventIndex = Core:searchForEvent(event)
 
 	if eventIndex >= 0 then
-		print("Event found: " .. event.title)
+		Core:DialogClosed()
+		print("Event found or passed: " .. event.title)
 	else
-		local serverTime = GetServerTime()
+		C_Calendar.CloseEvent()
+		C_Calendar.CreatePlayerEvent()
+		C_Calendar.EventSetTitle(event.titleWithKey)
+		C_Calendar.EventSetDescription(event.description)
+		C_Calendar.EventSetType(event.eventType)
+		C_Calendar.EventSetTime(event.hour, event.minute)
+		C_Calendar.EventSetDate(event.month, event.day, event.year)
 
-		if (event.eventDate < serverTime) then
-			print("Event passed: " .. event.id)
+		currentMultiInvitingEvent = nil
+		if (event.isGuildEvent and event.minItemLevel == 0) then
+			C_Calendar.MassInviteGuild(event.minLevel, event.maxLevel, event.maxRank)
+			Core:OpenDialog("CONFIRM_EVENT_CREATION")
 		else
-			print("Creating event: ".. event.id .. " : " .. event.title .. " : " .. event.eventKey)
-			C_Calendar.CloseEvent()
-			C_Calendar.CreatePlayerEvent()
-			C_Calendar.EventSetTitle(event.titleWithKey)
-			C_Calendar.EventSetDescription(event.description)
-			C_Calendar.EventSetType(event.eventType)
-			C_Calendar.EventSetTime(event.hour, event.minute)
-			C_Calendar.EventSetDate(event.month, event.day, event.year)
-
-			if (event.isGuildEvent and event.minItemLevel == 0) then
-				C_Calendar.MassInviteGuild(event.minLevel, event.maxLevel, event.maxRank)
-			else 
-				for i=1, event.totalMembers do
-					C_Calendar.EventInvite(event.inviteMembers[i].characterName)
-				end
-			end
-			
-			StaticPopup_Show("CONFIRM_EVENT_CREATION")
+			currentMultiInvitingEvent = event
+			Core:OpenDialog("CONFIRM_EVENT_CREATION")
 		end
+	end
+end
+
+function Core:InviteMultiplePeopleToEvent()
+	if (currentMultiInvitingEvent ~= nil) then
+		local event = currentMultiInvitingEvent
+
+		local name, realm = UnitName("player")
+
+		if (realm == nil) then
+			realm = GetRealmName()
+			--GetNormalizedRealmName()
+		end
+
+		local currentPlayer = name .. "-" .. realm
+
+		local numInvites = C_Calendar.GetNumInvites()
+
+		print("numInvites: " .. numInvites)
+
+		if (numInvites < event.totalMembers) then
+			print("|cffffcc00Event invites are being sent in the background! Please wait for all events to complete before logging out.")
+
+			for i=1, event.totalMembers do
+				local currentInviteMember = event.inviteMembers[i]
+				local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realm
+
+				if (inviteName ~= currentPlayer) then
+					workQueue:addTask(function() C_Calendar.EventInvite(inviteName) end, nil, GOW.consts.INVITE_INTERVAL)
+				end
+
+				-- local isinvited = false
+				-- for invidx=1, numInvites do
+				-- 	local inviteInfo = C_Calendar.EventGetInvite(invidx)
+
+				-- 	print(inviteInfo.name .. " / " .. inviteInfo.level .. " / " .. inviteInfo.classID)
+				-- 	print(currentInviteMember.name .. " / " .. currentInviteMember.level .. " / " .. currentInviteMember.classId)
+
+				-- 	if (currentInviteMember.name == inviteInfo.name and currentInviteMember.level == inviteInfo.level and currentInviteMember.classId == inviteInfo.classID) then
+				-- 		isinvited = true
+				-- 	end
+				-- end
+
+				-- if (not isinvited) then
+				-- 	print("Inviting: " .. currentInviteMember.name)
+				-- 	C_Calendar.EventInvite(currentInviteMember.name .. "-" .. currentInviteMember.realm)
+				-- 	return
+				-- else
+				-- 	print("Already invited: " .. currentInviteMember.name)
+				-- end
+			end
+
+			Core:IsEventFormingEnded()
+		end
+	end
+end
+
+function Core:IsEventFormingEnded()
+	if workQueue:isEmpty() then
+		print("|cff00ff00Event invites are completed.")
+	else
+		GOW.timers:ScheduleTimer(function() Core:IsEventFormingEnded() end, 10)
 	end
 end
 
@@ -330,7 +465,6 @@ function Core:ToggleMinimap()
 	GOW.DB.profile.minimap.hide = not GOW.DB.profile.minimap.hide
 	if GOW.DB.profile.minimap.hide then
 		GOW.LDBIcon:Hide("gowicon");
-	  	--prettyPrint(L["Use /wa minimap to show the minimap icon again."])
 	else
 		GOW.LDBIcon:Show("gowicon");
 	end

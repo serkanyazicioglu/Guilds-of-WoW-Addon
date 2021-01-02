@@ -8,3 +8,6 @@
 embed.xml
 
 Core.lua
+Class.lua
+List.lua
+WorkQueue.lua
