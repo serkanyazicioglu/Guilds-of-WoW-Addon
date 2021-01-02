@@ -3,6 +3,8 @@ local VERSION = "v0.0.1beta"
 local GOW = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME)
 GuildsOfWow = GOW
 
+local enableDebugging = false
+
 GOW.consts = {}
 GOW.consts.INVITE_INTERVAL = 5
 
@@ -143,7 +145,7 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 	-- 	Core:CreateUpcomingEvents()
 	-- end
 	if event == "CALENDAR_UPDATE_EVENT_LIST" then
-		print("CALENDAR_UPDATE_EVENT_LIST")
+		Core:Print("CALENDAR_UPDATE_EVENT_LIST")
 		if (isPropogatingUpdate == false) then
 			isPropogatingUpdate = true
 			Core:CreateUpcomingEvents()
@@ -151,17 +153,17 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 	end
 
 	-- if event == "CALENDAR_ACTION_PENDING" then
-	-- 	--print("CALENDAR_ACTION_PENDING")
+	-- 	--Core:Print("CALENDAR_ACTION_PENDING")
 	-- 	if (not arg1) then
-	-- 		print("CALENDAR_ACTION_PENDING: false")
+	-- 		Core:Print("CALENDAR_ACTION_PENDING: false")
 	-- 		Core:InviteMultiplePeopleToEvent()
 	-- 	else
-	-- 		print("CALENDAR_ACTION_PENDING: true")
+	-- 		Core:Print("CALENDAR_ACTION_PENDING: true")
 	-- 	end
 	-- end
 
 	-- if event == "CALENDAR_UPDATE_INVITE_LIST" then
-	-- 	print("CALENDAR_UPDATE_INVITE_LIST")
+	-- 	Core:Print("CALENDAR_UPDATE_INVITE_LIST")
 	-- 	Core:InviteMultiplePeopleToEvent()
 	-- end
 end)
@@ -214,15 +216,15 @@ function Core:CreateUpcomingEvents()
 				--Core:CreateCalendarEvent(upcomingEvent)
 				Core:AppendCalendarList(upcomingEvent)
 			else
-				--print("guildName: ".. guildName)
-				--print("realmName: ".. realmName)
-				--print("regionId: ".. regionId)
+				--Core:Print("guildName: ".. guildName)
+				--Core:Print("realmName: ".. realmName)
+				--Core:Print("regionId: ".. regionId)
 
-				--print("guildName: ".. upcomingEvent.guild)
-				--print("realmName: ".. upcomingEvent.guildRealm)
-				--print("regionId: ".. upcomingEvent.guildRegionId)
+				--Core:Print("guildName: ".. upcomingEvent.guild)
+				--Core:Print("realmName: ".. upcomingEvent.guildRealm)
+				--Core:Print("regionId: ".. upcomingEvent.guildRegionId)
 
-				print("Event belongs to another guild: " .. upcomingEvent.title)
+				Core:Print("Event belongs to another guild: " .. upcomingEvent.title)
 			end
 		end
 
@@ -244,14 +246,14 @@ function Core:searchForEvent(event)
 
 	local numDayEvents = C_Calendar.GetNumDayEvents(0, event.day)
 
-	--print("events found: " .. numDayEvents .. " : " .. event.day .. "/" .. event.month .. "/" .. event.year)
+	--Core:Print("events found: " .. numDayEvents .. " : " .. event.day .. "/" .. event.month .. "/" .. event.year)
 
 	if (numDayEvents > 0) then
 		for i=1, numDayEvents do
 			local dayEvent = C_Calendar.GetDayEvent(0, event.day, i)
 			
 			if (dayEvent.calendarType == "GUILD_EVENT" or dayEvent.calendarType == "PLAYER") then
-				print("dayEvent: " .. dayEvent.title)
+				Core:Print("dayEvent: " .. dayEvent.title)
 
 				if (string.match(dayEvent.title, "*" .. event.eventKey)) then
 					return i
@@ -378,7 +380,7 @@ function Core:CreateCalendarEvent(event)
 
 	if eventIndex >= 0 then
 		Core:DialogClosed()
-		print("Event found or passed: " .. event.title)
+		Core:Print("Event found or passed: " .. event.title)
 	else
 		C_Calendar.CloseEvent()
 		C_Calendar.CreatePlayerEvent()
@@ -414,8 +416,6 @@ function Core:InviteMultiplePeopleToEvent()
 
 		local numInvites = C_Calendar.GetNumInvites()
 
-		print("numInvites: " .. numInvites)
-
 		if (numInvites < event.totalMembers) then
 			print("|cffffcc00Event invites are being sent in the background! Please wait for all events to complete before logging out.")
 
@@ -426,26 +426,6 @@ function Core:InviteMultiplePeopleToEvent()
 				if (inviteName ~= currentPlayer) then
 					workQueue:addTask(function() C_Calendar.EventInvite(inviteName) end, nil, GOW.consts.INVITE_INTERVAL)
 				end
-
-				-- local isinvited = false
-				-- for invidx=1, numInvites do
-				-- 	local inviteInfo = C_Calendar.EventGetInvite(invidx)
-
-				-- 	print(inviteInfo.name .. " / " .. inviteInfo.level .. " / " .. inviteInfo.classID)
-				-- 	print(currentInviteMember.name .. " / " .. currentInviteMember.level .. " / " .. currentInviteMember.classId)
-
-				-- 	if (currentInviteMember.name == inviteInfo.name and currentInviteMember.level == inviteInfo.level and currentInviteMember.classId == inviteInfo.classID) then
-				-- 		isinvited = true
-				-- 	end
-				-- end
-
-				-- if (not isinvited) then
-				-- 	print("Inviting: " .. currentInviteMember.name)
-				-- 	C_Calendar.EventInvite(currentInviteMember.name .. "-" .. currentInviteMember.realm)
-				-- 	return
-				-- else
-				-- 	print("Already invited: " .. currentInviteMember.name)
-				-- end
 			end
 
 			Core:IsEventFormingEnded()
@@ -467,5 +447,11 @@ function Core:ToggleMinimap()
 		GOW.LDBIcon:Hide("gowicon");
 	else
 		GOW.LDBIcon:Show("gowicon");
+	end
+end
+
+function Core:Print(msg)
+	if (enableDebugging) then
+		print("|cffffcc00" .. msg)
 	end
 end
