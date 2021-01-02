@@ -19,12 +19,15 @@ f:RegisterEvent("CALENDAR_UPDATE_EVENT")
 f:RegisterEvent("CALENDAR_UPDATE_EVENT_LIST")
 f:RegisterEvent("CALENDAR_UPDATE_GUILD_EVENTS")
 f:RegisterEvent("CALENDAR_CLOSE_EVENT")
+f:RegisterEvent("FRIENDLIST_UPDATE")
 --f:RegisterEvent("CALENDAR_ACTION_PENDING")
 --f:RegisterEvent("CALENDAR_UPDATE_INVITE_LIST")
 local isProcessing = false
 local isPropogatingUpdate = false
-local eventContainer = {}
-local eventContainerScroll = {}
+local containerFrame = {}
+local containerTabs = {}
+local containerScrollFrame = {}
+
 local showWindow = true
 local isDialogOpen = false
 local workQueue = nil
@@ -32,11 +35,23 @@ local workQueue = nil
 local currentEventsCount = 0
 local currentMultiInvitingEvent = nil
 
+local currentApplicationsCount = 0
+local recruitmentCharacter = nil
+local recruitmenNotes = nil
+
+local copyText = ""
+
 GOW.defaults = {
 	profile = {
 		version = 1,
         minimap = {hide = false}
     }
+}
+
+local selectedTab = "events";
+local tabs = {
+	{value = "events", text = "Upcoming Events" },
+	{value = "recruitmentApps", text = "Recruitment Applications" },
 }
 
 function GOW:OnInitialize()
@@ -71,6 +86,9 @@ function GOW:OnInitialize()
 			if (ns.UPCOMING_EVENTS ~= nil) then
 				tooltip:AddDoubleLine("Upcoming Events", currentEventsCount)
 			end
+			if (ns.RECRUITMENT_APPLICATIONS ~= nil) then
+				tooltip:AddDoubleLine("Recruitment Applications", currentApplicationsCount)
+			end
 			tooltip:Show()
 		end,
 		OnClick = function() Core:ToggleWindow() end
@@ -91,22 +109,27 @@ function GOW:OnInitialize()
 		return result;
 	end
 
-	eventContainer = GOW.GUI:Create("Frame")
-	eventContainer:SetLayout("Fill")
-	eventContainer:SetHeight(550)
-	eventContainer:SetTitle("Guilds of WoW")
-	eventContainer:SetStatusText("Type /gow for quick access")
-	eventContainer:SetCallback("OnClose", function(widget) eventContainer:Hide() end)
-	eventContainer:SetCallback("OnEscapePressed", function(widget) eventContainer:Hide() end)
-	--tinsert(UISpecialFrames, eventContainer:GetName())
-	
-	eventContainer:Hide()
+	containerFrame = GOW.GUI:Create("Frame")
+	containerFrame:SetLayout("Fill")
+	containerFrame:SetHeight(550)
+	containerFrame:SetTitle("Guilds of WoW")
+	containerFrame:SetStatusText("Type /gow for quick access")
+	containerFrame:SetCallback("OnClose", function(widget) containerFrame:Hide() end)
+	containerFrame:SetCallback("OnEscapePressed", function(widget) containerFrame:Hide() end)
+	--tinsert(UISpecialFrames, containerFrame:GetName())
+	containerFrame:Hide()
 
-	eventContainerScroll = GOW.GUI:Create("ScrollFrame")
-	eventContainerScroll:SetLayout("Flow")
-	eventContainerScroll:SetFullWidth(true)
-	eventContainerScroll:SetFullHeight(true)
-	eventContainer:AddChild(eventContainerScroll)
+	containerTabs = GOW.GUI:Create("TabGroup")
+	containerTabs:SetTabs(tabs)
+	containerTabs:SelectTab(selectedTab)
+	containerTabs:SetCallback("OnGroupSelected", function(frame, event, value) Core:ToggleTabs(value) end)
+	containerFrame:AddChild(containerTabs)
+
+	containerScrollFrame = GOW.GUI:Create("ScrollFrame")
+	containerScrollFrame:SetLayout("Flow")
+	containerScrollFrame:SetFullWidth(true)
+	containerScrollFrame:SetFullHeight(true)
+	containerTabs:AddChild(containerScrollFrame)
 
 	StaticPopupDialogs["CONFIRM_EVENT_CREATION"] = {
 		text = "Are you sure you want to create this event?",
@@ -129,6 +152,87 @@ function GOW:OnInitialize()
 		hideOnEscape = true,
 		preferredIndex = 1
 	  }
+
+	  StaticPopupDialogs["CONFIRM_INVITE_TO_GUILD"] = {
+		text = "Are you sure you want to invite %s to your guild?",
+		button1 = "Yes",
+		button2 = "No",
+		OnAccept = function()
+			GuildInvite(recruitmentCharacter)
+			recruitmentCharacter = nil
+			Core:DialogClosed()			
+		end,
+		OnCancel = function ()
+			recruitmentCharacter = nil
+			Core:DialogClosed()
+		end,
+		timeout = 0,
+		whileDead = true,
+		hideOnEscape = true,
+		preferredIndex = 1
+	  }
+
+	  StaticPopupDialogs["CONFIRM_ADD_FRIEND"] = {
+		text = "Are you sure you want to add %s to your friend list?",
+		button1 = "Yes",
+		button2 = "No",
+		OnAccept = function()
+			C_FriendList.AddFriend(recruitmentCharacter, recruitmenNotes)
+			recruitmentCharacter = nil
+			Core:DialogClosed()			
+		end,
+		OnCancel = function ()
+			recruitmentCharacter = nil
+			Core:DialogClosed()
+		end,
+		timeout = 0,
+		whileDead = true,
+		hideOnEscape = true,
+		preferredIndex = 1
+	  }
+
+	  StaticPopupDialogs["WHISPER_PLAYER"] = {
+		text = "Type your message",
+		button1 = "Send",
+		button2 = "Cancel",
+		OnAccept = function(self, data, data2)
+			local text = self.editBox:GetText()
+
+			if (text ~= nil and text ~= "") then
+				SendChatMessage(text, "WHISPER", nil, recruitmentCharacter);
+				recruitmentCharacter = nil
+				Core:DialogClosed()
+			end
+		end,
+		OnCancel = function ()
+			recruitmentCharacter = nil
+			Core:DialogClosed()
+		end,
+		timeout = 100,
+		enterClicksFirstButton = true,
+		whileDead = true,
+		hideOnEscape = true,
+		hasEditBox  = true,
+		preferredIndex = 3
+	  }
+
+	  StaticPopupDialogs["COPY_TEXT"] = {
+		text = "Select & copy following text",
+		button1 = "Done",
+		OnShow = function (self, data)
+			self.editBox:SetText(copyText)
+			self.editBox:HighlightText()
+		end,
+		OnAccept = function()			
+			Core:DialogClosed()
+		end,
+		timeout = 0,
+		enterClicksFirstButton = true,
+		whileDead = true,
+		hideOnEscape = true,
+		hasEditBox  = true,
+		preferredIndex = 1
+	  }
 end
 
 f:SetScript("OnEvent", function(self,event, arg1, arg2)
@@ -146,10 +250,15 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 	-- end
 	if event == "CALENDAR_UPDATE_EVENT_LIST" then
 		Core:Print("CALENDAR_UPDATE_EVENT_LIST")
-		if (isPropogatingUpdate == false) then
+		if (isPropogatingUpdate == false and selectedTab == "events") then
 			isPropogatingUpdate = true
 			Core:CreateUpcomingEvents()
 		end
+	end
+
+	if event == "FRIENDLIST_UPDATE" then
+		Core:Print("FRIENDLIST_UPDATE")
+		Core:CreateRecruitmentApplications()
 	end
 
 	-- if event == "CALENDAR_ACTION_PENDING" then
@@ -168,14 +277,28 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 	-- end
 end)
 
-function Core:ToggleWindow()
-	if (eventContainer:IsShown()) then
-		eventContainer:Hide()
-	else
-		isPropogatingUpdate = true
-		isProcessing = false
+function Core:ToggleTabs(tabKey)
+	selectedTab = tabKey
+	Core:RefreshApplication()
+end
+
+function Core:RefreshApplication()
+	isPropogatingUpdate = true
+	isProcessing = false
+
+	if (selectedTab == "events") then
 		Core:CreateUpcomingEvents()
-		eventContainer:Show()
+	elseif (selectedTab == "recruitmentApps") then
+		Core:CreateRecruitmentApplications()
+	end
+end
+
+function Core:ToggleWindow()
+	if (containerFrame:IsShown()) then
+		containerFrame:Hide()
+	else
+		Core:RefreshApplication()
+		containerFrame:Show()
 	end
 end
 
@@ -199,7 +322,7 @@ function Core:CreateUpcomingEvents()
 
 	currentEventsCount = 0
 	isProcessing = true
-	eventContainerScroll:ReleaseChildren()
+	containerScrollFrame:ReleaseChildren()
 
 	if (realmName == nil) then
 		realmName = GetRealmName()
@@ -228,7 +351,58 @@ function Core:CreateUpcomingEvents()
 			end
 		end
 
-		--eventContainerScroll:DoLayout()
+		--containerScrollFrame:DoLayout()
+	end
+
+	showWindow = false
+	isPropogatingUpdate = false
+end
+
+function Core:CreateRecruitmentApplications()
+	local isInGuild = IsInGuild()
+
+	if (isInGuild == false) then
+		isProcessing = true
+		return
+	end
+
+	local guildName, _, _, realmName = GetGuildInfo("player")
+
+	if (guildName == nil) then
+		return
+	end
+
+	currentApplicationsCount = 0
+	isProcessing = true
+	containerScrollFrame:ReleaseChildren()
+
+	if (realmName == nil) then
+		realmName = GetRealmName()
+		--GetNormalizedRealmName()
+	end
+
+	local regionId = GetCurrentRegion()
+
+	if (isInGuild and ns.RECRUITMENT_APPLICATIONS.totalApplications > 0) then
+		for i=1, ns.RECRUITMENT_APPLICATIONS.totalApplications do
+			local recruitmentApplication = ns.RECRUITMENT_APPLICATIONS.recruitmentApplications[i]
+
+			if (guildName == recruitmentApplication.guild and realmName == recruitmentApplication.guildRealm and regionId == recruitmentApplication.guildRegionId) then
+				Core:AppendRecruitmentList(recruitmentApplication)
+			else
+				--Core:Print("guildName: ".. guildName)
+				--Core:Print("realmName: ".. realmName)
+				--Core:Print("regionId: ".. regionId)
+
+				--Core:Print("guildName: ".. upcomingEvent.guild)
+				--Core:Print("realmName: ".. upcomingEvent.guildRealm)
+				--Core:Print("regionId: ".. upcomingEvent.guildRegionId)
+
+				Core:Print("Application belongs to another guild: " .. recruitmentApplication.title)
+			end
+		end
+
+		--containerScrollFrame:DoLayout()
 	end
 
 	showWindow = false
@@ -269,29 +443,29 @@ function Core:AppendCalendarList(event)
 	local fontPath = "Fonts\\FRIZQT__.TTF"
 	local fontSize = 12
 
-	local eventGroup = GOW.GUI:Create("InlineGroup")
-	eventGroup:SetTitle(event.title)
-	eventGroup:SetFullWidth(true)
+	local itemGroup = GOW.GUI:Create("InlineGroup")
+	itemGroup:SetTitle(event.title)
+	itemGroup:SetFullWidth(true)
 
-	local eventDescriptionLabel = GOW.GUI:Create("SFX-Info")
-	eventDescriptionLabel:SetLabel("Description")
-	eventDescriptionLabel:SetText(event.description)
-	eventGroup:AddChild(eventDescriptionLabel)
+	local descriptionLabel = GOW.GUI:Create("SFX-Info")
+	descriptionLabel:SetLabel("Description")
+	descriptionLabel:SetText(event.description)
+	itemGroup:AddChild(descriptionLabel)
 
-	local eventDateLabel = GOW.GUI:Create("SFX-Info")
-	eventDateLabel:SetLabel("Date")
-	eventDateLabel:SetText(event.dateText)
-	eventGroup:AddChild(eventDateLabel)
+	local dateLabel = GOW.GUI:Create("SFX-Info")
+	dateLabel:SetLabel("Date")
+	dateLabel:SetText(event.dateText)
+	itemGroup:AddChild(dateLabel)
 
 	local eventHourLabel = GOW.GUI:Create("SFX-Info")
 	eventHourLabel:SetLabel("Hour")
 	eventHourLabel:SetText(event.hourText)
-	eventGroup:AddChild(eventHourLabel)
+	itemGroup:AddChild(eventHourLabel)
 
 	local eventDurationLabel = GOW.GUI:Create("SFX-Info")
 	eventDurationLabel:SetLabel("Duration")
 	eventDurationLabel:SetText(event.durationText)
-	eventGroup:AddChild(eventDurationLabel)
+	itemGroup:AddChild(eventDurationLabel)
 	
 	local levelText = event.minLevel
 
@@ -302,13 +476,13 @@ function Core:AppendCalendarList(event)
 	local eventLevelLabel = GOW.GUI:Create("SFX-Info")
 	eventLevelLabel:SetLabel("Level")
 	eventLevelLabel:SetText(levelText)
-	eventGroup:AddChild(eventLevelLabel)
+	itemGroup:AddChild(eventLevelLabel)
 
 	if (event.minItemLevel > 0) then
 		local eventMinItemLevelLabel = GOW.GUI:Create("SFX-Info")
 		eventMinItemLevelLabel:SetLabel("Item Level")
 		eventMinItemLevelLabel:SetText(event.minItemLevel .. "+")
-		eventGroup:AddChild(eventMinItemLevelLabel)
+		itemGroup:AddChild(eventMinItemLevelLabel)
 	end
 	
 	local eventInvitingMembersLabel = GOW.GUI:Create("SFX-Info")
@@ -319,7 +493,7 @@ function Core:AppendCalendarList(event)
 	else 
 		eventInvitingMembersLabel:SetText(event.totalMembers .. " members")
 	end
-	eventGroup:AddChild(eventInvitingMembersLabel)
+	itemGroup:AddChild(eventInvitingMembersLabel)
 
 	local eventIndex = Core:searchForEvent(event)
 
@@ -344,25 +518,137 @@ function Core:AppendCalendarList(event)
 		currentEventsCount = currentEventsCount + 1
 
 		if (showWindow == true) then
-			eventContainer:Show()
+			containerFrame:Show()
 		end
 	end
 	buttonsGroup:AddChild(eventButton)
 
 	local copyLinkButton = GOW.GUI:Create("Button")
-	copyLinkButton:SetText("Copy Event Link")
+	copyLinkButton:SetText("Copy Link")
+	copyLinkButton:SetWidth(140)
 	copyLinkButton:SetCallback("OnClick", function()
-		
+		copyText = event.webUrl
+		Core:OpenDialog("COPY_TEXT")
 	end)
 	buttonsGroup:AddChild(copyLinkButton)
-	eventGroup:AddChild(buttonsGroup)
 
-	eventContainerScroll:AddChild(eventGroup)
+	local copyKeyButton = GOW.GUI:Create("Button")
+	copyKeyButton:SetText("Copy Key")
+	copyKeyButton:SetWidth(140)
+	copyKeyButton:SetCallback("OnClick", function()
+		copyText = event.eventKey
+		Core:OpenDialog("COPY_TEXT")
+	end)
+	buttonsGroup:AddChild(copyKeyButton)
+
+	itemGroup:AddChild(buttonsGroup)
+
+	containerScrollFrame:AddChild(itemGroup)
+end
+
+function Core:AppendRecruitmentList(recruitmentApplication)
+	local fontPath = "Fonts\\FRIZQT__.TTF"
+	local fontSize = 12
+
+	local itemGroup = GOW.GUI:Create("InlineGroup")
+	itemGroup:SetTitle(recruitmentApplication.title)
+	itemGroup:SetFullWidth(true)
+
+	local messageLabel = GOW.GUI:Create("SFX-Info")
+	messageLabel:SetLabel("Message")
+	messageLabel:SetText(recruitmentApplication.message)
+	itemGroup:AddChild(messageLabel)
+
+	local classLabel = GOW.GUI:Create("SFX-Info")
+	classLabel:SetLabel("Class")
+	classLabel:SetText(recruitmentApplication.classTitle)
+	itemGroup:AddChild(classLabel)
+
+	local dateLabel = GOW.GUI:Create("SFX-Info")
+	dateLabel:SetLabel("Date")
+	dateLabel:SetText(recruitmentApplication.dateText)
+	itemGroup:AddChild(dateLabel)
+
+	local buttonsGroup = GOW.GUI:Create("SimpleGroup")
+	buttonsGroup:SetLayout("Flow")
+	buttonsGroup:SetFullWidth(true)
+
+	local inviteToGuildButton = GOW.GUI:Create("Button")
+	inviteToGuildButton:SetText("Invite to Guild")
+	inviteToGuildButton:SetWidth(140)
+	inviteToGuildButton:SetCallback("OnClick", function()
+		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmTrimmed
+		Core:OpenDialog("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.title)
+	end)
+	buttonsGroup:AddChild(inviteToGuildButton)
+
+	local inviteToPartyButton = GOW.GUI:Create("Button")
+	inviteToPartyButton:SetText("Invite to Party")
+	inviteToPartyButton:SetWidth(140)
+	inviteToPartyButton:SetCallback("OnClick", function()
+		C_PartyInfo.InviteUnit(recruitmentApplication.title .. "-" .. recruitmentApplication.realmTrimmed)
+	end)
+	buttonsGroup:AddChild(inviteToPartyButton)
+
+	local friendInfo = C_FriendList.GetFriendInfo(recruitmentApplication.title)
+
+	local addFriendButton = GOW.GUI:Create("Button")
+	addFriendButton:SetText("Add Friend")
+	addFriendButton:SetWidth(140)
+	
+	if (friendInfo ~= nil) then
+		addFriendButton:SetDisabled(true)
+	end
+
+	addFriendButton:SetCallback("OnClick", function()
+		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmTrimmed
+		recruitmenNotes = "Guilds of WoW recruitment"
+		Core:OpenDialog("CONFIRM_ADD_FRIEND", recruitmentApplication.title)
+	end)
+	buttonsGroup:AddChild(addFriendButton)
+	itemGroup:AddChild(buttonsGroup)
+
+	local buttonsGroup2 = GOW.GUI:Create("SimpleGroup")
+	buttonsGroup2:SetLayout("Flow")
+	buttonsGroup2:SetFullWidth(true)
+
+	local whisperButton = GOW.GUI:Create("Button")
+	whisperButton:SetText("Whisper")
+	whisperButton:SetWidth(140)
+	whisperButton:SetCallback("OnClick", function()
+		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmTrimmed
+		Core:OpenDialog("WHISPER_PLAYER")
+	end)
+	buttonsGroup2:AddChild(whisperButton)
+
+	local copyButton = GOW.GUI:Create("Button")
+	copyButton:SetText("Copy Link")
+	copyButton:SetWidth(140)
+	copyButton:SetCallback("OnClick", function()
+		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmTrimmed
+		copyText = recruitmentApplication.webUrl
+		Core:OpenDialog("COPY_TEXT")
+	end)
+	buttonsGroup2:AddChild(copyButton)
+
+	itemGroup:AddChild(buttonsGroup2)
+
+	containerScrollFrame:AddChild(itemGroup)
+
+	currentApplicationsCount = currentApplicationsCount + 1
+
+	if (showWindow == true) then
+		containerFrame:Show()
+	end
 end
 
 function Core:OpenDialog(dialogName)
 	isDialogOpen = true
 	StaticPopup_Show(dialogName)
+end
+function Core:OpenDialog(dialogName, parameterStr)
+	isDialogOpen = true
+	StaticPopup_Show(dialogName, parameterStr)
 end
 
 function Core:DialogClosed()
