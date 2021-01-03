@@ -1,3 +1,10 @@
+<p align="center">
+  <img src="https://guildsofwow.com/assets/images/guilds-of-wow-logo.png" width="200" />
+</p>
+
+[![Guilds of WoW on Discord](https://img.shields.io/static/v1?label=Discord&message=WowUp&color=7289DA)](https://discord.gg/VfGJnCS) 
+[![Guilds of WoW on Patreon](https://img.shields.io/static/v1?label=Patreon&message=WowUp&color=f96854)](https://www.patreon.com/guildsofwow) 
+
 # Guilds-of-WoW-Addon
 Welcome to Guilds of WoW in-game addon.
 
