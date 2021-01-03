@@ -5,7 +5,7 @@
 [![Guilds of WoW on Discord](https://img.shields.io/static/v1?label=Discord&message=GoW&color=7289DA)](https://discord.gg/VfGJnCS) 
 [![Guilds of WoW on Patreon](https://img.shields.io/static/v1?label=Patreon&message=GoW&color=f96854)](https://www.patreon.com/guildsofwow) 
 
-# Guilds-of-WoW-Addon
+# Guilds of WoW Addon
 Welcome to Guilds of WoW in-game addon.
 
 This addon is now on beta and subject to change.
