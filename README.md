@@ -22,7 +22,7 @@ If event has minimum item level then only related characters will be invited.
 
 ## HOW TO USE
 
-In order to use this addon your guild must have been created on Guilds of WoW.
+In order to use this addon your guild must be registered on Guilds of WoW.
  
 
 https://guildsofwow.com/begin
