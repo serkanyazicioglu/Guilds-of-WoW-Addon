@@ -27,7 +27,7 @@ In order to use this addon your guild must be registered on Guilds of WoW.
 
 https://guildsofwow.com/begin
 
-If you are not the guild master then ask from your GM to give you related permissions for event management.
+If you are not the guild master then ask from your GM to give you related permissions for event and/or recruitment management.
 
 When you access events section of your guild management, at least one weekly event with "create upcoming events automatically" flag should be saved. After your upcoming events are generated you should navigate to Addon page and then set your permissions for WoW retail folder. This will generate your event data to in game addon database. 
 
