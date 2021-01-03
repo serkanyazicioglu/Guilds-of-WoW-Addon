@@ -20,7 +20,7 @@ At the moment addon migrates Guilds of WoW upcoming events to in-game calendar. 
 If event has minimum item level then only related characters will be invited.
  
 
-HOW TO USE
+## HOW TO USE
 
 In order to use this addon your guild must have been created on Guilds of WoW.
  
@@ -35,7 +35,7 @@ https://guildsofwow.com/manage/events
 
 https://guildsofwow.com/manage/addon
 
-SOON TO BE DEVELOPED
+## SOON TO BE DEVELOPED
 
 - More automatizations for event generation,
 
