@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://guildsofwow.com/assets/images/guilds-of-wow-logo.png" width="200" />
+  <img src="https://guildsofwow.com/assets/images/guilds-of-wow-logo.png" width="170" height="200" />
 </p>
 
 [![Guilds of WoW on Discord](https://img.shields.io/static/v1?label=Discord&message=WowUp&color=7289DA)](https://discord.gg/VfGJnCS) 
