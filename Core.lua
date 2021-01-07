@@ -5,7 +5,7 @@ GuildsOfWow = GOW
 local enableDebugging = false
 
 GOW.consts = {}
-GOW.consts.INVITE_INTERVAL = 5
+GOW.consts.INVITE_INTERVAL = 11
 
 local ns = select(2, ...)
 
@@ -17,6 +17,7 @@ f:RegisterEvent("CALENDAR_NEW_EVENT")
 f:RegisterEvent("CALENDAR_UPDATE_EVENT")
 f:RegisterEvent("CALENDAR_UPDATE_EVENT_LIST")
 f:RegisterEvent("CALENDAR_UPDATE_GUILD_EVENTS")
+f:RegisterEvent("CALENDAR_OPEN_EVENT")
 f:RegisterEvent("CALENDAR_CLOSE_EVENT")
 f:RegisterEvent("FRIENDLIST_UPDATE")
 --f:RegisterEvent("CALENDAR_ACTION_PENDING")
@@ -237,29 +238,34 @@ end
 f:SetScript("OnEvent", function(self,event, arg1, arg2)
 	if event == "PLAYER_LOGIN" then
 		isProcessing = false
-	end
-	if event == "GUILD_ROSTER_UPDATE" then
+	elseif event == "GUILD_ROSTER_UPDATE" then
 		if (isProcessing == false) then
 			Core:CreateRecruitmentApplications()
 			Core:CreateUpcomingEvents()
 		end
-	end
-	-- if event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" or event == "CALENDAR_UPDATE_GUILD_EVENTS" or event == "CALENDAR_CLOSE_EVENT" then
-	-- 	isProcessing = false
-	-- 	Core:CreateUpcomingEvents()
-	-- end
-	if event == "CALENDAR_UPDATE_EVENT_LIST" then
+	elseif event == "CALENDAR_OPEN_EVENT" then
+		Core:Print("CALENDAR_OPEN_EVENT")
+	elseif event == "CALENDAR_NEW_EVENT" then
+		Core:Print("CALENDAR_NEW_EVENT")
+	elseif event == "CALENDAR_UPDATE_EVENT" then
+		Core:Print("CALENDAR_UPDATE_EVENT")
+	elseif event == "CALENDAR_CLOSE_EVENT" then
+		Core:Print("CALENDAR_CLOSE_EVENT")
+	elseif event == "CALENDAR_UPDATE_EVENT_LIST" then
 		Core:Print("CALENDAR_UPDATE_EVENT_LIST")
 		if (isPropogatingUpdate == false and selectedTab == "events") then
 			isPropogatingUpdate = true
 			Core:CreateUpcomingEvents()
 		end
-	end
-
-	if event == "FRIENDLIST_UPDATE" then
+	elseif event == "FRIENDLIST_UPDATE" then
 		Core:Print("FRIENDLIST_UPDATE")
 		Core:CreateRecruitmentApplications()
 	end
+	-- if event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" or event == "CALENDAR_UPDATE_GUILD_EVENTS" or event == "CALENDAR_CLOSE_EVENT" then
+	-- 	isProcessing = false
+	-- 	Core:CreateUpcomingEvents()
+	-- end
+	
 
 	-- if event == "CALENDAR_ACTION_PENDING" then
 	-- 	--Core:Print("CALENDAR_ACTION_PENDING")
