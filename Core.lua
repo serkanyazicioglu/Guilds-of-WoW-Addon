@@ -131,6 +131,20 @@ function GOW:OnInitialize()
 	containerScrollFrame:SetFullHeight(true)
 	containerTabs:AddChild(containerScrollFrame)
 
+	-- local closeButton = CreateFrame("Button", "$parentClose", f, "UIPanelCloseButton")
+	-- closeButton:SetSize(24, 24)
+	-- closeButton:SetPoint("TOPRIGHT")
+	-- closeButton:SetScript("OnClick", function(self) self:GetParent():Hide() end)
+	-- containerFrame:AddChild(closeButton)
+
+	-- local close = CreateFrame("Button", nil, nil, "UIPanelCloseButton")
+	-- close:SetPoint("TOPRIGHT", 2, 1)
+	-- containerFrame:AddChild(close)
+
+	if(ns.UPCOMING_EVENTS == nil or ns.RECRUITMENT_APPLICATIONS == nil) then
+		print("|cffffff00Guilds of WoW: |cffFF0000Data is not fetched! Please make sure your sync app is installed and working properly.")
+	end
+
 	StaticPopupDialogs["CONFIRM_EVENT_CREATION"] = {
 		text = "Are you sure you want to create this event?",
 		button1 = "Yes",
@@ -309,55 +323,63 @@ function Core:ToggleWindow()
 end
 
 function Core:CreateUpcomingEvents()
-	local isInGuild = IsInGuild()
+	if (ns.UPCOMING_EVENTS == nil) then
+		currentEventsCount = 0
+		containerScrollFrame:ReleaseChildren()
+		Core:AppendMessage("Upcoming events data is not found! Please make sure your sync app is installed and working properly!", true)
+	else
+		local isInGuild = IsInGuild()
 
-	if (isDialogOpen) then
-		return
-	end
-
-	if (isInGuild == false) then
-		isProcessing = true
-		return
-	end
-
-	local guildName, _, _, realmName = GetGuildInfo("player")
-
-	if (guildName == nil) then
-		return
-	end
-
-	currentEventsCount = 0
-	isProcessing = true
-	containerScrollFrame:ReleaseChildren()
-
-	if (realmName == nil) then
-		realmName = GetRealmName()
-		--GetNormalizedRealmName()
-	end
-
-	local regionId = GetCurrentRegion()
-
-	if (isInGuild and ns.UPCOMING_EVENTS.totalEvents > 0) then
-		for i=1, ns.UPCOMING_EVENTS.totalEvents do
-			local upcomingEvent = ns.UPCOMING_EVENTS.events[i]
-
-			if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealm and regionId == upcomingEvent.guildRegionId) then
-				--Core:CreateCalendarEvent(upcomingEvent)
-				Core:AppendCalendarList(upcomingEvent)
-			else
-				--Core:Print("guildName: ".. guildName)
-				--Core:Print("realmName: ".. realmName)
-				--Core:Print("regionId: ".. regionId)
-
-				--Core:Print("guildName: ".. upcomingEvent.guild)
-				--Core:Print("realmName: ".. upcomingEvent.guildRealm)
-				--Core:Print("regionId: ".. upcomingEvent.guildRegionId)
-
-				Core:Print("Event belongs to another guild: " .. upcomingEvent.title)
-			end
+		if (isDialogOpen) then
+			return
 		end
 
-		--containerScrollFrame:DoLayout()
+		if (isInGuild == false) then
+			isProcessing = true
+			return
+		end
+
+		local guildName, _, _, realmName = GetGuildInfo("player")
+
+		if (guildName == nil) then
+			return
+		end
+
+		currentEventsCount = 0
+		isProcessing = true
+		containerScrollFrame:ReleaseChildren()
+
+		if (realmName == nil) then
+			realmName = GetRealmName()
+			--GetNormalizedRealmName()
+		end
+
+		local regionId = GetCurrentRegion()
+
+		if (isInGuild and ns.UPCOMING_EVENTS.totalEvents > 0) then
+			for i=1, ns.UPCOMING_EVENTS.totalEvents do
+				local upcomingEvent = ns.UPCOMING_EVENTS.events[i]
+
+				if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealm and regionId == upcomingEvent.guildRegionId) then
+					--Core:CreateCalendarEvent(upcomingEvent)
+					Core:AppendCalendarList(upcomingEvent)
+				else
+					--Core:Print("guildName: ".. guildName)
+					--Core:Print("realmName: ".. realmName)
+					--Core:Print("regionId: ".. regionId)
+
+					--Core:Print("guildName: ".. upcomingEvent.guild)
+					--Core:Print("realmName: ".. upcomingEvent.guildRealm)
+					--Core:Print("regionId: ".. upcomingEvent.guildRegionId)
+
+					Core:Print("Event belongs to another guild: " .. upcomingEvent.title)
+				end
+			end
+
+			--containerScrollFrame:DoLayout()
+		end
+
+	
 	end
 
 	showWindow = false
@@ -365,52 +387,57 @@ function Core:CreateUpcomingEvents()
 end
 
 function Core:CreateRecruitmentApplications()
-	local isInGuild = IsInGuild()
+	if(ns.RECRUITMENT_APPLICATIONS == nil) then
+		currentEventsCount = 0
+		containerScrollFrame:ReleaseChildren()
+		Core:AppendMessage("Recruitment applications data is not found! Please make sure your sync app is installed and working properly!", true)
+	else
+		local isInGuild = IsInGuild()
 
-	if (isInGuild == false) then
-		isProcessing = true
-		return
-	end
-
-	local guildName, _, _, realmName = GetGuildInfo("player")
-
-	if (guildName == nil) then
-		return
-	end
-
-	currentApplicationsCount = 0
-	isProcessing = true
-	containerScrollFrame:ReleaseChildren()
-
-	if (realmName == nil) then
-		realmName = GetRealmName()
-		--GetNormalizedRealmName()
-	end
-
-	local regionId = GetCurrentRegion()
-
-	if (isInGuild and ns.RECRUITMENT_APPLICATIONS.totalApplications > 0) then
-		for i=1, ns.RECRUITMENT_APPLICATIONS.totalApplications do
-			local recruitmentApplication = ns.RECRUITMENT_APPLICATIONS.recruitmentApplications[i]
-
-			if (guildName == recruitmentApplication.guild and realmName == recruitmentApplication.guildRealm and regionId == recruitmentApplication.guildRegionId) then
-				Core:AppendRecruitmentList(recruitmentApplication)
-			else
-				--Core:Print("guildName: ".. guildName)
-				--Core:Print("realmName: ".. realmName)
-				--Core:Print("regionId: ".. regionId)
-
-				--Core:Print("guildName: ".. upcomingEvent.guild)
-				--Core:Print("realmName: ".. upcomingEvent.guildRealm)
-				--Core:Print("regionId: ".. upcomingEvent.guildRegionId)
-
-				Core:Print("Application belongs to another guild: " .. recruitmentApplication.title)
-			end
+		if (isInGuild == false) then
+			isProcessing = true
+			return
 		end
 
-		--containerScrollFrame:DoLayout()
-	end
+		local guildName, _, _, realmName = GetGuildInfo("player")
 
+		if (guildName == nil) then
+			return
+		end
+
+		currentApplicationsCount = 0
+		isProcessing = true
+		containerScrollFrame:ReleaseChildren()
+
+		if (realmName == nil) then
+			realmName = GetRealmName()
+			--GetNormalizedRealmName()
+		end
+
+		local regionId = GetCurrentRegion()
+
+		if (isInGuild and ns.RECRUITMENT_APPLICATIONS.totalApplications > 0) then
+			for i=1, ns.RECRUITMENT_APPLICATIONS.totalApplications do
+				local recruitmentApplication = ns.RECRUITMENT_APPLICATIONS.recruitmentApplications[i]
+
+				if (guildName == recruitmentApplication.guild and realmName == recruitmentApplication.guildRealm and regionId == recruitmentApplication.guildRegionId) then
+					Core:AppendRecruitmentList(recruitmentApplication)
+				else
+					--Core:Print("guildName: ".. guildName)
+					--Core:Print("realmName: ".. realmName)
+					--Core:Print("regionId: ".. regionId)
+
+					--Core:Print("guildName: ".. upcomingEvent.guild)
+					--Core:Print("realmName: ".. upcomingEvent.guildRealm)
+					--Core:Print("regionId: ".. upcomingEvent.guildRegionId)
+
+					Core:Print("Application belongs to another guild: " .. recruitmentApplication.title)
+				end
+			end
+
+			--containerScrollFrame:DoLayout()
+		end
+	end
 	showWindow = false
 	isPropogatingUpdate = false
 end
@@ -445,10 +472,34 @@ function Core:searchForEvent(event)
 	return -1
 end
 
-function Core:AppendCalendarList(event)
+function Core:AppendMessage(message, appendReloadUIButton)
 	local fontPath = "Fonts\\FRIZQT__.TTF"
-	local fontSize = 12
+	local fontSize = 13
 
+	local itemGroup = GOW.GUI:Create("SimpleGroup")
+	--itemGroup:SetLayout("Line")
+	itemGroup:SetFullWidth(true)
+	itemGroup:SetFullHeight(true)
+
+	local messageLabel = GOW.GUI:Create("Label")
+	messageLabel:SetText(message)
+	messageLabel:SetFullWidth(true)
+	messageLabel:SetFont(fontPath, fontSize)
+	itemGroup:AddChild(messageLabel)
+
+	if(appendReloadUIButton) then
+		local reloadUIButton = GOW.GUI:Create("Button")
+		reloadUIButton:SetText("Reload UI")
+		reloadUIButton:SetCallback("OnClick", function()
+			ReloadUI()
+		end)
+		itemGroup:AddChild(reloadUIButton)
+	end
+
+	containerScrollFrame:AddChild(itemGroup)
+end
+
+function Core:AppendCalendarList(event)
 	local itemGroup = GOW.GUI:Create("InlineGroup")
 	itemGroup:SetTitle(event.title)
 	itemGroup:SetFullWidth(true)
@@ -456,6 +507,11 @@ function Core:AppendCalendarList(event)
 	local descriptionLabel = GOW.GUI:Create("SFX-Info")
 	descriptionLabel:SetLabel("Description")
 	descriptionLabel:SetText(event.description)
+	-- descriptionLabel:SetCallback("OnEnter", function(widget)
+	-- 	print("qwewerwer")
+    --     GameTooltip:SetText("test test");
+    --     GameTooltip:Show();
+    -- end);
 	itemGroup:AddChild(descriptionLabel)
 
 	local dateLabel = GOW.GUI:Create("SFX-Info")
@@ -553,9 +609,6 @@ function Core:AppendCalendarList(event)
 end
 
 function Core:AppendRecruitmentList(recruitmentApplication)
-	local fontPath = "Fonts\\FRIZQT__.TTF"
-	local fontSize = 12
-
 	local itemGroup = GOW.GUI:Create("InlineGroup")
 	itemGroup:SetTitle(recruitmentApplication.title)
 	itemGroup:SetFullWidth(true)
