@@ -42,7 +42,9 @@ end
 function WQ:runTask()
 	local elem = self.queue:peek()
 	--log("WorkQueue:runTask", elem.event, elem.delay)
-	elem.func()
+	if (elem ~= nil) then
+		elem.func()
+	end
 	self.queue:pop() -- if elem.func() adds elements to the queue, we have to behave as if the queue is not empty. So remove queue element AFTER elem.func()
 
 	if not self.queue:isEmpty() then

@@ -23,7 +23,7 @@ function List:isEmpty()
 end
 
 function List:peek()
-	if self:isEmpty() then error("list is empty") end
+	if self:isEmpty() then return nil end
 	return self[self.first]
 end
 
@@ -32,6 +32,20 @@ function List:pop()
 	self[self.first] = nil
 	self.first = self.first + 1
 	return value
+end
+
+function List:count()
+	return self.last + 1
+end
+
+function List:contains(value)
+	for a=0, self:count() do
+		if(self[a] == value) then
+			return true
+		end
+	end
+
+	return false
 end
 
 function List:clear()

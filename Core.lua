@@ -5,7 +5,7 @@ GuildsOfWow = GOW
 local enableDebugging = false
 
 GOW.consts = {}
-GOW.consts.INVITE_INTERVAL = 11
+GOW.consts.INVITE_INTERVAL = 3
 
 local ns = select(2, ...)
 
@@ -21,7 +21,7 @@ f:RegisterEvent("CALENDAR_OPEN_EVENT")
 f:RegisterEvent("CALENDAR_CLOSE_EVENT")
 f:RegisterEvent("FRIENDLIST_UPDATE")
 --f:RegisterEvent("CALENDAR_ACTION_PENDING")
---f:RegisterEvent("CALENDAR_UPDATE_INVITE_LIST")
+f:RegisterEvent("CALENDAR_UPDATE_INVITE_LIST")
 local isProcessing = false
 local isPropogatingUpdate = false
 local containerFrame = {}
@@ -34,6 +34,7 @@ local workQueue = nil
 
 local currentEventsCount = 0
 local currentMultiInvitingEvent = nil
+local processedEvents = nil
 
 local currentApplicationsCount = 0
 local recruitmentCharacter = nil
@@ -65,6 +66,7 @@ function GOW:OnInitialize()
 	self.events = {}
 	LibStub("AceEvent-3.0"):Embed(self.events)
 	workQueue = self.WorkQueue.new()
+	processedEvents = GOW.List.new()
 	
 	local consoleCommandFunc = function(msg, editbox)
 		if (msg == "minimap") then
@@ -141,7 +143,7 @@ function GOW:OnInitialize()
 	-- close:SetPoint("TOPRIGHT", 2, 1)
 	-- containerFrame:AddChild(close)
 
-	if(ns.UPCOMING_EVENTS == nil or ns.RECRUITMENT_APPLICATIONS == nil) then
+	if (ns.UPCOMING_EVENTS == nil or ns.RECRUITMENT_APPLICATIONS == nil) then
 		print("|cffffff00Guilds of WoW: |cffFF0000Data is not fetched! Please make sure your sync app is installed and working properly.")
 	end
 
@@ -256,17 +258,54 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 		if (isProcessing == false) then
 			Core:CreateRecruitmentApplications()
 			Core:CreateUpcomingEvents()
+
+			if (ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
+				Core:CheckEventInvites()
+			end
 		end
 	elseif event == "CALENDAR_OPEN_EVENT" then
-		Core:Print("CALENDAR_OPEN_EVENT")
+		local canAddEvent = true --C_Calendar.CanAddEvent()
+		
+		if (canAddEvent) then
+			local eventInfo = C_Calendar.GetEventInfo()
+			
+			Core:Print("CALENDAR_OPEN_EVENT: Opened: " .. eventInfo.title)
+			Core:ClearEventInvites(false)
+
+			if (eventInfo.calendarType == "GUILD_EVENT" or eventInfo.calendarType == "PLAYER") then
+				local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title)
+
+				if (upcomingEvent ~= nil and upcomingEvent.isManualInvite) then
+					Core:CreateEventInvites(upcomingEvent)
+				else
+					Core:Print("Event invite refresh failed")
+				end
+			else 
+				Core:Print("Not suitable calendar type")
+			end
+		end
 	elseif event == "CALENDAR_NEW_EVENT" then
 		Core:Print("CALENDAR_NEW_EVENT")
+		if (isPropogatingUpdate == false and selectedTab == "events") then
+			isPropogatingUpdate = true
+			Core:CreateUpcomingEvents()
+		end
 	elseif event == "CALENDAR_UPDATE_EVENT" then
 		Core:Print("CALENDAR_UPDATE_EVENT")
 	elseif event == "CALENDAR_CLOSE_EVENT" then
 		Core:Print("CALENDAR_CLOSE_EVENT")
+		Core:ClearEventInvites(true)
+	elseif event == "CALENDAR_UPDATE_INVITE_LIST" then
+		if (C_Calendar.IsEventOpen()) then
+			local eventInfo = C_Calendar.GetEventInfo()
+
+			if (eventInfo.title == "") then
+				Core:ClearEventInvites(false)
+			end
+		end
 	elseif event == "CALENDAR_UPDATE_EVENT_LIST" then
-		Core:Print("CALENDAR_UPDATE_EVENT_LIST")
+		--Core:Print("CALENDAR_UPDATE_EVENT_LIST")
+		--Core:ClearEventInvites(false)
 		if (isPropogatingUpdate == false and selectedTab == "events") then
 			isPropogatingUpdate = true
 			Core:CreateUpcomingEvents()
@@ -275,26 +314,6 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 		Core:Print("FRIENDLIST_UPDATE")
 		Core:CreateRecruitmentApplications()
 	end
-	-- if event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" or event == "CALENDAR_UPDATE_GUILD_EVENTS" or event == "CALENDAR_CLOSE_EVENT" then
-	-- 	isProcessing = false
-	-- 	Core:CreateUpcomingEvents()
-	-- end
-	
-
-	-- if event == "CALENDAR_ACTION_PENDING" then
-	-- 	--Core:Print("CALENDAR_ACTION_PENDING")
-	-- 	if (not arg1) then
-	-- 		Core:Print("CALENDAR_ACTION_PENDING: false")
-	-- 		Core:InviteMultiplePeopleToEvent()
-	-- 	else
-	-- 		Core:Print("CALENDAR_ACTION_PENDING: true")
-	-- 	end
-	-- end
-
-	-- if event == "CALENDAR_UPDATE_INVITE_LIST" then
-	-- 	Core:Print("CALENDAR_UPDATE_INVITE_LIST")
-	-- 	Core:InviteMultiplePeopleToEvent()
-	-- end
 end)
 
 function Core:ToggleTabs(tabKey)
@@ -351,7 +370,6 @@ function Core:CreateUpcomingEvents()
 
 		if (realmName == nil) then
 			realmName = GetRealmName()
-			--GetNormalizedRealmName()
 		end
 
 		local regionId = GetCurrentRegion()
@@ -361,25 +379,10 @@ function Core:CreateUpcomingEvents()
 				local upcomingEvent = ns.UPCOMING_EVENTS.events[i]
 
 				if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealm and regionId == upcomingEvent.guildRegionId) then
-					--Core:CreateCalendarEvent(upcomingEvent)
 					Core:AppendCalendarList(upcomingEvent)
-				else
-					--Core:Print("guildName: ".. guildName)
-					--Core:Print("realmName: ".. realmName)
-					--Core:Print("regionId: ".. regionId)
-
-					--Core:Print("guildName: ".. upcomingEvent.guild)
-					--Core:Print("realmName: ".. upcomingEvent.guildRealm)
-					--Core:Print("regionId: ".. upcomingEvent.guildRegionId)
-
-					Core:Print("Event belongs to another guild: " .. upcomingEvent.title)
 				end
 			end
-
-			--containerScrollFrame:DoLayout()
 		end
-
-	
 	end
 
 	showWindow = false
@@ -411,7 +414,6 @@ function Core:CreateRecruitmentApplications()
 
 		if (realmName == nil) then
 			realmName = GetRealmName()
-			--GetNormalizedRealmName()
 		end
 
 		local regionId = GetCurrentRegion()
@@ -422,16 +424,6 @@ function Core:CreateRecruitmentApplications()
 
 				if (guildName == recruitmentApplication.guild and realmName == recruitmentApplication.guildRealm and regionId == recruitmentApplication.guildRegionId) then
 					Core:AppendRecruitmentList(recruitmentApplication)
-				else
-					--Core:Print("guildName: ".. guildName)
-					--Core:Print("realmName: ".. realmName)
-					--Core:Print("regionId: ".. regionId)
-
-					--Core:Print("guildName: ".. upcomingEvent.guild)
-					--Core:Print("realmName: ".. upcomingEvent.guildRealm)
-					--Core:Print("regionId: ".. upcomingEvent.guildRegionId)
-
-					Core:Print("Application belongs to another guild: " .. recruitmentApplication.title)
 				end
 			end
 
@@ -460,7 +452,7 @@ function Core:searchForEvent(event)
 			local dayEvent = C_Calendar.GetDayEvent(0, event.day, i)
 			
 			if (dayEvent.calendarType == "GUILD_EVENT" or dayEvent.calendarType == "PLAYER") then
-				Core:Print("dayEvent: " .. dayEvent.title)
+				--Core:Print("dayEvent: " .. dayEvent.title)
 
 				if (string.match(dayEvent.title, "*" .. event.eventKey)) then
 					return i
@@ -563,27 +555,31 @@ function Core:AppendCalendarList(event)
 	buttonsGroup:SetLayout("Flow")
 	buttonsGroup:SetFullWidth(true)
 
-	local eventButton = GOW.GUI:Create("Button")
+	local canAddEvent = true --C_Calendar.CanAddEvent()
 
-	if eventIndex == 0 then
-		eventButton:SetText("Event Passed")
-		eventButton:SetDisabled(true)
-	elseif eventIndex > 0 then
-		eventButton:SetText("Event Created")
-		eventButton:SetDisabled(true)
-	else
-		eventButton:SetText("Create Event")
-		eventButton:SetCallback("OnClick", function()
-			Core:CreateCalendarEvent(event)
-		end)
+	if (canAddEvent) then
+		local eventButton = GOW.GUI:Create("Button")
 
-		currentEventsCount = currentEventsCount + 1
+		if eventIndex == 0 then
+			eventButton:SetText("Event Passed")
+			eventButton:SetDisabled(true)
+		elseif eventIndex > 0 then
+			eventButton:SetText("Event Created")
+			eventButton:SetDisabled(true)
+		else
+			eventButton:SetText("Create Event")
+			eventButton:SetCallback("OnClick", function()
+				Core:CreateCalendarEvent(event)
+			end)
 
-		if (showWindow == true) then
-			containerFrame:Show()
+			currentEventsCount = currentEventsCount + 1
+
+			if (showWindow == true) then
+				containerFrame:Show()
+			end
 		end
+		buttonsGroup:AddChild(eventButton)
 	end
-	buttonsGroup:AddChild(eventButton)
 
 	local copyLinkButton = GOW.GUI:Create("Button")
 	copyLinkButton:SetText("Copy Link")
@@ -594,14 +590,16 @@ function Core:AppendCalendarList(event)
 	end)
 	buttonsGroup:AddChild(copyLinkButton)
 
-	local copyKeyButton = GOW.GUI:Create("Button")
-	copyKeyButton:SetText("Copy Key")
-	copyKeyButton:SetWidth(140)
-	copyKeyButton:SetCallback("OnClick", function()
-		copyText = event.eventKey
-		Core:OpenDialog("COPY_TEXT")
-	end)
-	buttonsGroup:AddChild(copyKeyButton)
+	if (canAddEvent) then
+		local copyKeyButton = GOW.GUI:Create("Button")
+		copyKeyButton:SetText("Copy Key")
+		copyKeyButton:SetWidth(140)
+		copyKeyButton:SetCallback("OnClick", function()
+			copyText = event.eventKey
+			Core:OpenDialog("COPY_TEXT")
+		end)
+		buttonsGroup:AddChild(copyKeyButton)
+	end
 
 	itemGroup:AddChild(buttonsGroup)
 
@@ -727,6 +725,7 @@ function Core:CreateCalendarEvent(event)
 		Core:DialogClosed()
 		Core:Print("Event found or passed: " .. event.title)
 	else
+		Core:ClearEventInvites(false)
 		C_Calendar.CloseEvent()
 		C_Calendar.CreatePlayerEvent()
 		C_Calendar.EventSetTitle(event.titleWithKey)
@@ -736,7 +735,7 @@ function Core:CreateCalendarEvent(event)
 		C_Calendar.EventSetDate(event.month, event.day, event.year)
 
 		currentMultiInvitingEvent = nil
-		if (event.isGuildEvent and event.minItemLevel == 0) then
+		if (event.isGuildEvent and not event.isManualInvite) then
 			C_Calendar.MassInviteGuild(event.minLevel, event.maxLevel, event.maxRank)
 			Core:OpenDialog("CONFIRM_EVENT_CREATION")
 		else
@@ -773,16 +772,222 @@ function Core:InviteMultiplePeopleToEvent()
 				end
 			end
 
-			Core:IsEventFormingEnded()
+			--Core:IsEventFormingEnded()
 		end
 	end
 end
 
 function Core:IsEventFormingEnded()
 	if workQueue:isEmpty() then
-		print("|cff00ff00Event invites are completed.")
+		--print("|cff00ff00Event invites are completed.")
+		Core:StartEventInvites()
 	else
 		GOW.timers:ScheduleTimer(function() Core:IsEventFormingEnded() end, 10)
+	end
+end
+
+function Core:ClearEventInvites(restartInvites)
+	currentMultiInvitingEvent = nil
+	workQueue:clearTasks()
+	Core:Print("Invites are canceled!")
+
+	if (restartInvites) then
+		Core:AddCheckEventsTask()
+	end
+end
+
+function Core:AddCheckEventsTask()
+	workQueue:addTask(function() 
+		if (not C_Calendar.IsEventOpen()) 
+			then 
+				Core:CheckEventInvites() 
+			else
+				Core:AddCheckEventsTask()
+		end
+	end, nil, 30)
+end
+
+function Core:CheckEventInvites()
+	Core:Print("Starting event invites!")
+
+	local isInGuild = IsInGuild()
+
+	if (isInGuild) then
+		local isEventOpen = false --C_Calendar.IsEventOpen()
+
+		if (not isEventOpen) then
+			local guildName, _, _, realmName = GetGuildInfo("player")
+
+			if (guildName == nil) then
+				return
+			end
+
+			if (realmName == nil) then
+				realmName = GetRealmName()
+			end
+
+			local regionId = GetCurrentRegion()
+
+			for i=1, ns.UPCOMING_EVENTS.totalEvents do
+				local upcomingEvent = ns.UPCOMING_EVENTS.events[i]
+
+				if (not processedEvents:contains(upcomingEvent.titleWithKey) and upcomingEvent.isManualInvite and guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealm and regionId == upcomingEvent.guildRegionId) then
+					local eventIndex = Core:searchForEvent(upcomingEvent)
+
+					if (eventIndex > 0) then
+						local dayEvent = C_Calendar.GetDayEvent(0, upcomingEvent.day, eventIndex)
+						Core:Print(dayEvent.title .. " creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex)
+
+						if (dayEvent.modStatus == "CREATOR" or dayEvent.modStatus == "MODERATOR") then
+							Core:Print("Trying opening event: " .. upcomingEvent.titleWithKey)
+							workQueue:addTask(function() C_Calendar.OpenEvent(0, upcomingEvent.day, eventIndex) end, nil, 3)
+							return
+							--Core:CreateEventInvites(upcomingEvent)
+						else
+							Core:Print("Not creator or moderator!")
+						end
+					end
+				end
+			end
+		end
+	end
+
+	Core:Print("Check event invites completed!")
+end
+
+function Core:FindUpcomingEventFromName(eventTitle)
+	Core:Print("Trying to find event from title: " .. eventTitle)
+	local isInGuild = IsInGuild()
+
+	if (isInGuild) then
+		local guildName, _, _, realmName = GetGuildInfo("player")
+
+		if (guildName == nil) then
+			return
+		end
+
+		if (realmName == nil) then
+			realmName = GetRealmName()
+		end
+
+		local regionId = GetCurrentRegion()
+
+		for i=1, ns.UPCOMING_EVENTS.totalEvents do
+			local upcomingEvent = ns.UPCOMING_EVENTS.events[i]
+
+			if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealm and regionId == upcomingEvent.guildRegionId) then
+				if (string.match(eventTitle, "*" .. upcomingEvent.eventKey)) then
+					Core:Print("Upcoming event found: " .. upcomingEvent.title)
+					return upcomingEvent
+				end
+			end
+		end
+	end
+
+	return nil
+end
+
+function Core:CreateEventInvites(upcomingEvent)
+	if (processedEvents:contains(upcomingEvent.titleWithKey)) then
+		Core:Print("Processed queue contains event!")
+		return false
+	end
+
+	local canSendInvite = C_Calendar.EventCanEdit()
+	if (canSendInvite) then
+		local invitesNum = C_Calendar.GetNumInvites()
+
+		Core:Print("CreateEventInvites: " .. upcomingEvent.titleWithKey .. ". Currently invited members: " .. invitesNum)
+
+		local invitedCount = 0
+
+		for m=1, upcomingEvent.totalMembers do
+			local currentInviteMember = upcomingEvent.inviteMembers[m]
+			local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realm
+			local isMemberInvited = false
+
+			for a=1, invitesNum do
+				local inviteInfo = C_Calendar.EventGetInvite(a)
+
+				if (inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId) then
+					isMemberInvited = true
+				end
+			end
+
+			if (not isMemberInvited) then
+				Core:Print("Inviting: " .. inviteName .. "-"..currentInviteMember.level .."-"..currentInviteMember.classId)
+				workQueue:addTask(function() C_Calendar.EventInvite(inviteName) end, nil, GOW.consts.INVITE_INTERVAL)
+				
+				invitedCount = invitedCount + 1
+			end
+		end
+
+		if (invitedCount > 0) then
+			Core:Print("CreateEventInvites Ended: " .. upcomingEvent.title .. ". Invited: " .. tostring(invitedCount))
+			workQueue:addTask(function() Core:Print("Event invites completed: " .. upcomingEvent.titleWithKey) Core:SetAttendance(upcomingEvent) end, nil, 10)
+		else 
+			Core:SetAttendance(upcomingEvent)
+		end
+	else 
+		Core:Print("Cannot invite to this event!")
+	end
+end
+
+function Core:SetAttendance(upcomingEvent)
+	if (processedEvents:contains(upcomingEvent.titleWithKey)) then
+		Core:Print("Processed queue contains event!")
+		return false
+	end
+
+	local canSendInvite = C_Calendar.EventCanEdit()
+	if (canSendInvite) then
+		local invitesNum = C_Calendar.GetNumInvites()
+
+		Core:Print("SetAttendance: " .. upcomingEvent.titleWithKey .. ". Currently invited members: " .. invitesNum)
+
+		local attendanceChangedCount = 0
+
+		for m=1, upcomingEvent.totalMembers do
+			local currentInviteMember = upcomingEvent.inviteMembers[m]
+
+			if (currentInviteMember.isManager or currentInviteMember.attendance > 1) then
+				for a=1, invitesNum do
+					local inviteInfo = C_Calendar.EventGetInvite(a)
+
+					if (inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId) then
+						local isInvitationChanged = false
+
+						if (currentInviteMember.isManager) then
+							if (inviteInfo.modStatus ~= "CREATOR" and inviteInfo.modStatus ~= "MODERATOR") then
+								isInvitationChanged = true
+								Core:Print("Setting member as moderator: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name)
+								workQueue:addTask(function() C_Calendar.EventSetModerator(a) end, nil, GOW.consts.INVITE_INTERVAL)
+							end
+						end
+
+						if (currentInviteMember.attendance > 1 and inviteInfo.inviteStatus == 1) then
+							isInvitationChanged = true
+							Core:Print("Setting member attendance: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name .. ". GoWAttendance: " .. tostring(currentInviteMember.attendance) .. ". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus))
+							workQueue:addTask(function() C_Calendar.EventSetInviteStatus(a, currentInviteMember.attendance - 1) end, nil, GOW.consts.INVITE_INTERVAL)
+						end
+					
+						if (isInvitationChanged) then
+							attendanceChangedCount = attendanceChangedCount + 1
+						end
+					end
+				end
+			end
+		end
+
+		if (attendanceChangedCount > 0) then
+			Core:Print("SetAttendance Ended: " .. upcomingEvent.title .. ". SetAttendance: " .. tostring(attendanceChangedCount))
+			workQueue:addTask(function() Core:Print("Event attendances completed: " .. upcomingEvent.titleWithKey) processedEvents:push(upcomingEvent.titleWithKey) C_Calendar.CloseEvent() end, nil, 10)
+		else 
+			processedEvents:push(upcomingEvent.titleWithKey)
+			C_Calendar.CloseEvent()
+		end
+	else 
+		Core:Print("Cannot set attendance to this event!")
 	end
 end
 
