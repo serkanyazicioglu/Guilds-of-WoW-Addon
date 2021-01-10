@@ -28,6 +28,9 @@ local containerFrame = {}
 local containerTabs = {}
 local containerScrollFrame = {}
 
+local currentCharName = ""
+local currentCharRealm = ""
+
 local showWindow = true
 local isDialogOpen = false
 local workQueue = nil
@@ -254,6 +257,16 @@ end
 f:SetScript("OnEvent", function(self,event, arg1, arg2)
 	if event == "PLAYER_LOGIN" then
 		isProcessing = false
+
+		local name, realm = UnitName("player")
+
+		if (realm == nil) then
+			realm = GetRealmName()
+			--GetNormalizedRealmName()
+		end
+
+		currentCharName = name
+		currentCharRealm = realm
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		if (isProcessing == false) then
 			Core:CreateRecruitmentApplications()
@@ -284,14 +297,12 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 				Core:Print("Not suitable calendar type")
 			end
 		end
-	elseif event == "CALENDAR_NEW_EVENT" then
+	elseif event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" or event == "CALENDAR_UPDATE_EVENT_LIST" then
 		Core:Print("CALENDAR_NEW_EVENT")
 		if (isPropogatingUpdate == false and selectedTab == "events") then
 			isPropogatingUpdate = true
 			Core:CreateUpcomingEvents()
 		end
-	elseif event == "CALENDAR_UPDATE_EVENT" then
-		Core:Print("CALENDAR_UPDATE_EVENT")
 	elseif event == "CALENDAR_CLOSE_EVENT" then
 		Core:Print("CALENDAR_CLOSE_EVENT")
 		Core:ClearEventInvites(true)
@@ -302,13 +313,6 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 			if (eventInfo.title == "") then
 				Core:ClearEventInvites(false)
 			end
-		end
-	elseif event == "CALENDAR_UPDATE_EVENT_LIST" then
-		--Core:Print("CALENDAR_UPDATE_EVENT_LIST")
-		--Core:ClearEventInvites(false)
-		if (isPropogatingUpdate == false and selectedTab == "events") then
-			isPropogatingUpdate = true
-			Core:CreateUpcomingEvents()
 		end
 	elseif event == "FRIENDLIST_UPDATE" then
 		Core:Print("FRIENDLIST_UPDATE")
@@ -539,14 +543,34 @@ function Core:AppendCalendarList(event)
 		itemGroup:AddChild(eventMinItemLevelLabel)
 	end
 	
+	local isEventMember = false
+	local canAddEvent = false --C_Calendar.CanAddEvent()
+
+	for m=1, event.totalMembers do
+		local currentInviteMember = event.inviteMembers[m]
+
+		if (currentInviteMember.name == currentCharName and currentInviteMember.realm == currentCharRealm) then
+			isEventMember = true
+			canAddEvent = currentInviteMember.isManager
+		end
+	end
+
 	local eventInvitingMembersLabel = GOW.GUI:Create("SFX-Info")
 	eventInvitingMembersLabel:SetLabel("Inviting")
 
+	local invitineDetailsText = ""
+
 	if (event.isGuildEvent and event.minItemLevel == 0) then
-		eventInvitingMembersLabel:SetText("All guildies within level range")
+		invitineDetailsText = "All guildies within level range"
 	else 
-		eventInvitingMembersLabel:SetText(event.totalMembers .. " members")
+		invitineDetailsText = event.totalMembers .. " members"
 	end
+
+	if (not isEventMember) then
+		invitineDetailsText = invitineDetailsText .. " (You are not eligible for this event)"
+	end
+
+	eventInvitingMembersLabel:SetText(invitineDetailsText)
 	itemGroup:AddChild(eventInvitingMembersLabel)
 
 	local eventIndex = Core:searchForEvent(event)
@@ -554,8 +578,6 @@ function Core:AppendCalendarList(event)
 	local buttonsGroup = GOW.GUI:Create("SimpleGroup")
 	buttonsGroup:SetLayout("Flow")
 	buttonsGroup:SetFullWidth(true)
-
-	local canAddEvent = true --C_Calendar.CanAddEvent()
 
 	if (canAddEvent) then
 		local eventButton = GOW.GUI:Create("Button")
@@ -950,6 +972,7 @@ function Core:SetAttendance(upcomingEvent)
 		for m=1, upcomingEvent.totalMembers do
 			local currentInviteMember = upcomingEvent.inviteMembers[m]
 
+			--https://wow.gamepedia.com/API_C_Calendar.EventGetInviteResponseTime
 			if (currentInviteMember.isManager or currentInviteMember.attendance > 1) then
 				for a=1, invitesNum do
 					local inviteInfo = C_Calendar.EventGetInvite(a)
