@@ -103,7 +103,7 @@ function GOW:OnInitialize()
 
 	string.lpad = function(str, len, char)
 		if char == nil then char = ' ' end
-		return str .. string.rep(char, len - #str)
+		return string.rep(char, len - #str) .. str
 	end
 
 	string.splitByDelimeter = function(str, delimiter)
@@ -151,7 +151,7 @@ function GOW:OnInitialize()
 	end
 
 	StaticPopupDialogs["CONFIRM_EVENT_CREATION"] = {
-		text = "Are you sure you want to create this event?",
+		text = "Are you sure you want to create this event on in-game calendar?",
 		button1 = "Yes",
 		button2 = "No",
 		OnAccept = function()
@@ -589,7 +589,7 @@ function Core:AppendCalendarList(event)
 			eventButton:SetText("Event Created")
 			eventButton:SetDisabled(true)
 		else
-			eventButton:SetText("Create Event")
+			eventButton:SetText("Create In-Game Event")
 			eventButton:SetCallback("OnClick", function()
 				Core:CreateCalendarEvent(event)
 			end)
@@ -969,14 +969,30 @@ function Core:SetAttendance(upcomingEvent)
 
 		local attendanceChangedCount = 0
 
-		for m=1, upcomingEvent.totalMembers do
-			local currentInviteMember = upcomingEvent.inviteMembers[m]
+		local currentEventAttendances = {}
+		local attendanceIndex = 1
 
-			--https://wow.gamepedia.com/API_C_Calendar.EventGetInviteResponseTime
-			if (currentInviteMember.isManager or currentInviteMember.attendance > 1) then
-				for a=1, invitesNum do
-					local inviteInfo = C_Calendar.EventGetInvite(a)
+		for a=1, invitesNum do
+			local inviteInfo = C_Calendar.EventGetInvite(a)
+			--local responseTime = C_Calendar.EventGetInviteResponseTime(a)
 
+			if (inviteInfo.inviteStatus > 1) then
+				currentEventAttendances[attendanceIndex] = {
+					name = inviteInfo.name,
+					level = inviteInfo.level,
+					attendance = inviteInfo.inviteStatus,
+					classId = inviteInfo.classID,
+					guid = inviteInfo.guid,
+					--responseTime = responseTime.year .. "-" .. string.lpad(tostring(responseTime.month), 2, '0') .. "-" .. string.lpad(tostring(responseTime.monthDay), 2, '0') .. "T" .. string.lpad(tostring(responseTime.hour), 2, '0') .. ":" .. string.lpad(tostring(responseTime.minute), 2, '0')
+				}
+
+				attendanceIndex = attendanceIndex + 1
+			end
+			
+			for m=1, upcomingEvent.totalMembers do
+				local currentInviteMember = upcomingEvent.inviteMembers[m]
+	
+				if (currentInviteMember.isManager or currentInviteMember.attendance > 1) then
 					if (inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId) then
 						local isInvitationChanged = false
 
@@ -1001,6 +1017,32 @@ function Core:SetAttendance(upcomingEvent)
 				end
 			end
 		end
+
+		if (GOW.DB.profile.guilds == nil) then
+			GOW.DB.profile.guilds = {}
+		end
+
+		local guildKey = upcomingEvent.guild .. "-" .. upcomingEvent.guildRealm
+
+		if (GOW.DB.profile.guilds[guildKey] == nil) then
+			GOW.DB.profile.guilds[guildKey] = { }
+		end
+
+		if (GOW.DB.profile.guilds[guildKey].events == nil) then
+			GOW.DB.profile.guilds[guildKey].events = { }
+		end
+
+		local eventId = tostring(upcomingEvent.id)
+
+		if (GOW.DB.profile.guilds[guildKey].events[eventId] == nil) then
+			GOW.DB.profile.guilds[guildKey].events[eventId] = { }
+		end
+
+		if (GOW.DB.profile.guilds[guildKey].events[eventId].attendances == nil) then
+			GOW.DB.profile.guilds[guildKey].events[eventId].attendances = { }
+		end
+
+		GOW.DB.profile.guilds[guildKey].events[eventId].attendances = currentEventAttendances
 
 		if (attendanceChangedCount > 0) then
 			Core:Print("SetAttendance Ended: " .. upcomingEvent.title .. ". SetAttendance: " .. tostring(attendanceChangedCount))

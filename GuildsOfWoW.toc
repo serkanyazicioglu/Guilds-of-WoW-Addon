@@ -10,6 +10,7 @@
 embed.xml
 
 Core.lua
+json.lua
 Class.lua
 List.lua
 WorkQueue.lua
