@@ -117,7 +117,7 @@ do
 		Info:SetText(Text)
 
 		local Height = max(self.Label:GetStringHeight(), Info:GetStringHeight())
-		self:SetHeight(Height)
+		self:SetHeight(Height + 3)
 	end
 
 	-- Widget:SetWidth()

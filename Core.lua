@@ -15,12 +15,10 @@ f:RegisterEvent("PLAYER_LOGIN")
 f:RegisterEvent("GUILD_ROSTER_UPDATE")
 f:RegisterEvent("CALENDAR_NEW_EVENT")
 f:RegisterEvent("CALENDAR_UPDATE_EVENT")
-f:RegisterEvent("CALENDAR_UPDATE_EVENT_LIST")
 f:RegisterEvent("CALENDAR_UPDATE_GUILD_EVENTS")
 f:RegisterEvent("CALENDAR_OPEN_EVENT")
 f:RegisterEvent("CALENDAR_CLOSE_EVENT")
 f:RegisterEvent("FRIENDLIST_UPDATE")
---f:RegisterEvent("CALENDAR_ACTION_PENDING")
 f:RegisterEvent("CALENDAR_UPDATE_INVITE_LIST")
 local isProcessing = false
 local isPropogatingUpdate = false
@@ -57,6 +55,8 @@ local tabs = {
 	{value = "events", text = "Upcoming Events" },
 	{value = "recruitmentApps", text = "Recruitment Applications" },
 }
+
+local LibQTip = LibStub('LibQTip-1.0')
 
 function GOW:OnInitialize()
 	self.GUI = LibStub("AceGUI-3.0")
@@ -255,6 +255,8 @@ function GOW:OnInitialize()
 end
 
 f:SetScript("OnEvent", function(self,event, arg1, arg2)
+	Core:Print(event)
+
 	if event == "PLAYER_LOGIN" then
 		isProcessing = false
 
@@ -297,15 +299,18 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 				Core:Print("Not suitable calendar type")
 			end
 		end
-	elseif event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" or event == "CALENDAR_UPDATE_EVENT_LIST" then
-		Core:Print("CALENDAR_NEW_EVENT")
+	elseif event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" then
 		if (isPropogatingUpdate == false and selectedTab == "events") then
 			isPropogatingUpdate = true
 			Core:CreateUpcomingEvents()
 		end
 	elseif event == "CALENDAR_CLOSE_EVENT" then
-		Core:Print("CALENDAR_CLOSE_EVENT")
 		Core:ClearEventInvites(true)
+
+		if (isPropogatingUpdate == false and selectedTab == "events") then
+			isPropogatingUpdate = true
+			Core:CreateUpcomingEvents()
+		end
 	elseif event == "CALENDAR_UPDATE_INVITE_LIST" then
 		if (C_Calendar.IsEventOpen()) then
 			local eventInfo = C_Calendar.GetEventInfo()
@@ -315,7 +320,6 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 			end
 		end
 	elseif event == "FRIENDLIST_UPDATE" then
-		Core:Print("FRIENDLIST_UPDATE")
 		Core:CreateRecruitmentApplications()
 	end
 end)
@@ -503,11 +507,21 @@ function Core:AppendCalendarList(event)
 	local descriptionLabel = GOW.GUI:Create("SFX-Info")
 	descriptionLabel:SetLabel("Description")
 	descriptionLabel:SetText(event.description)
-	-- descriptionLabel:SetCallback("OnEnter", function(widget)
-	-- 	print("qwewerwer")
-    --     GameTooltip:SetText("test test");
-    --     GameTooltip:Show();
-    -- end);
+	descriptionLabel:SetDisabled(false)
+	descriptionLabel:SetCallback("OnEnter", function(self)
+		local tooltip = LibQTip:Acquire("EventMessageTooltip", 1, "LEFT")
+		GOW.tooltip = tooltip
+		
+		tooltip:AddHeader('|cffffcc00Event Description')
+		local line = tooltip:AddLine()
+		tooltip:SetCell(line, 1, event.description, "LEFT", 1, nil, 0, 0, 300, 50)
+		tooltip:SmartAnchorTo(self.frame)
+		tooltip:Show()
+	end)
+	descriptionLabel:SetCallback("OnLeave", function()
+		LibQTip:Release(GOW.tooltip)
+		GOW.tooltip = nil
+	end)
 	itemGroup:AddChild(descriptionLabel)
 
 	local dateLabel = GOW.GUI:Create("SFX-Info")
@@ -635,7 +649,22 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 
 	local messageLabel = GOW.GUI:Create("SFX-Info")
 	messageLabel:SetLabel("Message")
+	messageLabel:SetDisabled(false)
 	messageLabel:SetText(recruitmentApplication.message)
+	messageLabel:SetCallback("OnEnter", function(self)
+		local tooltip = LibQTip:Acquire("RecruitmentMessageTooltip", 1, "LEFT")
+		GOW.tooltip = tooltip
+		
+		tooltip:AddHeader('|cffffcc00Message')
+		local line = tooltip:AddLine()
+		tooltip:SetCell(line, 1, recruitmentApplication.message, "LEFT", 1, nil, 0, 0, 300, 50)
+		tooltip:SmartAnchorTo(self.frame)
+		tooltip:Show()
+	end)
+	messageLabel:SetCallback("OnLeave", function()
+		LibQTip:Release(GOW.tooltip)
+		GOW.tooltip = nil
+	end)
 	itemGroup:AddChild(messageLabel)
 
 	local classLabel = GOW.GUI:Create("SFX-Info")
@@ -647,6 +676,40 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	dateLabel:SetLabel("Date")
 	dateLabel:SetText(recruitmentApplication.dateText)
 	itemGroup:AddChild(dateLabel)
+
+	local statusLabel = GOW.GUI:Create("SFX-Info")
+	statusLabel:SetLabel("Status")
+	statusLabel:SetText(recruitmentApplication.status)
+	itemGroup:AddChild(statusLabel)
+
+	if (recruitmentApplication.reviewedBy ~= "" and recruitmentApplication.reviewedBy ~= nil) then
+		local reviewedByLabel = GOW.GUI:Create("SFX-Info")
+		reviewedByLabel:SetLabel("Reviewer")
+		reviewedByLabel:SetText(recruitmentApplication.reviewedBy)
+		itemGroup:AddChild(reviewedByLabel)
+	end
+
+	if (recruitmentApplication.responseMessage ~= "" and recruitmentApplication.responseMessage ~= nil) then
+		local responseMessageLabel = GOW.GUI:Create("SFX-Info")
+		responseMessageLabel:SetLabel("Response")
+		responseMessageLabel:SetDisabled(false)
+		responseMessageLabel:SetText(recruitmentApplication.responseMessage)
+		responseMessageLabel:SetCallback("OnEnter", function(self)
+			local tooltip = LibQTip:Acquire("RecruitmentResponseMessageTooltip", 1, "LEFT")
+			GOW.tooltip = tooltip
+			
+			tooltip:AddHeader('|cffffcc00Response Message')
+			local line = tooltip:AddLine()
+			tooltip:SetCell(line, 1, recruitmentApplication.responseMessage, "LEFT", 1, nil, 0, 0, 300, 50)
+			tooltip:SmartAnchorTo(self.frame)
+			tooltip:Show()
+		end)
+		responseMessageLabel:SetCallback("OnLeave", function()
+			LibQTip:Release(GOW.tooltip)
+			GOW.tooltip = nil
+		end)
+		itemGroup:AddChild(responseMessageLabel)
+	end
 
 	local buttonsGroup = GOW.GUI:Create("SimpleGroup")
 	buttonsGroup:SetLayout("Flow")
@@ -732,6 +795,9 @@ end
 
 function Core:DialogClosed()
 	isDialogOpen = false
+end
+
+function Core:ShowTooltip(container, header, message)
 end
 
 function Core:CreateCalendarEvent(event)
