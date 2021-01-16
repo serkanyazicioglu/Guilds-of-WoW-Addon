@@ -32,12 +32,11 @@ local currentCharRealm = ""
 local showWindow = true
 local isDialogOpen = false
 local workQueue = nil
+local persistentWorkQueue = nil
 
-local currentEventsCount = 0
 local currentMultiInvitingEvent = nil
 local processedEvents = nil
 
-local currentApplicationsCount = 0
 local recruitmentCharacter = nil
 local recruitmenNotes = nil
 
@@ -69,6 +68,7 @@ function GOW:OnInitialize()
 	self.events = {}
 	LibStub("AceEvent-3.0"):Embed(self.events)
 	workQueue = self.WorkQueue.new()
+	persistentWorkQueue = self.WorkQueue.new()
 	processedEvents = GOW.List.new()
 	
 	local consoleCommandFunc = function(msg, editbox)
@@ -88,12 +88,6 @@ function GOW:OnInitialize()
 		icon = "Interface\\Icons\\vas_guildfactionchange",
 		OnTooltipShow = function(tooltip)
 			tooltip:SetText("Guilds of WoW")
-			if (ns.UPCOMING_EVENTS ~= nil) then
-				tooltip:AddDoubleLine("Upcoming Events", currentEventsCount)
-			end
-			if (ns.RECRUITMENT_APPLICATIONS ~= nil) then
-				tooltip:AddDoubleLine("Recruitment Applications", currentApplicationsCount)
-			end
 			tooltip:Show()
 		end,
 		OnClick = function() Core:ToggleWindow() end
@@ -271,52 +265,58 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 		currentCharRealm = realm
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		if (isProcessing == false) then
-			Core:CreateRecruitmentApplications()
-			Core:CreateUpcomingEvents()
+			--Core:CreateRecruitmentApplications()
+			persistentWorkQueue:addTask(function() Core:CreateUpcomingEvents() end, nil, 2)
 
 			if (ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
 				Core:CheckEventInvites()
 			end
 		end
 	elseif event == "CALENDAR_OPEN_EVENT" then
-		local canAddEvent = true --C_Calendar.CanAddEvent()
+		local canAddEvent = C_Calendar.IsEventOpen() --C_Calendar.CanAddEvent()
 		
 		if (canAddEvent) then
 			local eventInfo = C_Calendar.GetEventInfo()
 			
-			Core:Print("CALENDAR_OPEN_EVENT: Opened: " .. eventInfo.title)
-			Core:ClearEventInvites(false)
+			Core:Print("Is event open:" .. tostring(C_Calendar.IsEventOpen()))
 
-			if (eventInfo.calendarType == "GUILD_EVENT" or eventInfo.calendarType == "PLAYER") then
-				local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title)
+			if (eventInfo ~= nil) then
+				Core:Print("CALENDAR_OPEN_EVENT: Opened: " .. eventInfo.title)
+				Core:ClearEventInvites(false)
 
-				if (upcomingEvent ~= nil and upcomingEvent.isManualInvite) then
-					Core:CreateEventInvites(upcomingEvent)
-				else
-					Core:Print("Event invite refresh failed")
+				if (eventInfo.calendarType == "GUILD_EVENT" or eventInfo.calendarType == "PLAYER") then
+					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title)
+
+					if (upcomingEvent ~= nil and upcomingEvent.isManualInvite) then
+						--processedEvents:remove(upcomingEvent.titleWithKey)
+						Core:CreateEventInvites(upcomingEvent, true)
+					else
+						Core:Print("Event invite refresh failed")
+					end
+				else 
+					Core:Print("Not suitable calendar type")
 				end
-			else 
-				Core:Print("Not suitable calendar type")
 			end
 		end
 	elseif event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" then
 		if (isPropogatingUpdate == false and selectedTab == "events") then
-			isPropogatingUpdate = true
-			Core:CreateUpcomingEvents()
+			persistentWorkQueue:addTask(function() isPropogatingUpdate = true Core:CreateUpcomingEvents() end, nil, 2)
 		end
 	elseif event == "CALENDAR_CLOSE_EVENT" then
 		Core:ClearEventInvites(true)
 
 		if (isPropogatingUpdate == false and selectedTab == "events") then
-			isPropogatingUpdate = true
-			Core:CreateUpcomingEvents()
+			persistentWorkQueue:addTask(function() isPropogatingUpdate = true Core:CreateUpcomingEvents() end, nil, 2)
 		end
 	elseif event == "CALENDAR_UPDATE_INVITE_LIST" then
+		Core:Print("CALENDAR_UPDATE_INVITE_LIST")
 		if (C_Calendar.IsEventOpen()) then
 			local eventInfo = C_Calendar.GetEventInfo()
 
 			if (eventInfo.title == "") then
 				Core:ClearEventInvites(false)
+			else
+				processedEvents:remove(eventInfo.title)
 			end
 		end
 	elseif event == "FRIENDLIST_UPDATE" then
@@ -351,7 +351,6 @@ end
 
 function Core:CreateUpcomingEvents()
 	if (ns.UPCOMING_EVENTS == nil) then
-		currentEventsCount = 0
 		containerScrollFrame:ReleaseChildren()
 		Core:AppendMessage("Upcoming events data is not found! Please make sure your sync app is installed and working properly!", true)
 	else
@@ -372,7 +371,7 @@ function Core:CreateUpcomingEvents()
 			return
 		end
 
-		currentEventsCount = 0
+		Core:Print("Core:CreateUpcomingEvents")
 		isProcessing = true
 		containerScrollFrame:ReleaseChildren()
 
@@ -399,7 +398,6 @@ end
 
 function Core:CreateRecruitmentApplications()
 	if(ns.RECRUITMENT_APPLICATIONS == nil) then
-		currentEventsCount = 0
 		containerScrollFrame:ReleaseChildren()
 		Core:AppendMessage("Recruitment applications data is not found! Please make sure your sync app is installed and working properly!", true)
 	else
@@ -416,7 +414,6 @@ function Core:CreateRecruitmentApplications()
 			return
 		end
 
-		currentApplicationsCount = 0
 		isProcessing = true
 		containerScrollFrame:ReleaseChildren()
 
@@ -608,8 +605,20 @@ function Core:AppendCalendarList(event)
 				Core:CreateCalendarEvent(event)
 			end)
 
-			currentEventsCount = currentEventsCount + 1
-
+			eventButton:SetCallback("OnEnter", function(self)
+				local tooltip = LibQTip:Acquire("EventMessageTooltip", 1, "LEFT")
+				GOW.tooltip = tooltip
+				
+				local line = tooltip:AddLine()
+				tooltip:SetCell(line, 1, "You can create an in-game calendar event to integrate Guilds of WoW attendance data with in-game calendar. This synchronization will work bidirectional.", "LEFT", 1, nil, 0, 0, 300, 50)
+				tooltip:SmartAnchorTo(self.frame)
+				tooltip:Show()
+			end)
+			eventButton:SetCallback("OnLeave", function()
+				LibQTip:Release(GOW.tooltip)
+				GOW.tooltip = nil
+			end)
+			
 			if (showWindow == true) then
 				containerFrame:Show()
 			end
@@ -626,7 +635,7 @@ function Core:AppendCalendarList(event)
 	end)
 	buttonsGroup:AddChild(copyLinkButton)
 
-	if (canAddEvent) then
+	if (canAddEvent and eventIndex < 0) then
 		local copyKeyButton = GOW.GUI:Create("Button")
 		copyKeyButton:SetText("Copy Key")
 		copyKeyButton:SetWidth(140)
@@ -634,6 +643,21 @@ function Core:AppendCalendarList(event)
 			copyText = event.eventKey
 			Core:OpenDialog("COPY_TEXT")
 		end)
+
+		copyKeyButton:SetCallback("OnEnter", function(self)
+			local tooltip = LibQTip:Acquire("EventMessageTooltip", 1, "LEFT")
+			GOW.tooltip = tooltip
+			
+			local line = tooltip:AddLine()
+			tooltip:SetCell(line, 1, "If you already created an in-game event related to this record you can append this key to the end of event title for GoW synchronization.", "LEFT", 1, nil, 0, 0, 300, 50)
+			tooltip:SmartAnchorTo(self.frame)
+			tooltip:Show()
+		end)
+		copyKeyButton:SetCallback("OnLeave", function()
+			LibQTip:Release(GOW.tooltip)
+			GOW.tooltip = nil
+		end)
+
 		buttonsGroup:AddChild(copyKeyButton)
 	end
 
@@ -777,8 +801,6 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 
 	containerScrollFrame:AddChild(itemGroup)
 
-	currentApplicationsCount = currentApplicationsCount + 1
-
 	if (showWindow == true) then
 		containerFrame:Show()
 	end
@@ -802,7 +824,7 @@ end
 
 function Core:CreateCalendarEvent(event)
 	if not workQueue:isEmpty() then
-		print("|cffFF0000Another event is being formed right now! Please wait for a while and try again...")
+		print("|cffFF0000Addon is busy right now! Please wait for a while and try again...")
 		return
 	end
 
@@ -892,7 +914,7 @@ function Core:AddCheckEventsTask()
 			else
 				Core:AddCheckEventsTask()
 		end
-	end, nil, 30)
+	end, nil, 10)
 end
 
 function Core:CheckEventInvites()
@@ -940,7 +962,7 @@ function Core:CheckEventInvites()
 		end
 	end
 
-	Core:Print("Check event invites completed!")
+	print("|cffffff00Guilds of WoW: |cff00ff00Calendar event processing completed!")
 end
 
 function Core:FindUpcomingEventFromName(eventTitle)
@@ -975,11 +997,13 @@ function Core:FindUpcomingEventFromName(eventTitle)
 	return nil
 end
 
-function Core:CreateEventInvites(upcomingEvent)
+function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 	if (processedEvents:contains(upcomingEvent.titleWithKey)) then
 		Core:Print("Processed queue contains event!")
 		return false
 	end
+
+	Core:Print("Processing event: " .. upcomingEvent.titleWithKey)
 
 	local canSendInvite = C_Calendar.EventCanEdit()
 	if (canSendInvite) then
@@ -1012,16 +1036,16 @@ function Core:CreateEventInvites(upcomingEvent)
 
 		if (invitedCount > 0) then
 			Core:Print("CreateEventInvites Ended: " .. upcomingEvent.title .. ". Invited: " .. tostring(invitedCount))
-			workQueue:addTask(function() Core:Print("Event invites completed: " .. upcomingEvent.titleWithKey) Core:SetAttendance(upcomingEvent) end, nil, 10)
+			workQueue:addTask(function() Core:Print("Event invites completed: " .. upcomingEvent.titleWithKey) Core:SetAttendance(upcomingEvent, closeAfterEnd) end, nil, 10)
 		else 
-			Core:SetAttendance(upcomingEvent)
+			Core:SetAttendance(upcomingEvent, closeAfterEnd)
 		end
 	else 
 		Core:Print("Cannot invite to this event!")
 	end
 end
 
-function Core:SetAttendance(upcomingEvent)
+function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 	if (processedEvents:contains(upcomingEvent.titleWithKey)) then
 		Core:Print("Processed queue contains event!")
 		return false
@@ -1112,10 +1136,12 @@ function Core:SetAttendance(upcomingEvent)
 
 		if (attendanceChangedCount > 0) then
 			Core:Print("SetAttendance Ended: " .. upcomingEvent.title .. ". SetAttendance: " .. tostring(attendanceChangedCount))
-			workQueue:addTask(function() Core:Print("Event attendances completed: " .. upcomingEvent.titleWithKey) processedEvents:push(upcomingEvent.titleWithKey) C_Calendar.CloseEvent() end, nil, 10)
+			workQueue:addTask(function() Core:Print("Event attendances completed: " .. upcomingEvent.titleWithKey) if (closeAfterEnd) then processedEvents:push(upcomingEvent.titleWithKey) C_Calendar.CloseEvent() end end, nil, 10)
 		else 
-			processedEvents:push(upcomingEvent.titleWithKey)
-			C_Calendar.CloseEvent()
+			if (closeAfterEnd) then
+				processedEvents:push(upcomingEvent.titleWithKey)
+				C_Calendar.CloseEvent()
+			end
 		end
 	else 
 		Core:Print("Cannot set attendance to this event!")

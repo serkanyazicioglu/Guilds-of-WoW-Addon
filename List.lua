@@ -48,6 +48,14 @@ function List:contains(value)
 	return false
 end
 
+function List:remove(value)
+	for a=0, self:count() do
+		if(self[a] == value) then
+			self[a] = nil
+		end
+	end
+end
+
 function List:clear()
 	while not self:isEmpty() do
 		self:pop()
