@@ -1094,7 +1094,7 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 							end
 						end
 
-						if (currentInviteMember.attendance > 1 and inviteInfo.inviteStatus == 1) then
+						if (currentInviteMember.forceUpdate or (currentInviteMember.attendance > 1 and inviteInfo.inviteStatus == 1)) then
 							isInvitationChanged = true
 							Core:Print("Setting member attendance: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name .. ". GoWAttendance: " .. tostring(currentInviteMember.attendance) .. ". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus))
 							workQueue:addTask(function() C_Calendar.EventSetInviteStatus(a, currentInviteMember.attendance - 1) end, nil, GOW.consts.INVITE_INTERVAL)

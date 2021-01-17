@@ -9,7 +9,7 @@ GOW.Class:createClass("WorkQueue", WQ, newWorkQueue)
 
 function WQ:prepareNextTask()
 	local elem = self.queue:peek()
-	if elem.event then
+	if elem and elem.event then
 		--log("WorkQueue:RegisterForEvent", elem.event, elem.delay)
 		GOW.events:RegisterEvent(elem.event, function()
 			--log("WorkQueue:EventFired", elem.event, elem.delay)
