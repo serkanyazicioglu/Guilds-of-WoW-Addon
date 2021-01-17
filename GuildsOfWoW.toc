@@ -4,13 +4,12 @@
 ## X-Website: https://guildsofwow.com
 ## X-Curse-Project-ID: 432144
 ## Author: Nhea
-## Version: 0.3.0
+## Version: 0.3.1
 ## SavedVariables: GoWDB
 
 embed.xml
 
 Core.lua
-json.lua
 Class.lua
 List.lua
 WorkQueue.lua

@@ -962,7 +962,7 @@ function Core:CheckEventInvites()
 		end
 	end
 
-	print("|cffffff00Guilds of WoW: |cff00ff00Calendar event processing completed!")
+	--print("|cffffff00Guilds of WoW: |cff00ff00Calendar event processing completed!")
 end
 
 function Core:FindUpcomingEventFromName(eventTitle)
