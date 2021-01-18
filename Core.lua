@@ -264,7 +264,7 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 		currentCharName = name
 		currentCharRealm = realm
 	elseif event == "GUILD_ROSTER_UPDATE" then
-		if (isProcessing == false) then
+		if (isProcessing == false and selectedTab == "events") then
 			--Core:CreateRecruitmentApplications()
 			persistentWorkQueue:addTask(function() Core:CreateUpcomingEvents() end, nil, 2)
 
@@ -350,6 +350,10 @@ function Core:ToggleWindow()
 end
 
 function Core:CreateUpcomingEvents()
+	if (selectedTab ~= "events") then
+		return
+	end
+
 	if (ns.UPCOMING_EVENTS == nil) then
 		containerScrollFrame:ReleaseChildren()
 		Core:AppendMessage("Upcoming events data is not found! Please make sure your sync app is installed and working properly!", true)
@@ -362,12 +366,14 @@ function Core:CreateUpcomingEvents()
 
 		if (isInGuild == false) then
 			isProcessing = true
+			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false)
 			return
 		end
 
 		local guildName, _, _, realmName = GetGuildInfo("player")
 
 		if (guildName == nil) then
+			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false)
 			return
 		end
 
@@ -381,14 +387,21 @@ function Core:CreateUpcomingEvents()
 
 		local regionId = GetCurrentRegion()
 
+		local hasAnyData = false
+
 		if (isInGuild and ns.UPCOMING_EVENTS.totalEvents > 0) then
 			for i=1, ns.UPCOMING_EVENTS.totalEvents do
 				local upcomingEvent = ns.UPCOMING_EVENTS.events[i]
 
 				if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealm and regionId == upcomingEvent.guildRegionId) then
+					hasAnyData = true
 					Core:AppendCalendarList(upcomingEvent)
 				end
 			end
+		end
+
+		if (not hasAnyData) then
+			Core:AppendMessage("This guild doesn't have any upcoming event or you are not an event manager!", true)
 		end
 	end
 
@@ -397,6 +410,10 @@ function Core:CreateUpcomingEvents()
 end
 
 function Core:CreateRecruitmentApplications()
+	if (selectedTab ~= "recruitmentApps") then
+		return
+	end
+
 	if(ns.RECRUITMENT_APPLICATIONS == nil) then
 		containerScrollFrame:ReleaseChildren()
 		Core:AppendMessage("Recruitment applications data is not found! Please make sure your sync app is installed and working properly!", true)
@@ -405,12 +422,14 @@ function Core:CreateRecruitmentApplications()
 
 		if (isInGuild == false) then
 			isProcessing = true
+			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false)
 			return
 		end
 
 		local guildName, _, _, realmName = GetGuildInfo("player")
 
 		if (guildName == nil) then
+			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false)
 			return
 		end
 
@@ -423,16 +442,23 @@ function Core:CreateRecruitmentApplications()
 
 		local regionId = GetCurrentRegion()
 
+		local hasAnyData = false
+
 		if (isInGuild and ns.RECRUITMENT_APPLICATIONS.totalApplications > 0) then
 			for i=1, ns.RECRUITMENT_APPLICATIONS.totalApplications do
 				local recruitmentApplication = ns.RECRUITMENT_APPLICATIONS.recruitmentApplications[i]
 
 				if (guildName == recruitmentApplication.guild and realmName == recruitmentApplication.guildRealm and regionId == recruitmentApplication.guildRegionId) then
+					hasAnyData = true
 					Core:AppendRecruitmentList(recruitmentApplication)
 				end
 			end
 
 			--containerScrollFrame:DoLayout()
+		end
+
+		if (not hasAnyData) then
+			Core:AppendMessage("This guild doesn't have any guild recruitment application or you are not a recruitment manager!", true)
 		end
 	end
 	showWindow = false
@@ -478,6 +504,12 @@ function Core:AppendMessage(message, appendReloadUIButton)
 	itemGroup:SetFullWidth(true)
 	itemGroup:SetFullHeight(true)
 
+	local blankMargin = GOW.GUI:Create("SimpleGroup")
+	blankMargin:SetLayout("Line")
+	blankMargin:SetFullWidth(true)
+	blankMargin:SetHeight(10)
+	itemGroup:AddChild(blankMargin)
+
 	local messageLabel = GOW.GUI:Create("Label")
 	messageLabel:SetText(message)
 	messageLabel:SetFullWidth(true)
@@ -485,6 +517,12 @@ function Core:AppendMessage(message, appendReloadUIButton)
 	itemGroup:AddChild(messageLabel)
 
 	if(appendReloadUIButton) then
+		local blankMargin2 = GOW.GUI:Create("SimpleGroup")
+		blankMargin2:SetLayout("Line")
+		blankMargin2:SetFullWidth(true)
+		blankMargin2:SetHeight(10)
+		itemGroup:AddChild(blankMargin2)
+
 		local reloadUIButton = GOW.GUI:Create("Button")
 		reloadUIButton:SetText("Reload UI")
 		reloadUIButton:SetCallback("OnClick", function()
