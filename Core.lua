@@ -574,22 +574,29 @@ function Core:AppendCalendarList(event)
 	eventDurationLabel:SetText(event.durationText)
 	itemGroup:AddChild(eventDurationLabel)
 	
-	local levelText = event.minLevel
+	if (event.team ~= "") then
+		local teamLabel = GOW.GUI:Create("SFX-Info")
+		teamLabel:SetLabel("Team")
+		teamLabel:SetText(event.team)
+		itemGroup:AddChild(teamLabel)
+	else
+		local levelText = event.minLevel
 
-	if event.minLevel ~= event.maxLevel then
-		levelText = levelText .. " -> " .. event.maxLevel
-	end
+		if event.minLevel ~= event.maxLevel then
+			levelText = levelText .. " -> " .. event.maxLevel
+		end
 
-	local eventLevelLabel = GOW.GUI:Create("SFX-Info")
-	eventLevelLabel:SetLabel("Level")
-	eventLevelLabel:SetText(levelText)
-	itemGroup:AddChild(eventLevelLabel)
+		local eventLevelLabel = GOW.GUI:Create("SFX-Info")
+		eventLevelLabel:SetLabel("Level")
+		eventLevelLabel:SetText(levelText)
+		itemGroup:AddChild(eventLevelLabel)
 
-	if (event.minItemLevel > 0) then
-		local eventMinItemLevelLabel = GOW.GUI:Create("SFX-Info")
-		eventMinItemLevelLabel:SetLabel("Item Level")
-		eventMinItemLevelLabel:SetText(event.minItemLevel .. "+")
-		itemGroup:AddChild(eventMinItemLevelLabel)
+		if (event.minItemLevel > 0) then
+			local eventMinItemLevelLabel = GOW.GUI:Create("SFX-Info")
+			eventMinItemLevelLabel:SetLabel("Item Level")
+			eventMinItemLevelLabel:SetText(event.minItemLevel .. "+")
+			itemGroup:AddChild(eventMinItemLevelLabel)
+		end
 	end
 	
 	local isEventMember = false
