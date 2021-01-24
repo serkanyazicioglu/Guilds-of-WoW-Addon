@@ -1066,19 +1066,21 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 			for a=1, invitesNum do
 				local inviteInfo = C_Calendar.EventGetInvite(a)
 
-				if (string.find(inviteInfo.name, "-")) then
-					Core:Print("Character with dash! " .. inviteInfo.name)
-					local realmNameTrimmed = currentInviteMember.realm:gsub(" ", "")
-					Core:Print("Realm name trimmed: " .. realmNameTrimmed)
+				if (inviteInfo and inviteInfo.name ~= nil) then
+					if (string.find(inviteInfo.name, "-")) then
+						Core:Print("Character with dash! " .. inviteInfo.name)
+						local realmNameTrimmed = currentInviteMember.realm:gsub(" ", "")
+						Core:Print("Realm name trimmed: " .. realmNameTrimmed)
 
-					if (inviteInfo.name == currentInviteMember.name .. "-" .. realmNameTrimmed) then
-						isMemberInvited = true
-						Core:Print("Member is invited with realm name: " .. inviteInfo.name)
-					end
-				else
-					if (inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId) then
-						Core:Print("Member is invited: " .. inviteInfo.name)
-						isMemberInvited = true
+						if (inviteInfo.name == currentInviteMember.name .. "-" .. realmNameTrimmed) then
+							isMemberInvited = true
+							Core:Print("Member is invited with realm name: " .. inviteInfo.name)
+						end
+					else
+						if (inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId) then
+							Core:Print("Member is invited: " .. inviteInfo.name)
+							isMemberInvited = true
+						end
 					end
 				end
 			end
