@@ -263,7 +263,7 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 
 		currentCharName = name
 		currentCharRealm = realm
-	elseif event == "GUILD_ROSTER_UPDATE" then
+	elseif event == "GUILD_ROSTER_UPDATE" or event == "CALENDAR_UPDATE_GUILD_EVENTS" then
 		if (isProcessing == false and selectedTab == "events") then
 			--Core:CreateRecruitmentApplications()
 			persistentWorkQueue:addTask(function() Core:CreateUpcomingEvents() end, nil, 2)
@@ -474,13 +474,15 @@ function Core:searchForEvent(event)
 
 	C_Calendar.SetAbsMonth(event.month, event.year)
 
-	local numDayEvents = C_Calendar.GetNumDayEvents(0, event.day)
+	local monthIndex = 0 -- tonumber(date("%m", event.eventDate)) - tonumber(date("%m", serverTime))
+
+	local numDayEvents = C_Calendar.GetNumDayEvents(monthIndex, event.day)
 
 	--Core:Print("events found: " .. numDayEvents .. " : " .. event.day .. "/" .. event.month .. "/" .. event.year)
 
 	if (numDayEvents > 0) then
 		for i=1, numDayEvents do
-			local dayEvent = C_Calendar.GetDayEvent(0, event.day, i)
+			local dayEvent = C_Calendar.GetDayEvent(monthIndex, event.day, i)
 			
 			if (dayEvent.calendarType == "GUILD_EVENT" or dayEvent.calendarType == "PLAYER") then
 				--Core:Print("dayEvent: " .. dayEvent.title)
@@ -616,10 +618,14 @@ function Core:AppendCalendarList(event)
 
 	local invitineDetailsText = ""
 
-	if (event.isGuildEvent and event.minItemLevel == 0) then
+	if (not event.isManualInvite) then
 		invitineDetailsText = "All guildies within level range"
-	else 
-		invitineDetailsText = event.totalMembers .. " members"
+	else
+		if (event.totalMembers > 1) then
+			invitineDetailsText = event.totalMembers .. " members"
+		else
+			invitineDetailsText = event.totalMembers .. " member"
+		end
 	end
 
 	if (not isEventMember) then
@@ -694,7 +700,7 @@ function Core:AppendCalendarList(event)
 			GOW.tooltip = tooltip
 			
 			local line = tooltip:AddLine()
-			tooltip:SetCell(line, 1, "If you already created an in-game event related to this record you can append this key to the end of event title for GoW synchronization.", "LEFT", 1, nil, 0, 0, 300, 50)
+			tooltip:SetCell(line, 1, "If you already created an in-game event related to this record, you can append this key to the end of event title in-game for GoW synchronization.", "LEFT", 1, nil, 0, 0, 300, 50)
 			tooltip:SmartAnchorTo(self.frame)
 			tooltip:Show()
 		end)
