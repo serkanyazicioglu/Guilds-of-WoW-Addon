@@ -150,7 +150,7 @@ function GOW:OnInitialize()
 		button2 = "No",
 		OnAccept = function()
 			C_Calendar.AddEvent()
-			if(currentMultiInvitingEvent ~= nil) then
+			if (currentMultiInvitingEvent ~= nil and currentMultiInvitingEvent.isManualInvite) then
 				Core:InviteMultiplePeopleToEvent()
 			end
 			Core:DialogClosed()			
@@ -581,7 +581,7 @@ function Core:AppendCalendarList(event)
 		teamLabel:SetLabel("Team")
 		teamLabel:SetText(event.team)
 		itemGroup:AddChild(teamLabel)
-	else
+	elseif (event.calendarType == 2) then
 		local levelText = event.minLevel
 
 		if event.minLevel ~= event.maxLevel then
@@ -601,24 +601,17 @@ function Core:AppendCalendarList(event)
 		end
 	end
 	
-	local isEventMember = false
-	local canAddEvent = false --C_Calendar.CanAddEvent()
-
-	for m=1, event.totalMembers do
-		local currentInviteMember = event.inviteMembers[m]
-
-		if (currentInviteMember.name == currentCharName and currentInviteMember.realm == currentCharRealm) then
-			isEventMember = true
-			canAddEvent = currentInviteMember.isManager
-		end
-	end
+	local isEventMember = event.isEventMember
+	local canAddEvent = event.isEventManager
 
 	local eventInvitingMembersLabel = GOW.GUI:Create("SFX-Info")
 	eventInvitingMembersLabel:SetLabel("Inviting")
 
 	local invitineDetailsText = ""
 
-	if (not event.isManualInvite) then
+	if (event.calendarType == 1) then
+		invitineDetailsText = "All guildies"
+	elseif (not event.isManualInvite) then
 		invitineDetailsText = "All guildies within level range"
 	else
 		if (event.totalMembers > 1) then
@@ -874,6 +867,11 @@ function Core:ShowTooltip(container, header, message)
 end
 
 function Core:CreateCalendarEvent(event)
+	if (event.calendarType == 2 and event.totalMembers >= 100) then
+		print("|cffFF0000You cannot create events with more than 100 members! Please narrow your audience by filtering or binding a team or disabling filtering at all to create a guild event.")
+		return
+	end
+
 	if not workQueue:isEmpty() then
 		print("|cffFF0000Addon is busy right now! Please wait for a while and try again...")
 		return
@@ -888,7 +886,11 @@ function Core:CreateCalendarEvent(event)
 	else
 		Core:ClearEventInvites(false)
 		C_Calendar.CloseEvent()
-		C_Calendar.CreatePlayerEvent()
+		if (event.calendarType == 1) then
+			C_Calendar.CreateGuildSignUpEvent()
+		else
+			C_Calendar.CreatePlayerEvent()
+		end
 		C_Calendar.EventSetTitle(event.titleWithKey)
 		C_Calendar.EventSetDescription(event.description)
 		C_Calendar.EventSetType(event.eventType)
@@ -896,13 +898,13 @@ function Core:CreateCalendarEvent(event)
 		C_Calendar.EventSetDate(event.month, event.day, event.year)
 
 		currentMultiInvitingEvent = nil
-		if (event.isGuildEvent and not event.isManualInvite) then
+		if (event.calendarType == 2 and not event.isManualInvite) then
 			C_Calendar.MassInviteGuild(event.minLevel, event.maxLevel, event.maxRank)
-			Core:OpenDialog("CONFIRM_EVENT_CREATION")
 		else
 			currentMultiInvitingEvent = event
-			Core:OpenDialog("CONFIRM_EVENT_CREATION")
 		end
+
+		Core:OpenDialog("CONFIRM_EVENT_CREATION")
 	end
 end
 
@@ -921,7 +923,7 @@ function Core:InviteMultiplePeopleToEvent()
 
 		local numInvites = C_Calendar.GetNumInvites()
 
-		if (numInvites < event.totalMembers) then
+		if (numInvites < event.totalMembers and numInvites < 100) then
 			print("|cffffcc00Event invites are being sent in the background! Please wait for all events to complete before logging out.")
 
 			for i=1, event.totalMembers do
@@ -998,14 +1000,18 @@ function Core:CheckEventInvites()
 					if (eventIndex > 0) then
 						local dayEvent = C_Calendar.GetDayEvent(0, upcomingEvent.day, eventIndex)
 						Core:Print(dayEvent.title .. " creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex)
-
-						if (dayEvent.modStatus == "CREATOR" or dayEvent.modStatus == "MODERATOR") then
-							Core:Print("Trying opening event: " .. upcomingEvent.titleWithKey)
-							workQueue:addTask(function() C_Calendar.OpenEvent(0, upcomingEvent.day, eventIndex) end, nil, 3)
-							return
-							--Core:CreateEventInvites(upcomingEvent)
+						
+						if (dayEvent.calendarType == "PLAYER") then
+							if (dayEvent.modStatus == "CREATOR" or dayEvent.modStatus == "MODERATOR") then
+								Core:Print("Trying opening event: " .. upcomingEvent.titleWithKey)
+								workQueue:addTask(function() C_Calendar.OpenEvent(0, upcomingEvent.day, eventIndex) end, nil, 3)
+								return
+								--Core:CreateEventInvites(upcomingEvent)
+							else
+								Core:Print("Not creator or moderator!")
+							end
 						else
-							Core:Print("Not creator or moderator!")
+							Core:Print("Not player event!")
 						end
 					end
 				end
@@ -1059,6 +1065,11 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 	local canSendInvite = C_Calendar.EventCanEdit()
 	if (canSendInvite) then
 		local invitesNum = C_Calendar.GetNumInvites()
+
+		if (invitesNum >= 100) then
+			Core:SetAttendance(upcomingEvent, closeAfterEnd)
+			return
+		end
 
 		Core:Print("CreateEventInvites: " .. upcomingEvent.titleWithKey .. ". Currently invited members: " .. invitesNum)
 
