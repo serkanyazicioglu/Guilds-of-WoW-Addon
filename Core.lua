@@ -287,15 +287,15 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 				if (eventInfo.calendarType == "GUILD_EVENT" or eventInfo.calendarType == "PLAYER") then
 					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title)
 
-					if (eventInfo.calendarType == "PLAYER") then
-						if (upcomingEvent ~= nil) then
+					if (upcomingEvent ~= nil) then
+						if (eventInfo.calendarType == "PLAYER") then
 							--processedEvents:remove(upcomingEvent.titleWithKey)
 							Core:CreateEventInvites(upcomingEvent, true)
 						else
-							Core:Print("Event invite refresh failed")
+							Core:SetAttendance(upcomingEvent, true)
 						end
 					else
-						Core:SetAttendance(upcomingEvent, true)
+						Core:Print("Event couldn't be found!")
 					end
 				else 
 					Core:Print("Not suitable calendar type")
