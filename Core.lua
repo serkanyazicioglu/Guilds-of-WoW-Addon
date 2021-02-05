@@ -281,17 +281,21 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 			Core:Print("Is event open:" .. tostring(C_Calendar.IsEventOpen()))
 
 			if (eventInfo ~= nil) then
-				Core:Print("CALENDAR_OPEN_EVENT: Opened: " .. eventInfo.title)
+				Core:Print("CALENDAR_OPEN_EVENT: Opened: " .. eventInfo.title .. " . Calendar Type: " .. eventInfo.calendarType)
 				Core:ClearEventInvites(false)
 
 				if (eventInfo.calendarType == "GUILD_EVENT" or eventInfo.calendarType == "PLAYER") then
 					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title)
 
-					if (upcomingEvent ~= nil and upcomingEvent.isManualInvite) then
-						--processedEvents:remove(upcomingEvent.titleWithKey)
-						Core:CreateEventInvites(upcomingEvent, true)
+					if (eventInfo.calendarType == "PLAYER") then
+						if (upcomingEvent ~= nil) then
+							--processedEvents:remove(upcomingEvent.titleWithKey)
+							Core:CreateEventInvites(upcomingEvent, true)
+						else
+							Core:Print("Event invite refresh failed")
+						end
 					else
-						Core:Print("Event invite refresh failed")
+						Core:SetAttendance(upcomingEvent, true)
 					end
 				else 
 					Core:Print("Not suitable calendar type")
@@ -991,32 +995,47 @@ function Core:CheckEventInvites()
 
 			local regionId = GetCurrentRegion()
 
+			Core:Print("Guild name: " .. guildName .. ". Region id: " .. regionId)
+
 			for i=1, ns.UPCOMING_EVENTS.totalEvents do
 				local upcomingEvent = ns.UPCOMING_EVENTS.events[i]
 
-				if (not processedEvents:contains(upcomingEvent.titleWithKey) and upcomingEvent.isManualInvite and guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealm and regionId == upcomingEvent.guildRegionId) then
-					local eventIndex = Core:searchForEvent(upcomingEvent)
+				Core:Print("Checking event: " .. upcomingEvent.titleWithKey)
 
-					if (eventIndex > 0) then
-						local dayEvent = C_Calendar.GetDayEvent(0, upcomingEvent.day, eventIndex)
-						Core:Print(dayEvent.title .. " creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex)
-						
-						if (dayEvent.calendarType == "PLAYER") then
-							if (dayEvent.modStatus == "CREATOR" or dayEvent.modStatus == "MODERATOR") then
-								Core:Print("Trying opening event: " .. upcomingEvent.titleWithKey)
-								workQueue:addTask(function() C_Calendar.OpenEvent(0, upcomingEvent.day, eventIndex) end, nil, 3)
-								return
-								--Core:CreateEventInvites(upcomingEvent)
+				if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealm and regionId == upcomingEvent.guildRegionId) then
+
+					--Core:Print("Event found for guild: " .. upcomingEvent.titleWithKey)
+
+					if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
+						local eventIndex = Core:searchForEvent(upcomingEvent)
+
+						Core:Print("Event search result: " .. upcomingEvent.titleWithKey .. ". Result: " .. eventIndex)
+
+						if (eventIndex > 0) then
+							local dayEvent = C_Calendar.GetDayEvent(0, upcomingEvent.day, eventIndex)
+							Core:Print(dayEvent.title .. " creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex)
+							
+							if (dayEvent.calendarType == "PLAYER" or dayEvent.calendarType == "GUILD_EVENT") then
+								if (dayEvent.modStatus == "CREATOR" or dayEvent.modStatus == "MODERATOR") then
+									Core:Print("Trying opening event: " .. upcomingEvent.titleWithKey)
+									workQueue:addTask(function() C_Calendar.OpenEvent(0, upcomingEvent.day, eventIndex) end, nil, 3)
+									return
+									--Core:CreateEventInvites(upcomingEvent)
+								else
+									Core:Print("Not creator or moderator!")
+								end
 							else
-								Core:Print("Not creator or moderator!")
+								Core:Print("Not player event!")
 							end
-						else
-							Core:Print("Not player event!")
 						end
 					end
 				end
 			end
+		else
+			Core:Print("Event is open!")
 		end
+	else
+		Core:Print("Player is not in a guild!")
 	end
 
 	--print("|cffffff00Guilds of WoW: |cff00ff00Calendar event processing completed!")
@@ -1064,6 +1083,11 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 
 	local canSendInvite = C_Calendar.EventCanEdit()
 	if (canSendInvite) then
+		if (not upcomingEvent.isManualInvite) then
+			Core:SetAttendance(upcomingEvent, closeAfterEnd)
+			return
+		end
+
 		local invitesNum = C_Calendar.GetNumInvites()
 
 		if (invitesNum >= 100) then
@@ -1155,29 +1179,33 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 				attendanceIndex = attendanceIndex + 1
 			end
 			
-			for m=1, upcomingEvent.totalMembers do
-				local currentInviteMember = upcomingEvent.inviteMembers[m]
-	
-				if (currentInviteMember.isManager or currentInviteMember.attendance > 1) then
-					if (inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId) then
-						local isInvitationChanged = false
+			if (upcomingEvent.calendarType == 2) then
+				for m=1, upcomingEvent.totalMembers do
+					local currentInviteMember = upcomingEvent.inviteMembers[m]
+		
+					if (currentInviteMember) then
+						if (currentInviteMember.isManager or currentInviteMember.attendance > 1) then
+							if (inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId) then
+								local isInvitationChanged = false
 
-						if (currentInviteMember.isManager) then
-							if (inviteInfo.modStatus ~= "CREATOR" and inviteInfo.modStatus ~= "MODERATOR") then
-								isInvitationChanged = true
-								Core:Print("Setting member as moderator: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name)
-								workQueue:addTask(function() C_Calendar.EventSetModerator(a) end, nil, GOW.consts.INVITE_INTERVAL)
+								if (currentInviteMember.isManager) then
+									if (inviteInfo.modStatus ~= "CREATOR" and inviteInfo.modStatus ~= "MODERATOR") then
+										isInvitationChanged = true
+										Core:Print("Setting member as moderator: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name)
+										workQueue:addTask(function() C_Calendar.EventSetModerator(a) end, nil, GOW.consts.INVITE_INTERVAL)
+									end
+								end
+
+								if (currentInviteMember.forceUpdate or (currentInviteMember.attendance > 1 and inviteInfo.inviteStatus == 1)) then
+									isInvitationChanged = true
+									Core:Print("Setting member attendance: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name .. ". GoWAttendance: " .. tostring(currentInviteMember.attendance) .. ". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus))
+									workQueue:addTask(function() C_Calendar.EventSetInviteStatus(a, currentInviteMember.attendance - 1) end, nil, GOW.consts.INVITE_INTERVAL)
+								end
+							
+								if (isInvitationChanged) then
+									attendanceChangedCount = attendanceChangedCount + 1
+								end
 							end
-						end
-
-						if (currentInviteMember.forceUpdate or (currentInviteMember.attendance > 1 and inviteInfo.inviteStatus == 1)) then
-							isInvitationChanged = true
-							Core:Print("Setting member attendance: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name .. ". GoWAttendance: " .. tostring(currentInviteMember.attendance) .. ". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus))
-							workQueue:addTask(function() C_Calendar.EventSetInviteStatus(a, currentInviteMember.attendance - 1) end, nil, GOW.consts.INVITE_INTERVAL)
-						end
-					
-						if (isInvitationChanged) then
-							attendanceChangedCount = attendanceChangedCount + 1
 						end
 					end
 				end
