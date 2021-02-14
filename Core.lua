@@ -389,6 +389,8 @@ function Core:CreateUpcomingEvents()
 			realmName = GetRealmName()
 		end
 
+		local realmNameTrimmed = realmName:gsub(" ", "")
+
 		local regionId = GetCurrentRegion()
 
 		local hasAnyData = false
@@ -397,7 +399,7 @@ function Core:CreateUpcomingEvents()
 			for i=1, ns.UPCOMING_EVENTS.totalEvents do
 				local upcomingEvent = ns.UPCOMING_EVENTS.events[i]
 
-				if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealm and regionId == upcomingEvent.guildRegionId) then
+				if (guildName == upcomingEvent.guild and realmNameTrimmed == upcomingEvent.guildRealm:gsub(" ", "") and regionId == upcomingEvent.guildRegionId) then
 					hasAnyData = true
 					Core:AppendCalendarList(upcomingEvent)
 				end
@@ -444,6 +446,8 @@ function Core:CreateRecruitmentApplications()
 			realmName = GetRealmName()
 		end
 
+		local realmNameTrimmed = realmName:gsub(" ", "")
+
 		local regionId = GetCurrentRegion()
 
 		local hasAnyData = false
@@ -452,7 +456,7 @@ function Core:CreateRecruitmentApplications()
 			for i=1, ns.RECRUITMENT_APPLICATIONS.totalApplications do
 				local recruitmentApplication = ns.RECRUITMENT_APPLICATIONS.recruitmentApplications[i]
 
-				if (guildName == recruitmentApplication.guild and realmName == recruitmentApplication.guildRealm and regionId == recruitmentApplication.guildRegionId) then
+				if (guildName == recruitmentApplication.guild and realmNameTrimmed == recruitmentApplication.guildRealm:gsub(" ", "") and regionId == recruitmentApplication.guildRegionId) then
 					hasAnyData = true
 					Core:AppendRecruitmentList(recruitmentApplication)
 				end
