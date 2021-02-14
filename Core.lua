@@ -405,7 +405,7 @@ function Core:CreateUpcomingEvents()
 		end
 
 		if (not hasAnyData) then
-			Core:AppendMessage("This guild doesn't have any upcoming event or you are not an event manager!", true)
+			Core:AppendMessage("This guild doesn't have any upcoming event or you are not an event manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true)
 		end
 	end
 
@@ -462,7 +462,7 @@ function Core:CreateRecruitmentApplications()
 		end
 
 		if (not hasAnyData) then
-			Core:AppendMessage("This guild doesn't have any guild recruitment application or you are not a recruitment manager!", true)
+			Core:AppendMessage("This guild doesn't have any guild recruitment application or you are not a recruitment manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true)
 		end
 	end
 	showWindow = false
