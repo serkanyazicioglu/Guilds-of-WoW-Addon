@@ -192,7 +192,7 @@ function GOW:OnInitialize()
 		OnAccept = function()
 			C_FriendList.AddFriend(recruitmentCharacter, recruitmenNotes)
 			recruitmentCharacter = nil
-			Core:DialogClosed()			
+			Core:DialogClosed()
 		end,
 		OnCancel = function ()
 			recruitmentCharacter = nil
@@ -236,7 +236,7 @@ function GOW:OnInitialize()
 			self.editBox:SetText(copyText)
 			self.editBox:HighlightText()
 		end,
-		OnAccept = function()			
+		OnAccept = function()
 			Core:DialogClosed()
 		end,
 		timeout = 0,
@@ -257,8 +257,7 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 		local name, realm = UnitName("player")
 
 		if (realm == nil) then
-			realm = GetRealmName()
-			--GetNormalizedRealmName()
+			realm = GetNormalizedRealmName()
 		end
 
 		currentCharName = name
@@ -386,10 +385,8 @@ function Core:CreateUpcomingEvents()
 		containerScrollFrame:ReleaseChildren()
 
 		if (realmName == nil) then
-			realmName = GetRealmName()
+			realmName = GetNormalizedRealmName()
 		end
-
-		local realmNameTrimmed = realmName:gsub(" ", "")
 
 		local regionId = GetCurrentRegion()
 
@@ -399,7 +396,7 @@ function Core:CreateUpcomingEvents()
 			for i=1, ns.UPCOMING_EVENTS.totalEvents do
 				local upcomingEvent = ns.UPCOMING_EVENTS.events[i]
 
-				if (guildName == upcomingEvent.guild and realmNameTrimmed == upcomingEvent.guildRealm:gsub(" ", "") and regionId == upcomingEvent.guildRegionId) then
+				if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
 					hasAnyData = true
 					Core:AppendCalendarList(upcomingEvent)
 				end
@@ -443,10 +440,8 @@ function Core:CreateRecruitmentApplications()
 		containerScrollFrame:ReleaseChildren()
 
 		if (realmName == nil) then
-			realmName = GetRealmName()
+			realmName = GetNormalizedRealmName()
 		end
-
-		local realmNameTrimmed = realmName:gsub(" ", "")
 
 		local regionId = GetCurrentRegion()
 
@@ -456,7 +451,7 @@ function Core:CreateRecruitmentApplications()
 			for i=1, ns.RECRUITMENT_APPLICATIONS.totalApplications do
 				local recruitmentApplication = ns.RECRUITMENT_APPLICATIONS.recruitmentApplications[i]
 
-				if (guildName == recruitmentApplication.guild and realmNameTrimmed == recruitmentApplication.guildRealm:gsub(" ", "") and regionId == recruitmentApplication.guildRegionId) then
+				if (guildName == recruitmentApplication.guild and realmName == recruitmentApplication.guildRealmNormalized and regionId == recruitmentApplication.guildRegionId) then
 					hasAnyData = true
 					Core:AppendRecruitmentList(recruitmentApplication)
 				end
@@ -795,7 +790,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	inviteToGuildButton:SetText("Invite to Guild")
 	inviteToGuildButton:SetWidth(140)
 	inviteToGuildButton:SetCallback("OnClick", function()
-		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmTrimmed
+		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmNormalized
 		Core:OpenDialog("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.title)
 	end)
 	buttonsGroup:AddChild(inviteToGuildButton)
@@ -804,7 +799,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	inviteToPartyButton:SetText("Invite to Party")
 	inviteToPartyButton:SetWidth(140)
 	inviteToPartyButton:SetCallback("OnClick", function()
-		C_PartyInfo.InviteUnit(recruitmentApplication.title .. "-" .. recruitmentApplication.realmTrimmed)
+		C_PartyInfo.InviteUnit(recruitmentApplication.title .. "-" .. recruitmentApplication.realmNormalized)
 	end)
 	buttonsGroup:AddChild(inviteToPartyButton)
 
@@ -819,7 +814,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	end
 
 	addFriendButton:SetCallback("OnClick", function()
-		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmTrimmed
+		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmNormalized
 		recruitmenNotes = "Guilds of WoW recruitment"
 		Core:OpenDialog("CONFIRM_ADD_FRIEND", recruitmentApplication.title)
 	end)
@@ -834,7 +829,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	whisperButton:SetText("Whisper")
 	whisperButton:SetWidth(140)
 	whisperButton:SetCallback("OnClick", function()
-		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmTrimmed
+		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmNormalized
 		Core:OpenDialog("WHISPER_PLAYER")
 	end)
 	buttonsGroup2:AddChild(whisperButton)
@@ -843,7 +838,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	copyButton:SetText("Copy Link")
 	copyButton:SetWidth(140)
 	copyButton:SetCallback("OnClick", function()
-		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmTrimmed
+		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmNormalized
 		copyText = recruitmentApplication.webUrl
 		Core:OpenDialog("COPY_TEXT")
 	end)
@@ -923,8 +918,7 @@ function Core:InviteMultiplePeopleToEvent()
 		local name, realm = UnitName("player")
 
 		if (realm == nil) then
-			realm = GetRealmName()
-			--GetNormalizedRealmName()
+			realm = GetNormalizedRealmName()
 		end
 
 		local currentPlayer = name .. "-" .. realm
@@ -936,7 +930,7 @@ function Core:InviteMultiplePeopleToEvent()
 
 			for i=1, event.totalMembers do
 				local currentInviteMember = event.inviteMembers[i]
-				local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realm
+				local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized
 
 				if (inviteName ~= currentPlayer) then
 					workQueue:addTask(function() C_Calendar.EventInvite(inviteName) end, nil, GOW.consts.INVITE_INTERVAL)
@@ -994,7 +988,7 @@ function Core:CheckEventInvites()
 			end
 
 			if (realmName == nil) then
-				realmName = GetRealmName()
+				realmName = GetNormalizedRealmName()
 			end
 
 			local regionId = GetCurrentRegion()
@@ -1006,7 +1000,7 @@ function Core:CheckEventInvites()
 
 				Core:Print("Checking event: " .. upcomingEvent.titleWithKey)
 
-				if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealm and regionId == upcomingEvent.guildRegionId) then
+				if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
 
 					--Core:Print("Event found for guild: " .. upcomingEvent.titleWithKey)
 
@@ -1057,7 +1051,7 @@ function Core:FindUpcomingEventFromName(eventTitle)
 		end
 
 		if (realmName == nil) then
-			realmName = GetRealmName()
+			realmName = GetNormalizedRealmName()
 		end
 
 		local regionId = GetCurrentRegion()
@@ -1065,7 +1059,7 @@ function Core:FindUpcomingEventFromName(eventTitle)
 		for i=1, ns.UPCOMING_EVENTS.totalEvents do
 			local upcomingEvent = ns.UPCOMING_EVENTS.events[i]
 
-			if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealm and regionId == upcomingEvent.guildRegionId) then
+			if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
 				if (string.match(eventTitle, "*" .. upcomingEvent.eventKey)) then
 					Core:Print("Upcoming event found: " .. upcomingEvent.title)
 					return upcomingEvent
@@ -1105,7 +1099,7 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 
 		for m=1, upcomingEvent.totalMembers do
 			local currentInviteMember = upcomingEvent.inviteMembers[m]
-			local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realm
+			local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized
 			local isMemberInvited = false
 
 			for a=1, invitesNum do
@@ -1114,10 +1108,8 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 				if (inviteInfo and inviteInfo.name ~= nil) then
 					if (string.find(inviteInfo.name, "-")) then
 						Core:Print("Character with dash! " .. inviteInfo.name)
-						local realmNameTrimmed = currentInviteMember.realm:gsub(" ", "")
-						Core:Print("Realm name trimmed: " .. realmNameTrimmed)
 
-						if (inviteInfo.name == currentInviteMember.name .. "-" .. realmNameTrimmed) then
+						if (inviteInfo.name == inviteName) then
 							isMemberInvited = true
 							Core:Print("Member is invited with realm name: " .. inviteInfo.name)
 						end
