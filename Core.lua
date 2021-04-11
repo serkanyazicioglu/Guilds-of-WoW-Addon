@@ -29,7 +29,6 @@ local containerScrollFrame = {}
 local currentCharName = ""
 local currentCharRealm = ""
 
-local showWindow = true
 local isDialogOpen = false
 local workQueue = nil
 local persistentWorkQueue = nil
@@ -49,10 +48,11 @@ GOW.defaults = {
     }
 }
 
-local selectedTab = "events";
+local selectedTab = "audittable";
 local tabs = {
-	{value = "events", text = "Upcoming Events" },
-	{value = "recruitmentApps", text = "Recruitment Applications" },
+	{ value = "audittable", text = "Audit" },
+	{ value = "events", text = "Upcoming Events" },
+	{ value = "recruitmentApps", text = "Recruitment Applications" },
 }
 
 local LibQTip = LibStub('LibQTip-1.0')
@@ -63,6 +63,7 @@ function GOW:OnInitialize()
 	self.LDB = LibStub("LibDataBroker-1.1")
 	self.LDBIcon = LibStub("LibDBIcon-1.0")
 	self.CONSOLE = LibStub("AceConsole-3.0")
+	self.SCROLLINGTABLE = LibStub("ScrollingTable");
 	self.timers = {}
 	LibStub("AceTimer-3.0"):Embed(self.timers)
 	self.events = {}
@@ -262,7 +263,9 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 
 		currentCharName = name
 		currentCharRealm = realm
-	elseif event == "GUILD_ROSTER_UPDATE" or event == "CALENDAR_UPDATE_GUILD_EVENTS" then
+	elseif event == "GUILD_ROSTER_UPDATE" then
+		Core:SetRosterInfo()
+	elseif event == "CALENDAR_UPDATE_GUILD_EVENTS" then
 		if (isProcessing == false and selectedTab == "events") then
 			--Core:CreateRecruitmentApplications()
 			persistentWorkQueue:addTask(function() Core:CreateUpcomingEvents() end, nil, 2)
@@ -338,6 +341,8 @@ function Core:RefreshApplication()
 
 	if (selectedTab == "events") then
 		Core:CreateUpcomingEvents()
+	elseif (selectedTab == "audittable") then
+		Core:CreateAuditTable()
 	elseif (selectedTab == "recruitmentApps") then
 		Core:CreateRecruitmentApplications()
 	end
@@ -408,7 +413,6 @@ function Core:CreateUpcomingEvents()
 		end
 	end
 
-	showWindow = false
 	isPropogatingUpdate = false
 end
 
@@ -464,8 +468,218 @@ function Core:CreateRecruitmentApplications()
 			Core:AppendMessage("This guild doesn't have any guild recruitment application or you are not a recruitment manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true)
 		end
 	end
-	showWindow = false
+	
 	isPropogatingUpdate = false
+end
+
+function Core:CreateAuditTable()
+	if (selectedTab ~= "audittable") then
+		return
+	end
+
+	if(ns.GUILD_AUDIT == nil) then
+		containerScrollFrame:ReleaseChildren()
+		Core:AppendMessage("Aduit data is not found! Please make sure your sync app is installed and working properly!", true)
+	else
+		local isInGuild = IsInGuild()
+
+		if (isInGuild == false) then
+			isProcessing = true
+			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false)
+			return
+		end
+
+		local guildName, _, _, realmName = GetGuildInfo("player")
+
+		if (guildName == nil) then
+			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false)
+			return
+		end
+
+		local name, realm = UnitName("player")
+
+		isProcessing = true
+		containerScrollFrame:ReleaseChildren()
+
+		if (realmName == nil) then
+			realmName = GetNormalizedRealmName()
+		end
+
+		local regionId = GetCurrentRegion()
+
+		local hasAnyData = false
+
+		local fontPath = "Fonts\\FRIZQT__.TTF"
+
+		if (isInGuild and ns.GUILD_AUDIT.totalGuilds > 0) then
+			for i=1, ns.GUILD_AUDIT.totalGuilds do
+				local auditGuild = ns.GUILD_AUDIT.guilds[i]
+
+				if (guildName == auditGuild.guild and realmName == auditGuild.guildRealmNormalized and regionId == auditGuild.guildRegionId) then
+					
+					if (auditGuild.totalMembers == 0) then
+						Core:AppendMessage("Audit data is expired. Please recalculate your audit report on GoW portal.", true)
+						return
+					end
+
+					hasAnyData = true
+
+					local currentAuditData = nil
+
+					local highestItemLevel = 0
+					local highestCovenantLevel = 0
+					local highestLegendaryLevel = 0
+					local maxNormalKills = 0
+					local maxHeroicKills = 0
+					local maxMythicKills = 0
+					local mythicDungeons = 0
+					local maxMythicPlus = 0
+					local maxWeeklyScore = 0
+					local maxScore = 0
+
+					 for m=1, auditGuild.totalMembers do
+					 	local currentMember = auditGuild.members[m]
+					
+						 if (currentMember.title == name) then
+							currentAuditData = currentMember
+						 end
+
+						 if (currentMember.ilvlEq > highestItemLevel) then
+							highestItemLevel = currentMember.ilvlEq	 
+						 end
+
+						 if (currentMember.covenantLevel > highestCovenantLevel) then
+							highestCovenantLevel = currentMember.covenantLevel
+						 end
+
+						 if (currentMember.legendary > highestLegendaryLevel) then
+							highestLegendaryLevel = currentMember.legendary
+						 end
+
+						 if (currentMember.normalKills > maxNormalKills) then
+							maxNormalKills = currentMember.normalKills
+						 end
+
+						 if (currentMember.heroicKills > maxHeroicKills) then
+							maxHeroicKills = currentMember.heroicKills
+						 end
+
+						 if (currentMember.mythicKills > maxMythicKills) then
+							maxMythicKills = currentMember.mythicKills
+						 end
+
+						 if (currentMember.weeklyScore > maxWeeklyScore) then
+							maxWeeklyScore = currentMember.weeklyScore
+						 end
+
+						 if (currentMember.score > maxScore) then
+							maxScore = currentMember.score
+						 end
+					 end
+
+					 if (currentAuditData) then
+
+						local avgItemLevel, avgItemLevelEquipped, avgItemLevelPvp = GetAverageItemLevel()
+
+						local covenantId = C_Covenants.GetActiveCovenantID()
+						local renownLevel = 0
+
+						if (covenantId > 0) then
+							renownLevel = C_CovenantSanctumUI.GetRenownLevel()
+							local covenantData = C_Covenants.GetCovenantData(covenantId)
+						end
+
+						Core:InsertAuditCell("Weekly Score", currentAuditData.weeklyScore, maxWeeklyScore, "Max. weekly score in your guild.")
+						Core:InsertAuditCell("General Score", currentAuditData.score, maxScore, "Max. general score in your guild.")
+
+						Core:InsertAuditCell("Item Level Equipped", avgItemLevelEquipped, highestItemLevel, "Max. item level in your guild.")
+						Core:InsertAuditCell("Renown Level", renownLevel, highestCovenantLevel, "Max. renown level in your guild.")
+						
+						if (currentAuditData.gearAudit == 0) then
+							Core:InsertAuditCell("Gear Audit", currentAuditData.gearAudit, "Your audit check is valid!", nil)
+						else
+							Core:InsertAuditCell("Gear Audit", currentAuditData.gearAudit, "Hover to view your gear audit!", nil)
+						end
+
+						Core:InsertAuditCell("Legendary", currentAuditData.legendary, highestLegendaryLevel, "Highest legendary level in your guild.")
+
+						if (currentAuditData.profession1Id ~= "0") then
+							Core:InsertAuditCell("Profession 1", currentAuditData.profession1SkillPoints .. " / " .. currentAuditData.profession1MaxSkillPoints, currentAuditData.profession1SkillRatio .. "%", "Profession completion.")
+						else
+							Core:InsertAuditCell("Profession 1", "0", "Your first profession is not selected!", nil)
+						end
+
+						if (currentAuditData.profession2Id ~= "0") then
+							Core:InsertAuditCell("Profession 2", currentAuditData.profession2SkillPoints .. " / " .. currentAuditData.profession2MaxSkillPoints, currentAuditData.profession2SkillRatio .. "%", "Profession completion.")
+						else
+							Core:InsertAuditCell("Profession 2", "0", "Your second profession is not selected!", nil)
+						end
+						
+						Core:InsertAuditCell("Weekly Normal Raid Kills", currentAuditData.normalKills, maxNormalKills, "Max. normal raid kills in your guild within this week.", 200)
+						Core:InsertAuditCell("Weekly Heroic Raid Kills", currentAuditData.heroicKills, maxHeroicKills, "Max. heroic raid kills in your guild within this week.", 200)
+						Core:InsertAuditCell("Weekly Mythic Raid Kills", currentAuditData.mythicKills, maxMythicKills, "Max. mythic raid kills in your guild within this week.", 200)
+
+						Core:InsertAuditCell("Mythic Dungeons Completed This Week", currentAuditData.mythicDungeonsCompleted, mythicDungeons, "Max. mythic dungeons completed in your guild within this week.")
+						Core:InsertAuditCell("Max Mythic+ Completed This Week", currentAuditData.maxMythicPlusCompleted, maxMythicPlus, "Max. mythic+ level completed in your guild within this week.")
+					 else
+						Core:AppendMessage("This character's audit data is not found!", true)
+						return
+					 end
+				end
+			end
+		end
+
+		if (not hasAnyData) then
+			Core:AppendMessage("This guild doesn't have any audit data or audit report has expired!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true)
+		end
+	end
+	
+	isPropogatingUpdate = false
+end
+
+function Core:InsertAuditCell(groupTitle, value, highestValue, highestValueTooltip, width)
+	local fontPath = "Fonts\\FRIZQT__.TTF"
+
+	local groupFrame = GOW.GUI:Create("InlineGroup")
+	groupFrame:SetTitle(groupTitle)
+	groupFrame:SetLayout("List")
+
+	if (not width) then
+		width = 300
+	end
+
+	groupFrame:SetWidth(width)
+
+	local label1 = GOW.GUI:Create("Label")
+	label1:SetText(value)
+	label1:SetFont(fontPath, 28)
+	groupFrame:AddChild(label1)
+	label1:ClearAllPoints()
+	label1:SetPoint("CENTER", groupFrame.frame, "CENTER", -8, -4)
+
+	if (highestValue) then
+		local label2 = GOW.GUI:Create("InteractiveLabel")
+		label2:SetText(highestValue)
+		label2:SetFont(fontPath, 11)
+		if(highestValueTooltip) then
+			label2:SetCallback("OnEnter", function(self)
+				local tooltip = LibQTip:Acquire("ItemLevelTooltip", 1, "LEFT")
+				GOW.tooltip = tooltip
+				
+				local line = tooltip:AddLine()
+				tooltip:SetCell(line, 1, highestValueTooltip, "LEFT", 1, nil, 0, 0, 300, 50)
+				tooltip:SmartAnchorTo(self.frame)
+				tooltip:Show()
+			end)
+			label2:SetCallback("OnLeave", function()
+				LibQTip:Release(GOW.tooltip)
+				GOW.tooltip = nil
+			end)
+		end
+		groupFrame:AddChild(label2)
+	end
+
+	containerScrollFrame:AddChild(groupFrame)
 end
 
 function Core:searchForEvent(event)
@@ -665,10 +879,6 @@ function Core:AppendCalendarList(event)
 				LibQTip:Release(GOW.tooltip)
 				GOW.tooltip = nil
 			end)
-			
-			if (showWindow == true) then
-				containerFrame:Show()
-			end
 		end
 		buttonsGroup:AddChild(eventButton)
 	end
@@ -847,10 +1057,6 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	itemGroup:AddChild(buttonsGroup2)
 
 	containerScrollFrame:AddChild(itemGroup)
-
-	if (showWindow == true) then
-		containerFrame:Show()
-	end
 end
 
 function Core:OpenDialog(dialogName)
@@ -1208,15 +1414,7 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 			end
 		end
 
-		if (GOW.DB.profile.guilds == nil) then
-			GOW.DB.profile.guilds = {}
-		end
-
-		local guildKey = upcomingEvent.guild .. "-" .. upcomingEvent.guildRealm
-
-		if (GOW.DB.profile.guilds[guildKey] == nil) then
-			GOW.DB.profile.guilds[guildKey] = { }
-		end
+		local guildKey = Core:GetGuildKey()
 
 		if (GOW.DB.profile.guilds[guildKey].events == nil) then
 			GOW.DB.profile.guilds[guildKey].events = { }
@@ -1227,6 +1425,8 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 		if (GOW.DB.profile.guilds[guildKey].events[eventId] == nil) then
 			GOW.DB.profile.guilds[guildKey].events[eventId] = { }
 		end
+
+		GOW.DB.profile.guilds[guildKey].events[eventId].refreshTime = C_DateAndTime.GetServerTimeLocal()
 
 		if (GOW.DB.profile.guilds[guildKey].events[eventId].attendances == nil) then
 			GOW.DB.profile.guilds[guildKey].events[eventId].attendances = { }
@@ -1245,6 +1445,84 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 		end
 	else 
 		Core:Print("Cannot set attendance to this event!")
+	end
+end
+
+function Core:GetGuildKey()
+	local guildName, _, _, realmName = GetGuildInfo("player")
+
+	if (guildName == nil) then
+		return nil
+	end
+
+	if (realmName == nil) then
+		realmName = GetNormalizedRealmName()
+	end
+
+	local regionId = GetCurrentRegion()
+
+	local guildKey = guildName .. "-" .. regionId .. "-"  .. realmName
+
+	if (GOW.DB.profile.guilds == nil) then
+		GOW.DB.profile.guilds = {}
+	end
+
+	if (GOW.DB.profile.guilds[guildKey] == nil) then
+		GOW.DB.profile.guilds[guildKey] = { }
+	end
+
+	return guildKey
+end
+
+function Core:SetRosterInfo()
+	local numTotalMembers, numOnlineMaxLevelMembers, numOnlineMembers = GetNumGuildMembers();
+
+	if (numTotalMembers > 0) then
+		local guildKey = Core:GetGuildKey()
+
+		if (guildKey) then
+			--local guildMOTD = GetGuildRosterMOTD();
+
+			if (GOW.DB.profile.guilds[guildKey].roster == nil) then
+				GOW.DB.profile.guilds[guildKey].roster = { }
+			end
+
+			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = C_DateAndTime.GetServerTimeLocal()
+
+			for i=1, numTotalMembers do
+				local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, isSoREligible, standingID, guid = GetGuildRosterInfo(i);
+				if (name) then
+					local years, months, days, hours = GetGuildRosterLastOnline(i);
+
+					if (years == nil) then
+						years = 0
+					end
+
+					if (months == nil) then
+						months = 0
+					end
+
+					if (days == nil) then
+						days = 0
+					end
+
+					if (hours == nil) then
+						hours = 0
+					end
+
+					GOW.DB.profile.guilds[guildKey].roster[name] = { }
+					GOW.DB.profile.guilds[guildKey].roster[name].guid = guid;
+					GOW.DB.profile.guilds[guildKey].roster[name].note = note;
+					GOW.DB.profile.guilds[guildKey].roster[name].rank = rank;
+					GOW.DB.profile.guilds[guildKey].roster[name].rankIndex = rankIndex;
+					GOW.DB.profile.guilds[guildKey].roster[name].officerNote = officernote;
+					GOW.DB.profile.guilds[guildKey].roster[name].lastOnlineYears = years;
+					GOW.DB.profile.guilds[guildKey].roster[name].lastOnlineMonths = months;
+					GOW.DB.profile.guilds[guildKey].roster[name].lastOnlineDays = days;
+					GOW.DB.profile.guilds[guildKey].roster[name].lastOnlineHours = hours;
+				end
+			end
+		end
 	end
 end
 

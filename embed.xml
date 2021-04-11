@@ -10,9 +10,10 @@
 	<Include file="libs\AceGUI-3.0_SFX-Widgets\AceGUI-3.0_SFX-Widgets.xml" />
 	<Include file="libs\AceTimer-3.0\AceTimer-3.0.xml" />
 	<Include file="libs\AceEvent-3.0\AceEvent-3.0.xml" />
-	<Include file="libs\AceEvent-3.0\AceEvent-3.0.xml" />
+	<Include file="libs\lib-st\lib-st.xml" />
 	<Script file="libs\LibQTip-1.0\LibQTip-1.0.lua"/>
 	<Script file="libs\LibDataBroker-1.1\LibDataBroker-1.1.lua"/>
 	<Script file="db/guildevents.lua" />
 	<Script file="db/guildrecruitmentapplications.lua" />
+	<Script file="db/guildauditdata.lua" />
 </Ui>
