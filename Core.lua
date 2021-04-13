@@ -39,6 +39,8 @@ local processedEvents = nil
 local recruitmentCharacter = nil
 local recruitmenNotes = nil
 
+local isEventAttendancesChecked = false
+
 local copyText = ""
 
 GOW.defaults = {
@@ -1179,6 +1181,7 @@ function Core:AddCheckEventsTask()
 end
 
 function Core:CheckEventInvites()
+	
 	Core:Print("Starting event invites!")
 
 	local isInGuild = IsInGuild()
@@ -1216,6 +1219,8 @@ function Core:CheckEventInvites()
 						Core:Print("Event search result: " .. upcomingEvent.titleWithKey .. ". Result: " .. eventIndex)
 
 						if (eventIndex > 0) then
+							isEventAttendancesChecked = true;
+
 							local dayEvent = C_Calendar.GetDayEvent(0, upcomingEvent.day, eventIndex)
 							Core:Print(dayEvent.title .. " creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex)
 							
@@ -1474,6 +1479,8 @@ function Core:GetGuildKey()
 	return guildKey
 end
 
+local rosterUpdates = 0
+
 function Core:SetRosterInfo()
 	local numTotalMembers, numOnlineMaxLevelMembers, numOnlineMembers = GetNumGuildMembers();
 
@@ -1482,6 +1489,13 @@ function Core:SetRosterInfo()
 
 		if (guildKey) then
 			--local guildMOTD = GetGuildRosterMOTD();
+
+			rosterUpdates = rosterUpdates + 1
+
+			if (rosterUpdates >= 3 and not isEventAttendancesChecked and ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
+				Core:Print("Checking attendances")
+				Core:CheckEventInvites()
+			end
 
 			if (GOW.DB.profile.guilds[guildKey].roster == nil) then
 				GOW.DB.profile.guilds[guildKey].roster = { }
