@@ -1502,6 +1502,7 @@ function Core:SetRosterInfo()
 			end
 
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = C_DateAndTime.GetServerTimeLocal()
+			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD()
 
 			for i=1, numTotalMembers do
 				local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, isSoREligible, standingID, guid = GetGuildRosterInfo(i);

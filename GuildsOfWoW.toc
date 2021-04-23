@@ -4,7 +4,7 @@
 ## X-Website: https://guildsofwow.com
 ## X-Curse-Project-ID: 432144
 ## Author: Nhea
-## Version: 0.5.1
+## Version: 0.5.2
 ## SavedVariables: GoWDB
 
 embed.xml
