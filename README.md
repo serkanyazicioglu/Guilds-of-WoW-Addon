@@ -40,7 +40,7 @@ https://guildsofwow.com/manage/events
 
 ## SOON TO BE DEVELOPED
 
-- Auto roster management of teams with guild ranks.
+- Auto roster management of teams with guild ranks for event audience management.
 
 - Full guild audit report
 
