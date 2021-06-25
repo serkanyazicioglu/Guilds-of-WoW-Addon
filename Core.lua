@@ -1555,18 +1555,26 @@ function Core:InviteAllToParty(event)
 		end
 	end
 
-	if (inviteIndex > 1) then
-		if (inviteIndex > 5) then
-			local allowed = C_PartyInfo.AllowedToDoPartyConversion(true)
+	Core:Print("inviteIndex: " .. inviteIndex)
 
-			if (allowed) then
-				C_PartyInfo.ConvertToRaid()
-			end
-		end
+	if (inviteIndex > 1) then
+		-- if (inviteIndex > 5) then
+		-- 	local allowed = C_PartyInfo.AllowedToDoPartyConversion(true)
+
+		-- 	--if (allowed) then
+		-- 		C_PartyInfo.ConvertToRaid()
+		-- 	-- else
+		-- 	-- 	Core:Print("ConvertToRaid not allowed")
+		-- 	-- end
+		-- end
 
 		for a=1, inviteIndex - 1 do
 			local inviteName = invitingMembers[a]
 			if (inviteName ~= me) then
+				if not IsInRaid() and GetNumGroupMembers() == 5 then 
+					C_PartyInfo.ConvertToRaid()
+				end
+
 				C_PartyInfo.InviteUnit(inviteName)
 			end
 		end
