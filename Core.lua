@@ -39,6 +39,8 @@ local processedEvents = nil
 local recruitmentCharacter = nil
 local recruitmenNotes = nil
 
+local invitingToPartyEvent = nil
+
 local isEventAttendancesChecked = false
 
 local copyText = ""
@@ -247,6 +249,35 @@ function GOW:OnInitialize()
 		whileDead = true,
 		hideOnEscape = true,
 		hasEditBox  = true,
+		preferredIndex = 1
+	  }
+
+	  StaticPopupDialogs["CONFIRM_INVITE_TO_PARTY"] = {
+		text = "Are you sure you want to invite %s member(s) to your party?",
+		button1 = "Yes",
+		button2 = "No",
+		OnAccept = function()
+			Core:InviteAllToParty(invitingToPartyEvent)
+			invitingToPartyEvent = nil
+			Core:DialogClosed()			
+		end,
+		OnCancel = function ()
+			invitingToPartyEvent = nil
+			Core:DialogClosed()
+		end,
+		timeout = 0,
+		whileDead = true,
+		hideOnEscape = true,
+		preferredIndex = 1
+	  }
+
+	  StaticPopupDialogs["INVITE_TO_PARTY_NOONE_FOUND"] = {
+		text = "No member from this event is available to invite!",
+		button1 = "Okay",
+		timeout = 0,
+		enterClicksFirstButton = true,
+		whileDead = true,
+		hideOnEscape = true,
 		preferredIndex = 1
 	  }
 end
@@ -883,11 +914,36 @@ function Core:AppendCalendarList(event)
 			end)
 		end
 		buttonsGroup:AddChild(eventButton)
+
+		if eventIndex ~= 0 then
+			local inviteButton = GOW.GUI:Create("Button")
+			inviteButton:SetWidth(140)
+			inviteButton:SetText("Invite Players")
+			inviteButton:SetCallback("OnClick", function()
+				Core:InviteAllToPartyCheck(event)
+			end)
+
+			inviteButton:SetCallback("OnEnter", function(self)
+				local tooltip = LibQTip:Acquire("EventMessageTooltip", 1, "LEFT")
+				GOW.tooltip = tooltip
+				
+				local line = tooltip:AddLine()
+				tooltip:SetCell(line, 1, "You can invite attendees directly into your party or raid.", "LEFT", 1, nil, 0, 0, 300, 50)
+				tooltip:SmartAnchorTo(self.frame)
+				tooltip:Show()
+			end)
+			inviteButton:SetCallback("OnLeave", function()
+				LibQTip:Release(GOW.tooltip)
+				GOW.tooltip = nil
+			end)
+			buttonsGroup:AddChild(inviteButton)
+		end
+		
 	end
 
 	local copyLinkButton = GOW.GUI:Create("Button")
 	copyLinkButton:SetText("Copy Link")
-	copyLinkButton:SetWidth(140)
+	copyLinkButton:SetWidth(100)
 	copyLinkButton:SetCallback("OnClick", function()
 		copyText = event.webUrl
 		Core:OpenDialog("COPY_TEXT")
@@ -897,7 +953,7 @@ function Core:AppendCalendarList(event)
 	if (canAddEvent and eventIndex < 0) then
 		local copyKeyButton = GOW.GUI:Create("Button")
 		copyKeyButton:SetText("Copy Key")
-		copyKeyButton:SetWidth(140)
+		copyKeyButton:SetWidth(100)
 		copyKeyButton:SetCallback("OnClick", function()
 			copyText = event.eventKey
 			Core:OpenDialog("COPY_TEXT")
@@ -1450,6 +1506,70 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 		end
 	else 
 		Core:Print("Cannot set attendance to this event!")
+	end
+end
+
+function Core:InviteAllToPartyCheck(event)
+	local name, realm = UnitName("player")
+	realm = GetNormalizedRealmName()
+	local me = name .. "-" .. realm
+	
+	local eligibleMembers = 0
+
+	for i=1, event.totalMembers do
+		local currentInviteMember = event.inviteMembers[i]
+		
+		if (currentInviteMember.attendance == 2 or currentInviteMember.attendance == 4 or currentInviteMember.attendance == 9) then
+			local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized
+
+			if (inviteName ~= me) then
+				eligibleMembers = eligibleMembers + 1
+			end
+		end
+	end
+
+	if (eligibleMembers > 0) then
+		invitingToPartyEvent = event
+		Core:OpenDialog("CONFIRM_INVITE_TO_PARTY", eligibleMembers)
+	else
+		Core:OpenDialog("INVITE_TO_PARTY_NOONE_FOUND")
+	end
+end
+
+function Core:InviteAllToParty(event)
+	local invitingMembers = {}
+	local inviteIndex = 1
+
+	local name, realm = UnitName("player")
+		realm = GetNormalizedRealmName()
+		local me = name .. "-" .. realm
+
+	for i=1, event.totalMembers do
+		local currentInviteMember = event.inviteMembers[i]
+
+		if (currentInviteMember.attendance == 2 or currentInviteMember.attendance == 4 or currentInviteMember.attendance == 9) then
+			local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized
+
+			invitingMembers[inviteIndex] = inviteName
+			inviteIndex = inviteIndex + 1
+		end
+	end
+
+	if (inviteIndex > 1) then
+		if (inviteIndex > 5) then
+			local allowed = C_PartyInfo.AllowedToDoPartyConversion(true)
+
+			if (allowed) then
+				C_PartyInfo.ConvertToRaid()
+			end
+		end
+
+		for a=1, inviteIndex - 1 do
+			local inviteName = invitingMembers[a]
+			if (inviteName ~= me) then
+				C_PartyInfo.InviteUnit(inviteName)
+			end
+		end
 	end
 end
 
