@@ -280,6 +280,26 @@ function GOW:OnInitialize()
 		hideOnEscape = true,
 		preferredIndex = 1
 	  }
+
+	  StaticPopupDialogs["INVITE_TO_PARTY_INVALID_CALENDAR"] = {
+		text = "Only 'Player Event' attendances can be invited via addon! For 'Guild Events' you can create the event and use that event's 'invite members' functionality.",
+		button1 = "Okay",
+		timeout = 0,
+		enterClicksFirstButton = true,
+		whileDead = true,
+		hideOnEscape = true,
+		preferredIndex = 1
+	  }
+
+	  StaticPopupDialogs["INVITE_TO_PARTY_USE_CALENDAR"] = {
+		text = "This event is also created on calendar! Please use the calendar event's 'invite members' button.",
+		button1 = "Okay",
+		timeout = 0,
+		enterClicksFirstButton = true,
+		whileDead = true,
+		hideOnEscape = true,
+		preferredIndex = 1
+	  }
 end
 
 f:SetScript("OnEvent", function(self,event, arg1, arg2)
@@ -716,7 +736,7 @@ function Core:InsertAuditCell(groupTitle, value, highestValue, highestValueToolt
 end
 
 function Core:searchForEvent(event)
-	local serverTime = GetServerTime()
+	local serverTime = C_DateAndTime.GetServerTimeLocal()
 
 	if (event.eventDate < serverTime) then
 		return 0
@@ -885,6 +905,30 @@ function Core:AppendCalendarList(event)
 	buttonsGroup:SetFullWidth(true)
 
 	if (canAddEvent) then
+		local eventCalendarTypeLabel = GOW.GUI:Create("SFX-Info")
+		eventCalendarTypeLabel:SetLabel("Calendar")
+		if(event.calendarType == 1) then
+			eventCalendarTypeLabel:SetText("Guild Event")
+		else
+			eventCalendarTypeLabel:SetText("Player Event")
+		end
+		eventCalendarTypeLabel:SetDisabled(false)
+		eventCalendarTypeLabel:SetCallback("OnEnter", function(self)
+			local tooltip = LibQTip:Acquire("EventMessageTooltip", 1, "LEFT")
+			GOW.tooltip = tooltip
+			
+			tooltip:AddHeader('|cffffcc00About Event Attendances')
+			local line = tooltip:AddLine()
+			tooltip:SetCell(line, 1, "When no filter is selected in-game addon will create 'Guild Event' and all guildies will be able to sign up. This selection is suitable for large meetings. Site attendance data will not migrate to in-game with this selection but will migrate from game to GoW.\r\n\r\nWhen filtration is enabled or audience is set to team event, addon will create 'Player Event' and will only invite eligible characters. Attendance synchronization will work bidirectional. Player events cannot invite more than 100 members so you should narrow the audience by item level or change audience to team event.", "LEFT", 1, nil, 0, 0, 300, 50)
+			tooltip:SmartAnchorTo(self.frame)
+			tooltip:Show()
+		end)
+		eventCalendarTypeLabel:SetCallback("OnLeave", function()
+			LibQTip:Release(GOW.tooltip)
+			GOW.tooltip = nil
+		end)
+		itemGroup:AddChild(eventCalendarTypeLabel)
+
 		local eventButton = GOW.GUI:Create("Button")
 
 		if eventIndex == 0 then
@@ -915,12 +959,20 @@ function Core:AppendCalendarList(event)
 		end
 		buttonsGroup:AddChild(eventButton)
 
-		if eventIndex ~= 0 then
+		if (event.eventEndDate >= C_DateAndTime.GetServerTimeLocal()) then
 			local inviteButton = GOW.GUI:Create("Button")
 			inviteButton:SetWidth(140)
 			inviteButton:SetText("Invite Players")
 			inviteButton:SetCallback("OnClick", function()
-				Core:InviteAllToPartyCheck(event)
+				if (event.calendarType == 2) then
+					if (eventIndex > 0) then
+						Core:OpenDialog("INVITE_TO_PARTY_USE_CALENDAR")
+					else
+						Core:InviteAllToPartyCheck(event)
+					end
+				else
+					Core:OpenDialog("INVITE_TO_PARTY_INVALID_CALENDAR")
+				end
 			end)
 
 			inviteButton:SetCallback("OnEnter", function(self)
@@ -1487,7 +1539,7 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 			GOW.DB.profile.guilds[guildKey].events[eventId] = { }
 		end
 
-		GOW.DB.profile.guilds[guildKey].events[eventId].refreshTime = C_DateAndTime.GetServerTimeLocal()
+		GOW.DB.profile.guilds[guildKey].events[eventId].refreshTime = GetServerTime()
 
 		if (GOW.DB.profile.guilds[guildKey].events[eventId].attendances == nil) then
 			GOW.DB.profile.guilds[guildKey].events[eventId].attendances = { }
@@ -1629,7 +1681,7 @@ function Core:SetRosterInfo()
 				GOW.DB.profile.guilds[guildKey].roster = { }
 			end
 
-			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = C_DateAndTime.GetServerTimeLocal()
+			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime()
 			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD()
 
 			for i=1, numTotalMembers do
