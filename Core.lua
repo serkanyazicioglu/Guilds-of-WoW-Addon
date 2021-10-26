@@ -52,9 +52,8 @@ GOW.defaults = {
     }
 }
 
-local selectedTab = "audittable";
+local selectedTab = "events";
 local tabs = {
-	{ value = "audittable", text = "Audit" },
 	{ value = "events", text = "Upcoming Events" },
 	{ value = "recruitmentApps", text = "Recruitment Applications" },
 }
@@ -394,8 +393,6 @@ function Core:RefreshApplication()
 
 	if (selectedTab == "events") then
 		Core:CreateUpcomingEvents()
-	elseif (selectedTab == "audittable") then
-		Core:CreateAuditTable()
 	elseif (selectedTab == "recruitmentApps") then
 		Core:CreateRecruitmentApplications()
 	end
@@ -519,171 +516,6 @@ function Core:CreateRecruitmentApplications()
 
 		if (not hasAnyData) then
 			Core:AppendMessage("This guild doesn't have any guild recruitment application or you are not a recruitment manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true)
-		end
-	end
-	
-	isPropogatingUpdate = false
-end
-
-function Core:CreateAuditTable()
-	if (selectedTab ~= "audittable") then
-		return
-	end
-
-	if(ns.GUILD_AUDIT == nil) then
-		containerScrollFrame:ReleaseChildren()
-		Core:AppendMessage("Aduit data is not found! Please make sure your sync app is installed and working properly!", true)
-	else
-		local isInGuild = IsInGuild()
-
-		if (isInGuild == false) then
-			isProcessing = true
-			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false)
-			return
-		end
-
-		local guildName, _, _, realmName = GetGuildInfo("player")
-
-		if (guildName == nil) then
-			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false)
-			return
-		end
-
-		local name, realm = UnitName("player")
-
-		isProcessing = true
-		containerScrollFrame:ReleaseChildren()
-
-		if (realmName == nil) then
-			realmName = GetNormalizedRealmName()
-		end
-
-		local regionId = GetCurrentRegion()
-
-		local hasAnyData = false
-
-		local fontPath = "Fonts\\FRIZQT__.TTF"
-
-		if (isInGuild and ns.GUILD_AUDIT.totalGuilds > 0) then
-			for i=1, ns.GUILD_AUDIT.totalGuilds do
-				local auditGuild = ns.GUILD_AUDIT.guilds[i]
-
-				if (guildName == auditGuild.guild and realmName == auditGuild.guildRealmNormalized and regionId == auditGuild.guildRegionId) then
-					
-					if (auditGuild.totalMembers == 0) then
-						Core:AppendMessage("Audit data is expired. Please recalculate your audit report on GoW portal.", true)
-						return
-					end
-
-					hasAnyData = true
-
-					local currentAuditData = nil
-
-					local highestItemLevel = 0
-					local highestCovenantLevel = 0
-					local highestLegendaryLevel = 0
-					local maxNormalKills = 0
-					local maxHeroicKills = 0
-					local maxMythicKills = 0
-					local mythicDungeons = 0
-					local maxMythicPlus = 0
-					local maxWeeklyScore = 0
-					local maxScore = 0
-
-					 for m=1, auditGuild.totalMembers do
-					 	local currentMember = auditGuild.members[m]
-					
-						 if (currentMember.title == name) then
-							currentAuditData = currentMember
-						 end
-
-						 if (currentMember.ilvlEq > highestItemLevel) then
-							highestItemLevel = currentMember.ilvlEq	 
-						 end
-
-						 if (currentMember.covenantLevel > highestCovenantLevel) then
-							highestCovenantLevel = currentMember.covenantLevel
-						 end
-
-						 if (currentMember.legendary > highestLegendaryLevel) then
-							highestLegendaryLevel = currentMember.legendary
-						 end
-
-						 if (currentMember.normalKills > maxNormalKills) then
-							maxNormalKills = currentMember.normalKills
-						 end
-
-						 if (currentMember.heroicKills > maxHeroicKills) then
-							maxHeroicKills = currentMember.heroicKills
-						 end
-
-						 if (currentMember.mythicKills > maxMythicKills) then
-							maxMythicKills = currentMember.mythicKills
-						 end
-
-						 if (currentMember.weeklyScore > maxWeeklyScore) then
-							maxWeeklyScore = currentMember.weeklyScore
-						 end
-
-						 if (currentMember.score > maxScore) then
-							maxScore = currentMember.score
-						 end
-					 end
-
-					 if (currentAuditData) then
-
-						local avgItemLevel, avgItemLevelEquipped, avgItemLevelPvp = GetAverageItemLevel()
-
-						local covenantId = C_Covenants.GetActiveCovenantID()
-						local renownLevel = 0
-
-						if (covenantId > 0) then
-							renownLevel = C_CovenantSanctumUI.GetRenownLevel()
-							local covenantData = C_Covenants.GetCovenantData(covenantId)
-						end
-
-						Core:InsertAuditCell("Weekly Score", currentAuditData.weeklyScore, maxWeeklyScore, "Max. weekly score in your guild.")
-						Core:InsertAuditCell("General Score", currentAuditData.score, maxScore, "Max. general score in your guild.")
-
-						Core:InsertAuditCell("Item Level Equipped", avgItemLevelEquipped, highestItemLevel, "Max. item level in your guild.")
-						Core:InsertAuditCell("Renown Level", renownLevel, highestCovenantLevel, "Max. renown level in your guild.")
-						
-						if (currentAuditData.gearAudit == 0) then
-							Core:InsertAuditCell("Gear Audit", currentAuditData.gearAudit, "Your audit check is valid!", nil)
-						else
-							Core:InsertAuditCell("Gear Audit", currentAuditData.gearAudit, "Hover to view your gear audit!", nil)
-						end
-
-						Core:InsertAuditCell("Legendary", currentAuditData.legendary, highestLegendaryLevel, "Highest legendary level in your guild.")
-
-						if (currentAuditData.profession1Id ~= "0") then
-							Core:InsertAuditCell("Profession 1", currentAuditData.profession1SkillPoints .. " / " .. currentAuditData.profession1MaxSkillPoints, currentAuditData.profession1SkillRatio .. "%", "Profession completion.")
-						else
-							Core:InsertAuditCell("Profession 1", "0", "Your first profession is not selected!", nil)
-						end
-
-						if (currentAuditData.profession2Id ~= "0") then
-							Core:InsertAuditCell("Profession 2", currentAuditData.profession2SkillPoints .. " / " .. currentAuditData.profession2MaxSkillPoints, currentAuditData.profession2SkillRatio .. "%", "Profession completion.")
-						else
-							Core:InsertAuditCell("Profession 2", "0", "Your second profession is not selected!", nil)
-						end
-						
-						Core:InsertAuditCell("Weekly Normal Raid Kills", currentAuditData.normalKills, maxNormalKills, "Max. normal raid kills in your guild within this week.", 200)
-						Core:InsertAuditCell("Weekly Heroic Raid Kills", currentAuditData.heroicKills, maxHeroicKills, "Max. heroic raid kills in your guild within this week.", 200)
-						Core:InsertAuditCell("Weekly Mythic Raid Kills", currentAuditData.mythicKills, maxMythicKills, "Max. mythic raid kills in your guild within this week.", 200)
-
-						Core:InsertAuditCell("Mythic Dungeons Completed This Week", currentAuditData.mythicDungeonsCompleted, mythicDungeons, "Max. mythic dungeons completed in your guild within this week.")
-						Core:InsertAuditCell("Max Mythic+ Completed This Week", currentAuditData.maxMythicPlusCompleted, maxMythicPlus, "Max. mythic+ level completed in your guild within this week.")
-					 else
-						Core:AppendMessage("This character's audit data is not found!", true)
-						return
-					 end
-				end
-			end
-		end
-
-		if (not hasAnyData) then
-			Core:AppendMessage("This guild doesn't have any audit data or audit report has expired!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true)
 		end
 	end
 	

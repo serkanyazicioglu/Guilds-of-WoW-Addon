@@ -28,8 +28,6 @@ https://guildsofwow.com/manage/addon
 
 - Exporting attendance data to Guilds of WoW for attendance reports and syncing RSVPs bidirectional,
 
-- Showing current logged-in character's audit data,
-
 - Easier in-game recruitment management for inviting to guild, adding as friend or whispering.
 
 ## EVENTS
@@ -37,12 +35,6 @@ https://guildsofwow.com/manage/addon
 When you access events section of your guild management, at least one weekly event with "create upcoming events automatically" flag should be saved. After your guild's upcoming events are generated sync client will migrate your event data to in game addon database. 
 
 https://guildsofwow.com/manage/events
-
-## SOON TO BE DEVELOPED
-
-- Auto roster management of teams with guild ranks for event audience management.
-
-- Full guild audit report
 
 
 Guilds of WoW website: https://guildsofwow.com
