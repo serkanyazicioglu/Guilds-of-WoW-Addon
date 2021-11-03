@@ -15,5 +15,4 @@
 	<Script file="libs\LibDataBroker-1.1\LibDataBroker-1.1.lua"/>
 	<Script file="db/guildevents.lua" />
 	<Script file="db/guildrecruitmentapplications.lua" />
-	<Script file="db/guildauditdata.lua" />
 </Ui>

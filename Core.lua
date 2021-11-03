@@ -522,51 +522,6 @@ function Core:CreateRecruitmentApplications()
 	isPropogatingUpdate = false
 end
 
-function Core:InsertAuditCell(groupTitle, value, highestValue, highestValueTooltip, width)
-	local fontPath = "Fonts\\FRIZQT__.TTF"
-
-	local groupFrame = GOW.GUI:Create("InlineGroup")
-	groupFrame:SetTitle(groupTitle)
-	groupFrame:SetLayout("List")
-
-	if (not width) then
-		width = 300
-	end
-
-	groupFrame:SetWidth(width)
-
-	local label1 = GOW.GUI:Create("Label")
-	label1:SetText(value)
-	label1:SetFont(fontPath, 28)
-	groupFrame:AddChild(label1)
-	label1:ClearAllPoints()
-	label1:SetPoint("CENTER", groupFrame.frame, "CENTER", -8, -4)
-
-	if (highestValue) then
-		local label2 = GOW.GUI:Create("InteractiveLabel")
-		label2:SetText(highestValue)
-		label2:SetFont(fontPath, 11)
-		if(highestValueTooltip) then
-			label2:SetCallback("OnEnter", function(self)
-				local tooltip = LibQTip:Acquire("ItemLevelTooltip", 1, "LEFT")
-				GOW.tooltip = tooltip
-				
-				local line = tooltip:AddLine()
-				tooltip:SetCell(line, 1, highestValueTooltip, "LEFT", 1, nil, 0, 0, 300, 50)
-				tooltip:SmartAnchorTo(self.frame)
-				tooltip:Show()
-			end)
-			label2:SetCallback("OnLeave", function()
-				LibQTip:Release(GOW.tooltip)
-				GOW.tooltip = nil
-			end)
-		end
-		groupFrame:AddChild(label2)
-	end
-
-	containerScrollFrame:AddChild(groupFrame)
-end
-
 function Core:searchForEvent(event)
 	local serverTime = C_DateAndTime.GetServerTimeLocal()
 
