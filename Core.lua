@@ -1474,34 +1474,12 @@ function Core:SetRosterInfo()
 			for i=1, numTotalMembers do
 				local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, isSoREligible, standingID, guid = GetGuildRosterInfo(i);
 				if (name) then
-					local years, months, days, hours = GetGuildRosterLastOnline(i);
-
-					if (years == nil) then
-						years = 0
-					end
-
-					if (months == nil) then
-						months = 0
-					end
-
-					if (days == nil) then
-						days = 0
-					end
-
-					if (hours == nil) then
-						hours = 0
-					end
-
 					GOW.DB.profile.guilds[guildKey].roster[name] = { }
 					GOW.DB.profile.guilds[guildKey].roster[name].guid = guid;
 					GOW.DB.profile.guilds[guildKey].roster[name].note = note;
 					GOW.DB.profile.guilds[guildKey].roster[name].rank = rank;
 					GOW.DB.profile.guilds[guildKey].roster[name].rankIndex = rankIndex;
 					GOW.DB.profile.guilds[guildKey].roster[name].officerNote = officernote;
-					GOW.DB.profile.guilds[guildKey].roster[name].lastOnlineYears = years;
-					GOW.DB.profile.guilds[guildKey].roster[name].lastOnlineMonths = months;
-					GOW.DB.profile.guilds[guildKey].roster[name].lastOnlineDays = days;
-					GOW.DB.profile.guilds[guildKey].roster[name].lastOnlineHours = hours;
 				end
 			end
 		end
