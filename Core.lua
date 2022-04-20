@@ -40,6 +40,7 @@ local recruitmentCharacter = nil
 local recruitmenNotes = nil
 
 local invitingToPartyEvent = nil
+local invitingToPartyTeam = nil
 
 local isEventAttendancesChecked = false
 
@@ -55,6 +56,7 @@ GOW.defaults = {
 local selectedTab = "events";
 local tabs = {
 	{ value = "events", text = "Upcoming Events" },
+	{ value = "teams", text = "Teams" },
 	{ value = "recruitmentApps", text = "Recruitment Applications" },
 }
 
@@ -144,7 +146,7 @@ function GOW:OnInitialize()
 	-- close:SetPoint("TOPRIGHT", 2, 1)
 	-- containerFrame:AddChild(close)
 
-	if (ns.UPCOMING_EVENTS == nil or ns.RECRUITMENT_APPLICATIONS == nil) then
+	if (ns.UPCOMING_EVENTS == nil or ns.TEAMS == nil or ns.RECRUITMENT_APPLICATIONS == nil) then
 		print("|cffffff00Guilds of WoW: |cffFF0000Data is not fetched! Please make sure your sync app is installed and working properly.")
 	end
 
@@ -262,6 +264,25 @@ function GOW:OnInitialize()
 		end,
 		OnCancel = function ()
 			invitingToPartyEvent = nil
+			Core:DialogClosed()
+		end,
+		timeout = 0,
+		whileDead = true,
+		hideOnEscape = true,
+		preferredIndex = 1
+	  }
+
+	  StaticPopupDialogs["CONFIRM_INVITE_TEAM_TO_PARTY"] = {
+		text = "Are you sure you want to invite %s member(s) to your party?",
+		button1 = "Yes",
+		button2 = "No",
+		OnAccept = function()
+			Core:InviteAllTeamMembersToParty(invitingToPartyTeam)
+			invitingToPartyTeam = nil
+			Core:DialogClosed()			
+		end,
+		OnCancel = function ()
+			invitingToPartyTeam = nil
 			Core:DialogClosed()
 		end,
 		timeout = 0,
@@ -393,6 +414,8 @@ function Core:RefreshApplication()
 
 	if (selectedTab == "events") then
 		Core:CreateUpcomingEvents()
+	elseif (selectedTab == "teams") then
+		Core:CreateTeams()
 	elseif (selectedTab == "recruitmentApps") then
 		Core:CreateRecruitmentApplications()
 	end
@@ -418,9 +441,9 @@ function Core:CreateUpcomingEvents()
 	else
 		local isInGuild = IsInGuild()
 
-		if (isDialogOpen) then
-			return
-		end
+		-- if (isDialogOpen) then
+		-- 	return
+		-- end
 
 		if (isInGuild == false) then
 			isProcessing = true
@@ -463,6 +486,62 @@ function Core:CreateUpcomingEvents()
 		end
 	end
 
+	isPropogatingUpdate = false
+end
+
+function Core:CreateTeams()
+	if (selectedTab ~= "teams") then
+		return
+	end
+
+	if(ns.TEAMS == nil) then
+		containerScrollFrame:ReleaseChildren()
+		Core:AppendMessage("Team data is not found! Please make sure your sync app is installed and working properly!", true)
+	else
+		local isInGuild = IsInGuild()
+
+		if (isInGuild == false) then
+			isProcessing = true
+			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false)
+			return
+		end
+
+		local guildName, _, _, realmName = GetGuildInfo("player")
+
+		if (guildName == nil) then
+			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false)
+			return
+		end
+
+		isProcessing = true
+		containerScrollFrame:ReleaseChildren()
+
+		if (realmName == nil) then
+			realmName = GetNormalizedRealmName()
+		end
+
+		local regionId = GetCurrentRegion()
+
+		local hasAnyData = false
+
+		if (isInGuild and ns.TEAMS.totalTeams > 0) then
+			for i=1, ns.TEAMS.totalTeams do
+				local team = ns.TEAMS.teams[i]
+
+				if (guildName == team.guild and realmName == team.guildRealmNormalized and regionId == team.guildRegionId) then
+					hasAnyData = true
+					Core:AppendTeam(team)
+				end
+			end
+
+			--containerScrollFrame:DoLayout()
+		end
+
+		if (not hasAnyData) then
+			Core:AppendMessage("This guild doesn't have any team or you are not a roster manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true)
+		end
+	end
+	
 	isPropogatingUpdate = false
 end
 
@@ -749,7 +828,7 @@ function Core:AppendCalendarList(event)
 		if (event.eventEndDate >= C_DateAndTime.GetServerTimeLocal()) then
 			local inviteButton = GOW.GUI:Create("Button")
 			inviteButton:SetWidth(140)
-			inviteButton:SetText("Invite Players")
+			inviteButton:SetText("Invite Attendees")
 			inviteButton:SetCallback("OnClick", function()
 				if (event.calendarType == 2) then
 					if (eventIndex > 0) then
@@ -814,6 +893,62 @@ function Core:AppendCalendarList(event)
 
 		buttonsGroup:AddChild(copyKeyButton)
 	end
+
+	itemGroup:AddChild(buttonsGroup)
+
+	containerScrollFrame:AddChild(itemGroup)
+end
+
+function Core:AppendTeam(teamData)
+	local itemGroup = GOW.GUI:Create("InlineGroup")
+	itemGroup:SetTitle(teamData.title)
+	itemGroup:SetFullWidth(true)
+
+	local teamDescriptionLabel = GOW.GUI:Create("SFX-Info")
+	teamDescriptionLabel:SetLabel("Description")
+	teamDescriptionLabel:SetDisabled(false)
+	teamDescriptionLabel:SetText(teamData.description)
+	teamDescriptionLabel:SetCallback("OnEnter", function(self)
+		local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT")
+		GOW.tooltip = tooltip
+		
+		tooltip:AddHeader('|cffffcc00Team Description')
+		local line = tooltip:AddLine()
+		tooltip:SetCell(line, 1, teamData.description, "LEFT", 1, nil, 0, 0, 300, 50)
+		tooltip:SmartAnchorTo(self.frame)
+		tooltip:Show()
+	end)
+	teamDescriptionLabel:SetCallback("OnLeave", function()
+		LibQTip:Release(GOW.tooltip)
+		GOW.tooltip = nil
+	end)
+	itemGroup:AddChild(teamDescriptionLabel)
+
+	local membersLabel = GOW.GUI:Create("SFX-Info")
+	membersLabel:SetLabel("Members")
+	membersLabel:SetText(teamData.totalMembers)
+	itemGroup:AddChild(membersLabel)
+
+	local buttonsGroup = GOW.GUI:Create("SimpleGroup")
+	buttonsGroup:SetLayout("Flow")
+	buttonsGroup:SetFullWidth(true)
+
+	local inviteToPartyButton = GOW.GUI:Create("Button")
+	inviteToPartyButton:SetText("Invite All to Party")
+	inviteToPartyButton:SetWidth(140)
+	inviteToPartyButton:SetCallback("OnClick", function()
+		Core:InviteAllTeamMembersToPartyCheck(teamData)
+	end)
+	buttonsGroup:AddChild(inviteToPartyButton)
+
+	local copyButton = GOW.GUI:Create("Button")
+	copyButton:SetText("Copy Link")
+	copyButton:SetWidth(100)
+	copyButton:SetCallback("OnClick", function()
+		copyText = teamData.webUrl
+		Core:OpenDialog("COPY_TEXT")
+	end)
+	buttonsGroup:AddChild(copyButton)
 
 	itemGroup:AddChild(buttonsGroup)
 
@@ -1392,6 +1527,54 @@ function Core:InviteAllToParty(event)
 			invitingMembers[inviteIndex] = inviteName
 			inviteIndex = inviteIndex + 1
 		end
+	end
+
+	Core:Print("inviteIndex: " .. inviteIndex)
+
+	if (inviteIndex > 1) then
+		-- if (inviteIndex > 5) then
+		-- 	local allowed = C_PartyInfo.AllowedToDoPartyConversion(true)
+
+		-- 	--if (allowed) then
+		-- 		C_PartyInfo.ConvertToRaid()
+		-- 	-- else
+		-- 	-- 	Core:Print("ConvertToRaid not allowed")
+		-- 	-- end
+		-- end
+
+		for a=1, inviteIndex - 1 do
+			local inviteName = invitingMembers[a]
+			if (inviteName ~= me) then
+				if not IsInRaid() and GetNumGroupMembers() == 5 then 
+					C_PartyInfo.ConvertToRaid()
+				end
+
+				C_PartyInfo.InviteUnit(inviteName)
+			end
+		end
+	end
+end
+
+function Core:InviteAllTeamMembersToPartyCheck(teamData)
+	if (teamData.totalMembers > 0) then
+		invitingToPartyTeam = teamData
+		Core:OpenDialog("CONFIRM_INVITE_TEAM_TO_PARTY", teamData.totalMembers)
+	else
+		Core:OpenDialog("INVITE_TO_PARTY_NOONE_FOUND")
+	end
+end
+
+function Core:InviteAllTeamMembersToParty(teamData)
+	local invitingMembers = {}
+	local inviteIndex = 1
+
+	for i=1, teamData.totalMembers do
+		local currentInviteMember = teamData.members[i]
+
+		local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized
+
+		invitingMembers[inviteIndex] = inviteName
+		inviteIndex = inviteIndex + 1
 	end
 
 	Core:Print("inviteIndex: " .. inviteIndex)
