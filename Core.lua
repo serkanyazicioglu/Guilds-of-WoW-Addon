@@ -12,6 +12,7 @@ local ns = select(2, ...)
 local Core = {}
 local f = CreateFrame("Frame")
 f:RegisterEvent("PLAYER_LOGIN")
+f:RegisterEvent("PLAYER_ENTERING_WORLD")
 f:RegisterEvent("GUILD_ROSTER_UPDATE")
 f:RegisterEvent("CALENDAR_NEW_EVENT")
 f:RegisterEvent("CALENDAR_UPDATE_EVENT")
@@ -35,6 +36,7 @@ local persistentWorkQueue = nil
 
 local currentMultiInvitingEvent = nil
 local processedEvents = nil
+local isEventProcessCompleted = false
 local isProcessedEventsPrinted = false
 
 local recruitmentCharacter = nil
@@ -42,8 +44,6 @@ local recruitmenNotes = nil
 
 local invitingToPartyEvent = nil
 local invitingToPartyTeam = nil
-
-local isEventAttendancesChecked = false
 
 local copyText = ""
 
@@ -153,6 +153,28 @@ function GOW:OnInitialize()
 
 	StaticPopupDialogs["CONFIRM_EVENT_CREATION"] = {
 		text = "Are you sure you want to create this event on in-game calendar?",
+		button1 = "Yes",
+		button2 = "No",
+		OnAccept = function()
+			C_Calendar.AddEvent()
+			if (currentMultiInvitingEvent ~= nil and currentMultiInvitingEvent.isManualInvite) then
+				Core:InviteMultiplePeopleToEvent()
+			end
+			Core:DialogClosed()			
+		end,
+		OnCancel = function ()
+			currentMultiInvitingEvent = nil
+			Core:DialogClosed()
+			C_Calendar.CloseEvent()
+		end,
+		timeout = 0,
+		whileDead = true,
+		hideOnEscape = true,
+		preferredIndex = 1
+	  }
+
+	  StaticPopupDialogs["CONFIRM_GUILD_EVENT_CREATION"] = {
+		text = "Are you sure you want to create this guild event on in-game calendar? (Note: Guild events RSVP integration only works single direction which is from WoW to GoW.)",
 		button1 = "Yes",
 		button2 = "No",
 		OnAccept = function()
@@ -337,24 +359,15 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 
 		currentCharName = name
 		currentCharRealm = realm
+	elseif event == "PLAYER_ENTERING_WORLD" then
+		if (ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
+			workQueue:addTask(function() Core:Debug("Checking attendances") Core:CheckEventInvites() end, nil, 15)
+		end
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		Core:SetRosterInfo()
-	elseif event == "CALENDAR_UPDATE_GUILD_EVENTS" then
-		if (isProcessing == false and selectedTab == "events") then
-			--Core:CreateRecruitmentApplications()
-			persistentWorkQueue:addTask(function() Core:CreateUpcomingEvents() end, nil, 2)
-
-			if (ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
-				Core:CheckEventInvites()
-			end
-		end
 	elseif event == "CALENDAR_OPEN_EVENT" then
-		local canAddEvent = C_Calendar.IsEventOpen() --C_Calendar.CanAddEvent()
-		
-		if (canAddEvent) then
+		if (C_Calendar.IsEventOpen()) then
 			local eventInfo = C_Calendar.GetEventInfo()
-			
-			Core:Debug("Is event open:" .. tostring(C_Calendar.IsEventOpen()))
 
 			if (eventInfo ~= nil) then
 				Core:Debug("CALENDAR_OPEN_EVENT: Opened: " .. eventInfo.title .. " . Calendar Type: " .. eventInfo.calendarType)
@@ -366,27 +379,34 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 					if (upcomingEvent ~= nil) then
 						if (eventInfo.calendarType == "PLAYER") then
 							--processedEvents:remove(upcomingEvent.titleWithKey)
-							Core:CreateEventInvites(upcomingEvent, not isProcessedEventsPrinted)
+							Core:CreateEventInvites(upcomingEvent, not isEventProcessCompleted)
 						else
-							Core:SetAttendance(upcomingEvent, not isProcessedEventsPrinted)
+							Core:SetAttendance(upcomingEvent, not isEventProcessCompleted)
 						end
 					else
 						Core:Debug("Event couldn't be found!")
 					end
 				else 
-					Core:Debug("Not suitable calendar type")
+					Core:Debug("Not suitable calendar type!")
 				end
+			else
+				Core:Debug("Event info is null!")
 			end
+		else
+			Core:Debug("Event is not open!")
+			workQueue:addTask(function() Core:Debug("Checking attendances") Core:CheckEventInvites() end, nil, 10)
 		end
-	elseif event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" then
+	elseif event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" or event == "CALENDAR_UPDATE_GUILD_EVENTS" then
 		if (isPropogatingUpdate == false and selectedTab == "events") then
 			persistentWorkQueue:addTask(function() isPropogatingUpdate = true Core:CreateUpcomingEvents() end, nil, 2)
 		end
 	elseif event == "CALENDAR_CLOSE_EVENT" then
-		Core:ClearEventInvites(true)
+		if (isEventProcessCompleted == false) then
+			Core:ClearEventInvites(true)
 
-		if (isPropogatingUpdate == false and selectedTab == "events") then
-			persistentWorkQueue:addTask(function() isPropogatingUpdate = true Core:CreateUpcomingEvents() end, nil, 2)
+			if (isPropogatingUpdate == false and selectedTab == "events") then
+				persistentWorkQueue:addTask(function() isPropogatingUpdate = true Core:CreateUpcomingEvents() end, nil, 2)
+			end
 		end
 	elseif event == "CALENDAR_UPDATE_INVITE_LIST" then
 		Core:Debug("CALENDAR_UPDATE_INVITE_LIST")
@@ -397,6 +417,11 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 				Core:ClearEventInvites(false)
 			else
 				processedEvents:remove(eventInfo.title)
+
+				local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title)
+				if (upcomingEvent ~= nil) then
+					Core:SetAttendance(upcomingEvent, false)
+				end
 			end
 		end
 	elseif event == "FRIENDLIST_UPDATE" then
@@ -935,8 +960,8 @@ function Core:AppendTeam(teamData)
 	buttonsGroup:SetFullWidth(true)
 
 	local inviteToPartyButton = GOW.GUI:Create("Button")
-	inviteToPartyButton:SetText("Invite All to Party")
-	inviteToPartyButton:SetWidth(140)
+	inviteToPartyButton:SetText("Invite Team")
+	inviteToPartyButton:SetWidth(200)
 	inviteToPartyButton:SetCallback("OnClick", function()
 		Core:InviteAllTeamMembersToPartyCheck(teamData)
 	end)
@@ -1114,7 +1139,7 @@ function Core:CreateCalendarEvent(event)
 		return
 	end
 
-	if not workQueue:isEmpty() then
+	if (not workQueue:isEmpty() or not isEventProcessCompleted) then
 		Core:PrintErrorMessage("Addon is busy right now! Please wait for a while and try again...")
 		return
 	end
@@ -1146,7 +1171,11 @@ function Core:CreateCalendarEvent(event)
 			currentMultiInvitingEvent = event
 		end
 
-		Core:OpenDialog("CONFIRM_EVENT_CREATION")
+		if (event.calendarType == 1) then
+			Core:OpenDialog("CONFIRM_GUILD_EVENT_CREATION")
+		else
+			Core:OpenDialog("CONFIRM_EVENT_CREATION")
+		end
 	end
 end
 
@@ -1212,7 +1241,6 @@ function Core:AddCheckEventsTask()
 end
 
 function Core:CheckEventInvites()
-	
 	Core:Debug("Starting event invites!")
 
 	local isInGuild = IsInGuild()
@@ -1224,6 +1252,7 @@ function Core:CheckEventInvites()
 			local guildName, _, _, realmName = GetGuildInfo("player")
 
 			if (guildName == nil) then
+				Core:Debug("Guild name is null")
 				return
 			end
 
@@ -1251,8 +1280,6 @@ function Core:CheckEventInvites()
 							Core:Debug("Event search result: " .. upcomingEvent.titleWithKey .. ". Result: " .. eventIndex)
 
 							if (eventIndex > 0) then
-								isEventAttendancesChecked = true;
-
 								local dayEvent = C_Calendar.GetDayEvent(0, upcomingEvent.day, eventIndex)
 								Core:Debug(dayEvent.title .. " creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex)
 								
@@ -1273,6 +1300,8 @@ function Core:CheckEventInvites()
 					end
 				end
 
+				Core:Debug("|cff00ff00Event process is completed!")
+				isEventProcessCompleted = true
 				if (not isProcessedEventsPrinted and processedEvents:count() > 0) then
 					isProcessedEventsPrinted = true
 					Core:PrintSuccessMessage("Event invites are completed. Number of events: " .. tostring(processedEvents:count()))
@@ -1642,8 +1671,6 @@ function Core:GetGuildKey()
 	return guildKey
 end
 
-local rosterUpdates = 0
-
 function Core:SetRosterInfo()
 	local numTotalMembers, numOnlineMaxLevelMembers, numOnlineMembers = GetNumGuildMembers();
 
@@ -1651,13 +1678,6 @@ function Core:SetRosterInfo()
 		local guildKey = Core:GetGuildKey()
 
 		if (guildKey) then
-			rosterUpdates = rosterUpdates + 1
-
-			if (rosterUpdates >= 3 and not isEventAttendancesChecked and ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
-				Core:Debug("Checking attendances")
-				Core:CheckEventInvites()
-			end
-
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime()
 			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD()
 			GOW.DB.profile.guilds[guildKey].roster = { }
