@@ -37,6 +37,7 @@ local persistentWorkQueue = nil
 local currentMultiInvitingEvent = nil
 local processedEvents = nil
 local isEventProcessCompleted = false
+local isNewEventBeingCreated = false
 local isProcessedEventsPrinted = false
 
 local recruitmentCharacter = nil
@@ -156,6 +157,7 @@ function GOW:OnInitialize()
 		button1 = "Yes",
 		button2 = "No",
 		OnAccept = function()
+			isNewEventBeingCreated = true
 			C_Calendar.AddEvent()
 			if (currentMultiInvitingEvent ~= nil and currentMultiInvitingEvent.isManualInvite) then
 				Core:InviteMultiplePeopleToEvent()
@@ -178,9 +180,14 @@ function GOW:OnInitialize()
 		button1 = "Yes",
 		button2 = "No",
 		OnAccept = function()
+			isNewEventBeingCreated = true
 			C_Calendar.AddEvent()
-			if (currentMultiInvitingEvent ~= nil and currentMultiInvitingEvent.isManualInvite) then
-				Core:InviteMultiplePeopleToEvent()
+			if (currentMultiInvitingEvent ~= nil) then
+				if (currentMultiInvitingEvent.isManualInvite) then
+					Core:InviteMultiplePeopleToEvent()
+				else
+					Core:EventAttendanceProcessCompleted(currentMultiInvitingEvent, true)
+				end
 			end
 			Core:DialogClosed()			
 		end,
@@ -372,6 +379,7 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 			if (eventInfo ~= nil) then
 				Core:Debug("CALENDAR_OPEN_EVENT: Opened: " .. eventInfo.title .. " . Calendar Type: " .. eventInfo.calendarType)
 				Core:ClearEventInvites(false)
+				isNewEventBeingCreated = false
 
 				if (eventInfo.calendarType == "GUILD_EVENT" or eventInfo.calendarType == "PLAYER") then
 					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title)
@@ -401,23 +409,30 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 			persistentWorkQueue:addTask(function() isPropogatingUpdate = true Core:CreateUpcomingEvents() end, nil, 2)
 		end
 	elseif event == "CALENDAR_CLOSE_EVENT" then
+		isNewEventBeingCreated = false
 		if (isEventProcessCompleted == false) then
 			Core:ClearEventInvites(true)
+		end
 
-			if (isPropogatingUpdate == false and selectedTab == "events") then
-				persistentWorkQueue:addTask(function() isPropogatingUpdate = true Core:CreateUpcomingEvents() end, nil, 2)
-			end
+		if (isEventProcessCompleted and isPropogatingUpdate == false and selectedTab == "events") then
+			persistentWorkQueue:addTask(function() isPropogatingUpdate = true Core:CreateUpcomingEvents() end, nil, 2)
 		end
 	elseif event == "CALENDAR_UPDATE_INVITE_LIST" then
-		Core:Debug("CALENDAR_UPDATE_INVITE_LIST")
 		if (C_Calendar.IsEventOpen()) then
 			local eventInfo = C_Calendar.GetEventInfo()
 
-			if (eventInfo.title == "") then
-				Core:ClearEventInvites(false)
-			else
-				processedEvents:remove(eventInfo.title)
-
+			if (processedEvents:contains(eventInfo.title)) then
+				if (eventInfo.title == "") then
+					Core:ClearEventInvites(false)
+				else
+					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title)
+					if (upcomingEvent ~= nil) then
+						processedEvents:remove(eventInfo.title)
+						Core:SetAttendance(upcomingEvent, false)
+					end
+				end
+			elseif (workQueue:isEmpty()) then
+				Core:Debug("Continuing event attendance and moderation!");
 				local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title)
 				if (upcomingEvent ~= nil) then
 					Core:SetAttendance(upcomingEvent, false)
@@ -830,6 +845,10 @@ function Core:AppendCalendarList(event)
 			eventButton:SetText("Event Created")
 			eventButton:SetDisabled(true)
 		else
+			if (not isNewEventBeingCreated and processedEvents:contains(event.titleWithKey)) then
+				processedEvents:remove(event.titleWithKey)
+			end
+
 			eventButton:SetText("Create In-Game Event")
 			eventButton:SetCallback("OnClick", function()
 				Core:CreateCalendarEvent(event)
@@ -1139,7 +1158,7 @@ function Core:CreateCalendarEvent(event)
 		return
 	end
 
-	if (not workQueue:isEmpty() or not isEventProcessCompleted) then
+	if (not workQueue:isEmpty() or not isEventProcessCompleted or isNewEventBeingCreated) then
 		Core:PrintErrorMessage("Addon is busy right now! Please wait for a while and try again...")
 		return
 	end
@@ -1194,7 +1213,7 @@ function Core:InviteMultiplePeopleToEvent()
 		local numInvites = C_Calendar.GetNumInvites()
 
 		if (numInvites < event.totalMembers and numInvites < 100) then
-			Core:PrintMessage("Event invites are being sent in the background! Please wait for all events to complete before logging out.")
+			Core:PrintMessage("Event invites are being sent in the background! Please wait for process to complete before logging out.")
 
 			for i=1, event.totalMembers do
 				local currentInviteMember = event.inviteMembers[i]
@@ -1204,18 +1223,9 @@ function Core:InviteMultiplePeopleToEvent()
 					workQueue:addTask(function() C_Calendar.EventInvite(inviteName) end, nil, GOW.consts.INVITE_INTERVAL)
 				end
 			end
-
-			--Core:IsEventFormingEnded()
+		else
+			Core:EventAttendanceProcessCompleted(event, true)
 		end
-	end
-end
-
-function Core:IsEventFormingEnded()
-	if workQueue:isEmpty() then
-		--print("|cff00ff00Event invites are completed.")
-		Core:StartEventInvites()
-	else
-		GOW.timers:ScheduleTimer(function() Core:IsEventFormingEnded() end, 10)
 	end
 end
 
@@ -1513,15 +1523,29 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 
 		if (attendanceChangedCount > 0) then
 			Core:Debug("SetAttendance Ended: " .. upcomingEvent.title .. ". SetAttendance: " .. tostring(attendanceChangedCount))
-			workQueue:addTask(function() Core:Debug("Event attendances completed: " .. upcomingEvent.titleWithKey) if (closeAfterEnd) then processedEvents:push(upcomingEvent.titleWithKey) C_Calendar.CloseEvent() end end, nil, 10)
-		else 
-			if (closeAfterEnd) then
-				processedEvents:push(upcomingEvent.titleWithKey)
-				C_Calendar.CloseEvent()
-			end
+			workQueue:addTask(function() Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd) end, nil, 10)
+		else
+			Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
 		end
 	else 
 		Core:Debug("Cannot set attendance to this event!")
+	end
+end
+
+function Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
+	Core:Debug("Event attendances process completed: " .. upcomingEvent.titleWithKey)
+
+	if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
+		processedEvents:push(upcomingEvent.titleWithKey)
+
+		if (isNewEventBeingCreated) then
+			Core:PrintSuccessMessage("New event is successfully created: " .. upcomingEvent.titleWithKey)
+			isNewEventBeingCreated = false
+		end
+	end
+
+	if (closeAfterEnd) then
+		C_Calendar.CloseEvent()
 	end
 end
 
