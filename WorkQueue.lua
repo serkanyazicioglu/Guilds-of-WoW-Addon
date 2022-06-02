@@ -11,9 +11,7 @@ function WQ:prepareNextTask()
 	local elem = self.queue:peek()
 	if elem then
 		if elem.event then
-			--log("WorkQueue:RegisterForEvent", elem.event, elem.delay)
 			GOW.events:RegisterEvent(elem.event, function()
-				--log("WorkQueue:EventFired", elem.event, elem.delay)
 				GOW.events:UnregisterEvent(elem.event)
 				self.runningTimer = GOW.timers:ScheduleTimer(function() self:runTask() end, elem.delay)
 			end)
@@ -33,7 +31,6 @@ function WQ:addTask(funcToCall, waitForEvent, delay)
 	end
 	local queueWasEmpty = self.queue:isEmpty()
 	local elem = {func = funcToCall, event = waitForEvent, delay = delay}
-	--log("WorkQueue:addTask", elem.event, elem.delay, queueWasEmpty)
 	self.queue:push(elem)
 
 	if queueWasEmpty then
@@ -43,11 +40,10 @@ end
 
 function WQ:runTask()
 	local elem = self.queue:peek()
-	--log("WorkQueue:runTask", elem.event, elem.delay)
 	if (elem ~= nil) then
 		elem.func()
 	end
-	self.queue:pop() -- if elem.func() adds elements to the queue, we have to behave as if the queue is not empty. So remove queue element AFTER elem.func()
+	self.queue:pop()
 
 	if not self.queue:isEmpty() then
 		self:prepareNextTask()
@@ -58,10 +54,9 @@ end
 
 function WQ:clearTasks()
 	if self.queue:isEmpty() then
-		return -- Nothing to do
+		return
 	end
 	local elem = self.queue:pop()
-	--log("WorkQueue:clearTasks", elem.event, self.runningTimer, RCE.timers:TimeLeft(self.runningTimer))
 
 	if self.runningTimer then
 		GOW.timers:CancelTimer(self.runningTimer)

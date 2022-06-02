@@ -12,7 +12,6 @@ local ns = select(2, ...)
 local Core = {}
 local f = CreateFrame("Frame")
 f:RegisterEvent("PLAYER_LOGIN")
-f:RegisterEvent("PLAYER_ENTERING_WORLD")
 f:RegisterEvent("GUILD_ROSTER_UPDATE")
 f:RegisterEvent("CALENDAR_NEW_EVENT")
 f:RegisterEvent("CALENDAR_UPDATE_EVENT")
@@ -366,10 +365,6 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 
 		currentCharName = name
 		currentCharRealm = realm
-	elseif event == "PLAYER_ENTERING_WORLD" then
-		if (ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
-			workQueue:addTask(function() Core:Debug("Checking attendances") Core:CheckEventInvites() end, nil, 15)
-		end
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		Core:SetRosterInfo()
 	elseif event == "CALENDAR_OPEN_EVENT" then
@@ -1232,22 +1227,21 @@ end
 function Core:ClearEventInvites(restartInvites)
 	currentMultiInvitingEvent = nil
 	workQueue:clearTasks()
-	Core:Debug("Invites are canceled!")
+	workQueue = GOW.WorkQueue.new()
+	Core:Debug("Invites are canceled! Restart invites: " .. tostring(restartInvites))
 
 	if (restartInvites) then
-		Core:AddCheckEventsTask()
-	end
-end
-
-function Core:AddCheckEventsTask()
-	workQueue:addTask(function() 
-		if (not C_Calendar.IsEventOpen()) 
-			then 
+		Core:Debug("AddCheckEventsTask is called!")
+		workQueue:addTask(function()
+			Core:Debug("Check invites task started...")
+			if (not C_Calendar.IsEventOpen()) then 
 				Core:CheckEventInvites() 
 			else
+				Core:Debug("There is an event open! Re-trying checking event invites later...")
 				Core:AddCheckEventsTask()
-		end
-	end, nil, 10)
+			end
+		end, nil, 6)
+	end
 end
 
 function Core:CheckEventInvites()
@@ -1395,15 +1389,15 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 
 				if (inviteInfo and inviteInfo.name ~= nil) then
 					if (string.find(inviteInfo.name, "-")) then
-						Core:Debug("Character with dash! " .. inviteInfo.name)
+						--Core:Debug("Character with dash! " .. inviteInfo.name)
 
 						if (inviteInfo.name == inviteName) then
 							isMemberInvited = true
-							Core:Debug("Member is invited with realm name: " .. inviteInfo.name)
+							--Core:Debug("Member is invited with realm name: " .. inviteInfo.name)
 						end
 					else
 						if (inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId) then
-							Core:Debug("Member is invited: " .. inviteInfo.name)
+							--Core:Debug("Member is invited: " .. inviteInfo.name)
 							isMemberInvited = true
 						end
 					end
@@ -1449,7 +1443,7 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 		for a=1, invitesNum do
 			local inviteInfo = C_Calendar.EventGetInvite(a)
 			
-			if (inviteInfo.inviteStatus > 1) then
+			if (inviteInfo.inviteStatus > 0) then
 				local responseTime = C_Calendar.EventGetInviteResponseTime(a)
 				local responeTimeText = nil
 				if (responseTime) then
@@ -1469,34 +1463,10 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 			end
 			
 			if (upcomingEvent.calendarType == 2) then
-				for m=1, upcomingEvent.totalMembers do
-					local currentInviteMember = upcomingEvent.inviteMembers[m]
-		
-					if (currentInviteMember) then
-						if (currentInviteMember.isManager or currentInviteMember.attendance > 1) then
-							if (inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId) then
-								local isInvitationChanged = false
-
-								if (currentInviteMember.isManager) then
-									if (inviteInfo.modStatus ~= "CREATOR" and inviteInfo.modStatus ~= "MODERATOR") then
-										isInvitationChanged = true
-										Core:Debug("Setting member as moderator: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name)
-										workQueue:addTask(function() C_Calendar.EventSetModerator(a) end, nil, GOW.consts.INVITE_INTERVAL)
-									end
-								end
-
-								if (currentInviteMember.forceUpdate or (currentInviteMember.attendance > 1 and inviteInfo.inviteStatus == 1)) then
-									isInvitationChanged = true
-									Core:Debug("Setting member attendance: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name .. ". GoWAttendance: " .. tostring(currentInviteMember.attendance) .. ". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus))
-									workQueue:addTask(function() C_Calendar.EventSetInviteStatus(a, currentInviteMember.attendance - 1) end, nil, GOW.consts.INVITE_INTERVAL)
-								end
-							
-								if (isInvitationChanged) then
-									attendanceChangedCount = attendanceChangedCount + 1
-								end
-							end
-						end
-					end
+				local isInvitationChanged = Core:SetAttendanceValues(upcomingEvent, inviteInfo, a)
+				if (isInvitationChanged) then
+					Core:Debug("Invitation changed")
+					attendanceChangedCount = attendanceChangedCount + 1
 				end
 			end
 		end
@@ -1523,13 +1493,53 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 
 		if (attendanceChangedCount > 0) then
 			Core:Debug("SetAttendance Ended: " .. upcomingEvent.title .. ". SetAttendance: " .. tostring(attendanceChangedCount))
-			workQueue:addTask(function() Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd) end, nil, 10)
+			workQueue:addTask(function() Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd) end, nil, GOW.consts.INVITE_INTERVAL)
 		else
 			Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
 		end
 	else 
 		Core:Debug("Cannot set attendance to this event!")
 	end
+end
+
+function Core:SetAttendanceValues(upcomingEvent, inviteInfo, inviteIndex)
+	for m=1, upcomingEvent.totalMembers do
+		local currentInviteMember = upcomingEvent.inviteMembers[m]
+
+		if (currentInviteMember) then
+			if (currentInviteMember.isManager or currentInviteMember.attendance > 1) then
+				local isFound = false
+
+				if (string.find(inviteInfo.name, "-")) then
+					isFound = inviteInfo.name == currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized
+				else
+					isFound = inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId
+				end
+
+				if (isFound) then
+					local isInvitationChanged = false
+
+					if (currentInviteMember.isManager) then
+						if (inviteInfo.modStatus ~= "CREATOR" and inviteInfo.modStatus ~= "MODERATOR") then
+							isInvitationChanged = true
+							Core:Debug("Setting member as moderator: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name)
+							workQueue:addTask(function() C_Calendar.EventSetModerator(inviteIndex) end, nil, GOW.consts.INVITE_INTERVAL)
+						end
+					end
+
+					if (currentInviteMember.forceUpdate or (currentInviteMember.attendance > 1 and inviteInfo.inviteStatus == 0)) then
+						isInvitationChanged = true
+						Core:Debug("Setting member attendance: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name .. ". GoWAttendance: " .. tostring(currentInviteMember.attendance) .. ". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus))
+						workQueue:addTask(function() C_Calendar.EventSetInviteStatus(inviteIndex, currentInviteMember.attendance - 1) end, nil, GOW.consts.INVITE_INTERVAL)
+					end
+				
+					return isInvitationChanged
+				end
+			end
+		end
+	end
+
+	return false
 end
 
 function Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
@@ -1541,6 +1551,8 @@ function Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
 		if (isNewEventBeingCreated) then
 			Core:PrintSuccessMessage("New event is successfully created: " .. upcomingEvent.titleWithKey)
 			isNewEventBeingCreated = false
+		else
+			Core:PrintMessage("Event RSVP process completed: " .. upcomingEvent.titleWithKey)
 		end
 	end
 
@@ -1695,6 +1707,9 @@ function Core:GetGuildKey()
 	return guildKey
 end
 
+local rosterUpdates = 0
+local isEventAttendancesInitialProcessStarted = false
+
 function Core:SetRosterInfo()
 	local numTotalMembers, numOnlineMaxLevelMembers, numOnlineMembers = GetNumGuildMembers();
 
@@ -1702,6 +1717,16 @@ function Core:SetRosterInfo()
 		local guildKey = Core:GetGuildKey()
 
 		if (guildKey) then
+			rosterUpdates = rosterUpdates + 1
+
+			if (rosterUpdates >= 3 and not isEventAttendancesInitialProcessStarted and ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
+				isEventAttendancesInitialProcessStarted = true
+				Core:Debug("Event attendance initial process started!")
+
+				GOW.DB.profile.guilds[guildKey].events = { }
+				Core:CheckEventInvites()
+			end
+
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime()
 			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD()
 			GOW.DB.profile.guilds[guildKey].roster = { }
