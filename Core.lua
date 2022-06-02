@@ -1551,7 +1551,7 @@ function Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
 		if (isNewEventBeingCreated) then
 			Core:PrintSuccessMessage("New event is successfully created: " .. upcomingEvent.titleWithKey)
 			isNewEventBeingCreated = false
-		else
+		elseif (not isEventProcessCompleted) then
 			Core:PrintMessage("Event RSVP process completed: " .. upcomingEvent.titleWithKey)
 		end
 	end
