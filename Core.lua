@@ -713,25 +713,27 @@ function Core:AppendCalendarList(event)
 	itemGroup:SetTitle(event.title)
 	itemGroup:SetFullWidth(true)
 
-	local descriptionLabel = GOW.GUI:Create("SFX-Info")
-	descriptionLabel:SetLabel("Description")
-	descriptionLabel:SetText(event.description)
-	descriptionLabel:SetDisabled(false)
-	descriptionLabel:SetCallback("OnEnter", function(self)
-		local tooltip = LibQTip:Acquire("EventMessageTooltip", 1, "LEFT")
-		GOW.tooltip = tooltip
-		
-		tooltip:AddHeader('|cffffcc00Event Description')
-		local line = tooltip:AddLine()
-		tooltip:SetCell(line, 1, event.description, "LEFT", 1, nil, 0, 0, 300, 50)
-		tooltip:SmartAnchorTo(self.frame)
-		tooltip:Show()
-	end)
-	descriptionLabel:SetCallback("OnLeave", function()
-		LibQTip:Release(GOW.tooltip)
-		GOW.tooltip = nil
-	end)
-	itemGroup:AddChild(descriptionLabel)
+	if (event.description ~= nil and event.description ~= "") then
+		local descriptionLabel = GOW.GUI:Create("SFX-Info")
+		descriptionLabel:SetLabel("Description")
+		descriptionLabel:SetText(event.description)
+		descriptionLabel:SetDisabled(false)
+		descriptionLabel:SetCallback("OnEnter", function(self)
+			local tooltip = LibQTip:Acquire("EventMessageTooltip", 1, "LEFT")
+			GOW.tooltip = tooltip
+			
+			tooltip:AddHeader('|cffffcc00Event Description')
+			local line = tooltip:AddLine()
+			tooltip:SetCell(line, 1, event.description, "LEFT", 1, nil, 0, 0, 300, 50)
+			tooltip:SmartAnchorTo(self.frame)
+			tooltip:Show()
+		end)
+		descriptionLabel:SetCallback("OnLeave", function()
+			LibQTip:Release(GOW.tooltip)
+			GOW.tooltip = nil
+		end)
+		itemGroup:AddChild(descriptionLabel)
+	end
 
 	local dateLabel = GOW.GUI:Create("SFX-Info")
 	dateLabel:SetLabel("Date")
