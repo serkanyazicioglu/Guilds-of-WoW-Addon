@@ -687,7 +687,7 @@ function Core:AppendMessage(message, appendReloadUIButton)
 	local messageLabel = GOW.GUI:Create("Label")
 	messageLabel:SetText(message)
 	messageLabel:SetFullWidth(true)
-	messageLabel:SetFont(fontPath, fontSize)
+	--messageLabel:SetFont(fontPath, fontSize)
 	itemGroup:AddChild(messageLabel)
 
 	if(appendReloadUIButton) then
@@ -737,13 +737,21 @@ function Core:AppendCalendarList(event)
 
 	local dateLabel = GOW.GUI:Create("SFX-Info")
 	dateLabel:SetLabel("Date")
-	dateLabel:SetText(event.dateText)
+	dateLabel:SetText(event.dateText .. ", " .. event.hourText)
+	dateLabel:SetDisabled(false)
+	dateLabel:SetCallback("OnEnter", function(self)
+		local tooltip = LibQTip:Acquire("EventDateTooltip", 1, "LEFT")
+		GOW.tooltip = tooltip
+		
+		tooltip:AddHeader('|cffffcc00All dates are realm time.')
+		tooltip:SmartAnchorTo(self.frame)
+		tooltip:Show()
+	end)
+	dateLabel:SetCallback("OnLeave", function()
+		LibQTip:Release(GOW.tooltip)
+		GOW.tooltip = nil
+	end)
 	itemGroup:AddChild(dateLabel)
-
-	local eventHourLabel = GOW.GUI:Create("SFX-Info")
-	eventHourLabel:SetLabel("Hour")
-	eventHourLabel:SetText(event.hourText)
-	itemGroup:AddChild(eventHourLabel)
 
 	local eventDurationLabel = GOW.GUI:Create("SFX-Info")
 	eventDurationLabel:SetLabel("Duration")
@@ -946,25 +954,27 @@ function Core:AppendTeam(teamData)
 	itemGroup:SetTitle(teamData.title)
 	itemGroup:SetFullWidth(true)
 
-	local teamDescriptionLabel = GOW.GUI:Create("SFX-Info")
-	teamDescriptionLabel:SetLabel("Description")
-	teamDescriptionLabel:SetDisabled(false)
-	teamDescriptionLabel:SetText(teamData.description)
-	teamDescriptionLabel:SetCallback("OnEnter", function(self)
-		local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT")
-		GOW.tooltip = tooltip
-		
-		tooltip:AddHeader('|cffffcc00Team Description')
-		local line = tooltip:AddLine()
-		tooltip:SetCell(line, 1, teamData.description, "LEFT", 1, nil, 0, 0, 300, 50)
-		tooltip:SmartAnchorTo(self.frame)
-		tooltip:Show()
-	end)
-	teamDescriptionLabel:SetCallback("OnLeave", function()
-		LibQTip:Release(GOW.tooltip)
-		GOW.tooltip = nil
-	end)
-	itemGroup:AddChild(teamDescriptionLabel)
+	if (teamData.description ~= nil and teamData.description ~= "") then
+		local teamDescriptionLabel = GOW.GUI:Create("SFX-Info")
+		teamDescriptionLabel:SetLabel("Description")
+		teamDescriptionLabel:SetDisabled(false)
+		teamDescriptionLabel:SetText(teamData.description)
+		teamDescriptionLabel:SetCallback("OnEnter", function(self)
+			local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT")
+			GOW.tooltip = tooltip
+			
+			tooltip:AddHeader('|cffffcc00Team Description')
+			local line = tooltip:AddLine()
+			tooltip:SetCell(line, 1, teamData.description, "LEFT", 1, nil, 0, 0, 300, 50)
+			tooltip:SmartAnchorTo(self.frame)
+			tooltip:Show()
+		end)
+		teamDescriptionLabel:SetCallback("OnLeave", function()
+			LibQTip:Release(GOW.tooltip)
+			GOW.tooltip = nil
+		end)
+		itemGroup:AddChild(teamDescriptionLabel)
+	end
 
 	local membersLabel = GOW.GUI:Create("SFX-Info")
 	membersLabel:SetLabel("Members")
@@ -1709,7 +1719,6 @@ function Core:GetGuildKey()
 	return guildKey
 end
 
-local rosterUpdates = 0
 local isEventAttendancesInitialProcessStarted = false
 
 function Core:SetRosterInfo()
@@ -1719,9 +1728,7 @@ function Core:SetRosterInfo()
 		local guildKey = Core:GetGuildKey()
 
 		if (guildKey) then
-			rosterUpdates = rosterUpdates + 1
-
-			if (rosterUpdates >= 3 and not isEventAttendancesInitialProcessStarted and ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
+			if (not isEventAttendancesInitialProcessStarted and ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
 				isEventAttendancesInitialProcessStarted = true
 				Core:Debug("Event attendance initial process started!")
 

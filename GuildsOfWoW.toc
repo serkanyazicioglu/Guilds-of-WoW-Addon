@@ -1,10 +1,9 @@
-## Interface: 90002
+## Interface: 100000
 ## Title: Guilds of WoW
 ## Notes: Guilds of WoW guild herald
 ## X-Website: https://guildsofwow.com
-## X-Curse-Project-ID: 432144
 ## Author: Nhea
-## Version: 0.5.15
+## Version: 1.1.0
 ## SavedVariables: GoWDB
 
 embed.xml
