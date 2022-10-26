@@ -12,14 +12,20 @@ local ns = select(2, ...)
 local Core = {}
 local f = CreateFrame("Frame")
 f:RegisterEvent("PLAYER_LOGIN")
+f:RegisterEvent("PLAYER_ENTERING_WORLD")
+f:RegisterEvent("FIRST_FRAME_RENDERED")
 f:RegisterEvent("GUILD_ROSTER_UPDATE")
+f:RegisterEvent("FRIENDLIST_UPDATE")
+f:RegisterEvent("CALENDAR_UPDATE_GUILD_EVENTS")
+f:RegisterEvent("CALENDAR_UPDATE_EVENT_LIST")
 f:RegisterEvent("CALENDAR_NEW_EVENT")
 f:RegisterEvent("CALENDAR_UPDATE_EVENT")
-f:RegisterEvent("CALENDAR_UPDATE_GUILD_EVENTS")
+f:RegisterEvent("CALENDAR_UPDATE_INVITE_LIST")
 f:RegisterEvent("CALENDAR_OPEN_EVENT")
 f:RegisterEvent("CALENDAR_CLOSE_EVENT")
-f:RegisterEvent("FRIENDLIST_UPDATE")
-f:RegisterEvent("CALENDAR_UPDATE_INVITE_LIST")
+
+local isInitialLogin = false
+local isReloadingUi = false
 local isProcessing = false
 local isPropogatingUpdate = false
 local containerFrame = {}
@@ -38,7 +44,7 @@ local processedEvents = nil
 local isEventProcessCompleted = false
 local isNewEventBeingCreated = false
 local isProcessedEventsPrinted = false
-
+local isCalendarOpened = false
 local recruitmentCharacter = nil
 local recruitmenNotes = nil
 
@@ -365,8 +371,39 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 
 		currentCharName = name
 		currentCharRealm = realm
+	elseif event == "PLAYER_ENTERING_WORLD" then
+		isInitialLogin = arg1
+		isReloadingUi = arg2
+
+		Core:Debug(tostring(arg1))
+		Core:Debug(tostring(arg2))
+	elseif event == "FIRST_FRAME_RENDERED" then
+		isCalendarOpened = true
+
+		if (isInitialLogin) then
+			Core:Debug("Opening Calendar")
+			C_Calendar.OpenCalendar()
+		else
+			Core:Debug("Triggering event invites for reload")
+			Core:InitializeEventInvites()
+		end
+		--C_Calendar.GetNumDayEvents(0, 1)
+		--workQueue:addTask(function() Core:Debug("Opening Calendar") C_Calendar.OpenCalendar() C_Calendar.GetNumDayEvents(0, 1) C_Calendar.GetGuildEventInfo(0) end, nil, 30)
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		Core:SetRosterInfo()
+	elseif event == "CALENDAR_UPDATE_EVENT_LIST" then
+		--f:UnregisterEvent("CALENDAR_UPDATE_EVENT_LIST")
+		Core:InitializeEventInvites()
+	elseif event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" or event == "CALENDAR_UPDATE_GUILD_EVENTS" then
+
+		if (event == "CALENDAR_UPDATE_GUILD_EVENTS") then
+			--f:UnregisterEvent("CALENDAR_UPDATE_GUILD_EVENTS")
+			Core:InitializeEventInvites()
+		end
+
+		if (isPropogatingUpdate == false and selectedTab == "events") then
+			persistentWorkQueue:addTask(function() isPropogatingUpdate = true Core:CreateUpcomingEvents() end, nil, 2)
+		end
 	elseif event == "CALENDAR_OPEN_EVENT" then
 		if (C_Calendar.IsEventOpen()) then
 			local eventInfo = C_Calendar.GetEventInfo()
@@ -398,10 +435,6 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 		else
 			Core:Debug("Event is not open!")
 			workQueue:addTask(function() Core:Debug("Checking attendances") Core:CheckEventInvites() end, nil, 10)
-		end
-	elseif event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" or event == "CALENDAR_UPDATE_GUILD_EVENTS" then
-		if (isPropogatingUpdate == false and selectedTab == "events") then
-			persistentWorkQueue:addTask(function() isPropogatingUpdate = true Core:CreateUpcomingEvents() end, nil, 2)
 		end
 	elseif event == "CALENDAR_CLOSE_EVENT" then
 		isNewEventBeingCreated = false
@@ -650,14 +683,14 @@ function Core:searchForEvent(event)
 
 	local numDayEvents = C_Calendar.GetNumDayEvents(monthIndex, event.day)
 
-	--Core:Debug("events found: " .. numDayEvents .. " : " .. event.day .. "/" .. event.month .. "/" .. event.year)
+	Core:Debug("Searching: " .. event.titleWithKey ..  ". Found: " .. numDayEvents .. " : " .. event.day .. "/" .. event.month .. "/" .. event.year)
 
 	if (numDayEvents > 0) then
 		for i=1, numDayEvents do
 			local dayEvent = C_Calendar.GetDayEvent(monthIndex, event.day, i)
-			
+
 			if (dayEvent.calendarType == "GUILD_EVENT" or dayEvent.calendarType == "PLAYER") then
-				--Core:Debug("dayEvent: " .. dayEvent.title)
+				Core:Debug("dayEvent: " .. dayEvent.title .. " - " .. dayEvent.calendarType)
 
 				if (string.match(dayEvent.title, "*" .. event.eventKey)) then
 					return i
@@ -1719,8 +1752,6 @@ function Core:GetGuildKey()
 	return guildKey
 end
 
-local isEventAttendancesInitialProcessStarted = false
-
 function Core:SetRosterInfo()
 	local numTotalMembers, numOnlineMaxLevelMembers, numOnlineMembers = GetNumGuildMembers();
 
@@ -1728,14 +1759,6 @@ function Core:SetRosterInfo()
 		local guildKey = Core:GetGuildKey()
 
 		if (guildKey) then
-			if (not isEventAttendancesInitialProcessStarted and ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
-				isEventAttendancesInitialProcessStarted = true
-				Core:Debug("Event attendance initial process started!")
-
-				GOW.DB.profile.guilds[guildKey].events = { }
-				Core:CheckEventInvites()
-			end
-
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime()
 			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD()
 			GOW.DB.profile.guilds[guildKey].roster = { }
@@ -1752,6 +1775,21 @@ function Core:SetRosterInfo()
 					}
 				end
 			end
+		end
+	end
+end
+
+local isEventAttendancesInitialProcessStarted = false
+function Core:InitializeEventInvites()
+	if (isCalendarOpened) then
+		local guildKey = Core:GetGuildKey()
+
+		if (guildKey and not isEventAttendancesInitialProcessStarted and ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
+			isEventAttendancesInitialProcessStarted = true
+			Core:Debug("Event attendance initial process started!")
+			
+			GOW.DB.profile.guilds[guildKey].events = { }
+			Core:CheckEventInvites()
 		end
 	end
 end
