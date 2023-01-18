@@ -417,6 +417,16 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title)
 
 					if (upcomingEvent ~= nil) then
+						if (eventInfo.isLocked) then
+							if (not upcomingEvent.isLocked) then
+								C_Calendar.EventClearLocked()
+							end
+						else
+							if (upcomingEvent.isLocked) then
+								C_Calendar.EventSetLocked()
+							end
+						end
+
 						if (eventInfo.calendarType == "PLAYER") then
 							--processedEvents:remove(upcomingEvent.titleWithKey)
 							Core:CreateEventInvites(upcomingEvent, not isEventProcessCompleted)
@@ -455,7 +465,7 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 				else
 					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title)
 					if (upcomingEvent ~= nil) then
-						processedEvents:remove(eventInfo.title)
+						--processedEvents:remove(eventInfo.title)
 						Core:SetAttendance(upcomingEvent, false)
 					end
 				end
@@ -1469,11 +1479,6 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 end
 
 function Core:SetAttendance(upcomingEvent, closeAfterEnd)
-	if (processedEvents:contains(upcomingEvent.titleWithKey)) then
-		Core:Debug("Processed queue contains event!")
-		return false
-	end
-
 	local canSendInvite = C_Calendar.EventCanEdit()
 	if (canSendInvite) then
 		local invitesNum = C_Calendar.GetNumInvites()
@@ -1507,7 +1512,7 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 				attendanceIndex = attendanceIndex + 1
 			end
 			
-			if (upcomingEvent.calendarType == 2) then
+			if (not processedEvents:contains(upcomingEvent.titleWithKey) and upcomingEvent.calendarType == 2) then
 				local isInvitationChanged = Core:SetAttendanceValues(upcomingEvent, inviteInfo, a)
 				if (isInvitationChanged) then
 					Core:Debug("Invitation changed")
