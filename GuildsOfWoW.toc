@@ -1,9 +1,9 @@
-## Interface: 100002
+## Interface: 100005
 ## Title: Guilds of WoW
 ## Notes: Guilds of WoW guild herald
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 1.1.4
+## Version: 1.1.5
 ## SavedVariables: GoWDB
 
 embed.xml
