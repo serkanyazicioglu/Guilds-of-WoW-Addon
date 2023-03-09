@@ -1767,7 +1767,14 @@ function Core:SetRosterInfo()
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime()
 			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD()
 			GOW.DB.profile.guilds[guildKey].roster = { }
+			GOW.DB.profile.guilds[guildKey].keystones = nil
+			GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = nil
 
+			if (IsAddOnLoaded("AstralKeys") and AstralKeys) then
+				GOW.DB.profile.guilds[guildKey].keystones = { }
+				GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = GetServerTime()
+			end
+			
 			for i=1, numTotalMembers do
 				local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, isSoREligible, standingID, guid = GetGuildRosterInfo(i);
 				if (name) then
@@ -1778,6 +1785,23 @@ function Core:SetRosterInfo()
 						rankIndex = rankIndex,
 						officerNote = officernote
 					}
+
+					keystoneLevel = nil
+					keystoneMapId = nil
+
+					if (IsAddOnLoaded("AstralKeys") and AstralKeys) then
+						if (level >= _G['AstralEngine'].EXPANSION_LEVEL) then
+							keystoneLevel = _G['AstralEngine'].GetCharacterKeyLevel(name);
+							keystoneMapId = _G['AstralEngine'].GetCharacterMapID(name);
+						end
+					end
+
+					if (keystoneLevel and keystoneMapId) then
+						GOW.DB.profile.guilds[guildKey].keystones[name] = {
+							keystoneLevel = keystoneLevel,
+							keystoneMapId = keystoneMapId
+						}
+					end
 				end
 			end
 		end
