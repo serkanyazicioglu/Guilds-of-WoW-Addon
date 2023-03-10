@@ -3,7 +3,7 @@
 ## Notes: Guilds of WoW guild herald
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 1.1.6
+## Version: 1.2.0
 ## SavedVariables: GoWDB
 ## OptionalDeps: AstralKeys
 

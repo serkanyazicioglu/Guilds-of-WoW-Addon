@@ -1,5 +1,6 @@
 local ADDON_NAME = "GuildsOfWoW"
 local GOW = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME)
+local openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0")
 GuildsOfWow = GOW
 
 local enableDebugging = false
@@ -387,6 +388,8 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 			Core:Debug("Triggering event invites for reload")
 			Core:InitializeEventInvites()
 		end
+
+		openRaidLib.RequestKeystoneDataFromGuild();
 		--C_Calendar.GetNumDayEvents(0, 1)
 		--workQueue:addTask(function() Core:Debug("Opening Calendar") C_Calendar.OpenCalendar() C_Calendar.GetNumDayEvents(0, 1) C_Calendar.GetGuildEventInfo(0) end, nil, 30)
 	elseif event == "GUILD_ROSTER_UPDATE" then
@@ -1767,14 +1770,12 @@ function Core:SetRosterInfo()
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime()
 			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD()
 			GOW.DB.profile.guilds[guildKey].roster = { }
-			GOW.DB.profile.guilds[guildKey].keystones = nil
-			GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = nil
+			GOW.DB.profile.guilds[guildKey].keystones = { }
+			GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = nil		
 
-			if (IsAddOnLoaded("AstralKeys") and AstralKeys) then
-				GOW.DB.profile.guilds[guildKey].keystones = { }
-				GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = GetServerTime()
-			end
-			
+			local keystoneData = openRaidLib.GetAllKeystonesInfo()			
+			local anyKeystoneFound = false;
+
 			for i=1, numTotalMembers do
 				local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, isSoREligible, standingID, guid = GetGuildRosterInfo(i);
 				if (name) then
@@ -1796,13 +1797,38 @@ function Core:SetRosterInfo()
 						end
 					end
 
+					if (openRaidLib and keystoneData) then
+						if (keystoneData) then
+							for unitName, keystoneInfo in pairs(keystoneData) do
+								if (keystoneInfo.level > 0) then
+									local unitNameToCheck = unitName;
+				
+									if (not string.match(unitNameToCheck, "-")) then
+										unitNameToCheck = unitNameToCheck .. "-" .. GetNormalizedRealmName()
+									end
+				
+									if (unitNameToCheck == name) then
+										keystoneLevel = keystoneInfo.level;
+										keystoneMapId = keystoneInfo.challengeMapID;
+									end
+								end
+							end
+						end
+					end
+
 					if (keystoneLevel and keystoneMapId) then
 						GOW.DB.profile.guilds[guildKey].keystones[name] = {
 							keystoneLevel = keystoneLevel,
 							keystoneMapId = keystoneMapId
 						}
+
+						anyKeystoneFound = true;
 					end
 				end
+			end
+
+			if (anyKeystoneFound) then
+				GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = GetServerTime()
 			end
 		end
 	end

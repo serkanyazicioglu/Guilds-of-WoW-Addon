@@ -11,6 +11,7 @@
 	<Include file="libs\AceEvent-3.0\AceEvent-3.0.xml" />
 
 	<Include file="libs\AceGUI-3.0_SFX-Widgets\AceGUI-3.0_SFX-Widgets.xml" />
+	<Include file="libs\LibOpenRaid\lib.xml" />
 
 	<Script file="libs\LibStub\LibStub.lua" />
 	<Include file="libs\lib-st\lib-st.xml" />
