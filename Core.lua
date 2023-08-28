@@ -1,6 +1,17 @@
 local ADDON_NAME = "GuildsOfWoW"
 local GOW = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME)
-local openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0")
+
+local versionString, revision, launchDate, gameVersion = GetBuildInfo()
+
+local isRetail = function()
+	if (gameVersion >= 100000) then
+		return true
+	end
+end
+local openRaidLib = nil
+if (isRetail()) then
+	openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0")
+end
 GuildsOfWow = GOW
 
 local enableDebugging = false
@@ -99,7 +110,7 @@ function GOW:OnInitialize()
 		type = "data source",
 		label = "Guilds of WoW",
 		text = "Guilds of WoW",
-		icon = "Interface\\Icons\\vas_guildfactionchange",
+		icon = "Interface\\Addons\\GuildsOfWoW\\icons\\VAS_GuildFactionChange.tga",
 		OnTooltipShow = function(tooltip)
 			tooltip:SetText("Guilds of WoW")
 			tooltip:Show()
@@ -389,7 +400,9 @@ f:SetScript("OnEvent", function(self,event, arg1, arg2)
 			Core:InitializeEventInvites()
 		end
 
-		openRaidLib.RequestKeystoneDataFromGuild();
+		if (openRaidLib) then
+			openRaidLib.RequestKeystoneDataFromGuild();
+		end
 		--C_Calendar.GetNumDayEvents(0, 1)
 		--workQueue:addTask(function() Core:Debug("Opening Calendar") C_Calendar.OpenCalendar() C_Calendar.GetNumDayEvents(0, 1) C_Calendar.GetGuildEventInfo(0) end, nil, 30)
 	elseif event == "GUILD_ROSTER_UPDATE" then
@@ -1773,7 +1786,11 @@ function Core:SetRosterInfo()
 			GOW.DB.profile.guilds[guildKey].keystones = { }
 			GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = nil		
 
-			local keystoneData = openRaidLib.GetAllKeystonesInfo()			
+			local keystoneData = nil;
+			
+			if (openRaidLib) then
+				keystoneData = openRaidLib.GetAllKeystonesInfo();	
+			end
 			local anyKeystoneFound = false;
 
 			for i=1, numTotalMembers do
