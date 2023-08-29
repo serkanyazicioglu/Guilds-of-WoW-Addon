@@ -1,6 +1,6 @@
 ## Interface: 100105
 ## Title: Guilds of WoW
-## Notes: Guilds of WoW guild herald
+## Notes: Guilds of WoW guild herald for Retail World of Warcraft
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
 ## Version: 1.2.4
