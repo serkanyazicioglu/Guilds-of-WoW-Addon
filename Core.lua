@@ -8,6 +8,17 @@ local isRetail = function()
 		return true
 	end
 end
+
+function GetCurrentRegionByGameVersion()
+	local regionId = GetCurrentRegion();
+
+	if (isRetail()) then
+		return regionId;
+	else
+		return tonumber("4" .. tostring(regionId));
+	end
+end
+
 local openRaidLib = nil
 if (isRetail()) then
 	openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0")
@@ -561,7 +572,7 @@ function Core:CreateUpcomingEvents()
 			realmName = GetNormalizedRealmName()
 		end
 
-		local regionId = GetCurrentRegion()
+		local regionId = GetCurrentRegionByGameVersion();
 
 		local hasAnyData = false
 
@@ -615,7 +626,7 @@ function Core:CreateTeams()
 			realmName = GetNormalizedRealmName()
 		end
 
-		local regionId = GetCurrentRegion()
+		local regionId = GetCurrentRegionByGameVersion();
 
 		local hasAnyData = false
 
@@ -671,7 +682,7 @@ function Core:CreateRecruitmentApplications()
 			realmName = GetNormalizedRealmName()
 		end
 
-		local regionId = GetCurrentRegion()
+		local regionId = GetCurrentRegionByGameVersion();
 
 		local hasAnyData = false
 
@@ -1335,7 +1346,7 @@ function Core:CheckEventInvites()
 				realmName = GetNormalizedRealmName()
 			end
 
-			local regionId = GetCurrentRegion()
+			local regionId = GetCurrentRegionByGameVersion();
 
 			Core:Debug("Guild name: " .. guildName .. ". Region id: " .. regionId)
 
@@ -1407,7 +1418,7 @@ function Core:FindUpcomingEventFromName(eventTitle)
 			realmName = GetNormalizedRealmName()
 		end
 
-		local regionId = GetCurrentRegion()
+		local regionId = GetCurrentRegionByGameVersion();
 
 		for i=1, ns.UPCOMING_EVENTS.totalEvents do
 			local upcomingEvent = ns.UPCOMING_EVENTS.events[i]
@@ -1758,7 +1769,7 @@ function Core:GetGuildKey()
 		realmName = GetNormalizedRealmName()
 	end
 
-	local regionId = GetCurrentRegion()
+	local regionId = GetCurrentRegionByGameVersion();
 
 	local guildKey = guildName .. "-" .. regionId .. "-"  .. realmName
 
