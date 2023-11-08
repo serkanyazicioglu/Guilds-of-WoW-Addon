@@ -1,9 +1,9 @@
-## Interface: 100107
+## Interface: 100200
 ## Title: Guilds of WoW
 ## Notes: Guilds of WoW guild herald for Retail World of Warcraft
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 1.2.6
+## Version: 1.2.7
 ## SavedVariables: GoWDB
 ## OptionalDeps: AstralKeys
 ## IconTexture: Interface\Icons\vas_guildfactionchange
