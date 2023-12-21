@@ -1,12 +1,10 @@
-## Interface: 100200
+## Interface: 30403
 ## Title: Guilds of WoW
-## Notes: Guilds of WoW guild herald for retail World of Warcraft
+## Notes: Guilds of WoW guild herald for Classic Progression servers
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
 ## Version: 1.2.8
 ## SavedVariables: GoWDB
-## OptionalDeps: AstralKeys
-## IconTexture: Interface\Icons\vas_guildfactionchange
 
 embed.xml
 

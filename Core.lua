@@ -3,24 +3,30 @@ local GOW = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME)
 
 local versionString, revision, launchDate, gameVersion = GetBuildInfo()
 
-local isRetail = function()
+local getGowGameVersionId = function()
 	if (gameVersion >= 100000) then
-		return true
+		return 1;
+	elseif (gameVersion >= 30000) then
+		return 3;
+	else
+		return 2;
 	end
 end
 
 function GetCurrentRegionByGameVersion()
 	local regionId = GetCurrentRegion();
 
-	if (isRetail()) then
-		return regionId;
-	else
+	if (getGowGameVersionId() == 3) then
 		return tonumber("4" .. tostring(regionId));
+	elseif (getGowGameVersionId() == 2) then
+		return tonumber("8" .. tostring(regionId));
 	end
+
+	return regionId;
 end
 
 local openRaidLib = nil
-if (isRetail()) then
+if (getGowGameVersionId() == 1) then
 	openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0")
 end
 GuildsOfWow = GOW
