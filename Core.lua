@@ -1780,6 +1780,7 @@ function Core:SetRosterInfo()
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime()
 			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD()
 			GOW.DB.profile.guilds[guildKey].roster = { }
+			GOW.DB.profile.guilds[guildKey].ranks = { }
 			GOW.DB.profile.guilds[guildKey].keystones = { }
 			GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = nil;
 
@@ -1843,6 +1844,19 @@ function Core:SetRosterInfo()
 
 			if (anyKeystoneFound) then
 				GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = GetServerTime()
+			end
+
+			local numTotalRanks = GuildControlGetNumRanks();
+
+			for i=1, numTotalRanks do
+				local rankName = GuildControlGetRankName(i);
+
+				if (rankName) then
+					GOW.DB.profile.guilds[guildKey].ranks[i] = {
+						index = i,
+						name = rankName
+					}
+				end
 			end
 		end
 	end
