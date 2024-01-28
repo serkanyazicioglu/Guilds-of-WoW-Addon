@@ -21,6 +21,7 @@ local CONST_COOLDOWN_TYPE_INTERRUPT = 6
 local CONST_COOLDOWN_TYPE_ITEMHEAL = 10
 local CONST_COOLDOWN_TYPE_ITEMPOWER = 11
 local CONST_COOLDOWN_TYPE_ITEMUTIL = 12
+local CONST_COOLDOWN_TYPE_CROWDCONTROL = 8
 
 --hold spellIds and which custom caches the spell is in
 --map[spellId] = map[filterName] = true
@@ -185,6 +186,7 @@ local filterStringToCooldownType = {
     ["itemutil"] = CONST_COOLDOWN_TYPE_ITEMUTIL,
     ["itemheal"] = CONST_COOLDOWN_TYPE_ITEMHEAL,
     ["itempower"] = CONST_COOLDOWN_TYPE_ITEMPOWER,
+    ["crowdcontrol"] = CONST_COOLDOWN_TYPE_CROWDCONTROL,
 }
 
 local filterStringToCooldownTypeReverse = {
@@ -197,6 +199,7 @@ local filterStringToCooldownTypeReverse = {
     [CONST_COOLDOWN_TYPE_ITEMUTIL]  = "itemutil",
     [CONST_COOLDOWN_TYPE_ITEMHEAL] = "itemheal",
     [CONST_COOLDOWN_TYPE_ITEMPOWER] = "itempower",
+    [CONST_COOLDOWN_TYPE_CROWDCONTROL] = "crowdcontrol",
 }
 
 local removeSpellFromCustomFilterCache = function(spellId, filterName)
@@ -440,6 +443,26 @@ function openRaidLib.GetFoodTierFromAura(auraInfo)
     return nil
 end
 
+local isTierPiece = function(itemLink)
+    local tooltipData = C_TooltipInfo.GetHyperlink(itemLink)
+    if (tooltipData) then
+        local lines = tooltipData.lines
+        if (lines and #lines > 0) then
+            for i = 1, #lines do
+                local thisLine = lines[i]
+                local leftText = thisLine.leftText
+                if (type(leftText) == "string") then
+                    if (leftText:match( "%s%(%d%/5%)$" )) then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+
+    return false
+end
+
 --called from AddUnitGearList() on LibOpenRaid file
 function openRaidLib.GearManager.BuildEquipmentItemLinks(equippedGearList)
     equippedGearList = equippedGearList or {} --nil table for older versions
@@ -482,6 +505,7 @@ function openRaidLib.GearManager.BuildEquipmentItemLinks(equippedGearList)
                     equipmentTable.itemQuality = itemQuality
                     equipmentTable.itemId = itemId
                     equipmentTable.itemName = itemName
+                    equipmentTable.isTier = isTierPiece(itemLink)
 
                     local _, _, enchantId, gemId1, gemId2, gemId3, gemId4, suffixId, uniqueId, levelOfTheItem, specId, upgradeInfo, instanceDifficultyId, numBonusIds, restLink = strsplit(":", itemLink)
 
