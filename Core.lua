@@ -73,19 +73,11 @@ local containerScrollFrame = {};
 local workQueue = nil;
 local persistentWorkQueue = nil;
 
-local currentMultiInvitingEvent = nil;
 local processedEvents = nil;
 local isEventProcessCompleted = false;
 local isNewEventBeingCreated = false;
 local isProcessedEventsPrinted = false;
 local isCalendarOpened = false;
-local recruitmentCharacter = nil;
-local recruitmenNotes = nil;
-
-local invitingToPartyEvent = nil;
-local invitingToPartyTeam = nil;
-
-local copyText = "";
 
 local selectedTab = "events";
 local tabs = {
@@ -180,16 +172,15 @@ function GOW:OnInitialize()
 		text = "Are you sure you want to create this event on in-game calendar?",
 		button1 = ACCEPT,
 		button2 = CANCEL,
-		OnAccept = function()
+		OnAccept = function(self, data)
 			isNewEventBeingCreated = true;
 			C_Calendar.AddEvent();
-			if (currentMultiInvitingEvent ~= nil and currentMultiInvitingEvent.isManualInvite) then
-				Core:InviteMultiplePeopleToEvent();
+			if (data and data.isManualInvite) then
+				Core:InviteMultiplePeopleToEvent(data);
 			end
 			Core:DialogClosed();
 		end,
 		OnCancel = function()
-			currentMultiInvitingEvent = nil;
 			Core:DialogClosed();
 			C_Calendar.CloseEvent();
 		end,
@@ -205,20 +196,17 @@ function GOW:OnInitialize()
 		"Are you sure you want to create this guild event on in-game calendar? (Note: Guild events RSVP integration only works single direction which is from WoW to GoW.)",
 		button1 = ACCEPT,
 		button2 = CANCEL,
-		OnAccept = function()
+		OnAccept = function(self, data)
 			isNewEventBeingCreated = true;
 			C_Calendar.AddEvent();
-			if (currentMultiInvitingEvent ~= nil) then
-				if (currentMultiInvitingEvent.isManualInvite) then
-					Core:InviteMultiplePeopleToEvent();
-				else
-					Core:EventAttendanceProcessCompleted(currentMultiInvitingEvent, true);
-				end
+			if (data.isManualInvite) then
+				Core:InviteMultiplePeopleToEvent(data);
+			else
+				Core:EventAttendanceProcessCompleted(data, true);
 			end
 			Core:DialogClosed();
 		end,
 		OnCancel = function()
-			currentMultiInvitingEvent = nil;
 			Core:DialogClosed();
 			C_Calendar.CloseEvent();
 		end,
@@ -233,13 +221,11 @@ function GOW:OnInitialize()
 		text = "Are you sure you want to invite %s to your guild?",
 		button1 = ACCEPT,
 		button2 = CANCEL,
-		OnAccept = function()
-			GuildInvite(recruitmentCharacter);
-			recruitmentCharacter = nil;
+		OnAccept = function(self, data)
+			GuildInvite(data);
 			Core:DialogClosed();
 		end,
 		OnCancel = function()
-			recruitmentCharacter = nil;
 			Core:DialogClosed();
 		end,
 		timeout = 0,
@@ -250,16 +236,14 @@ function GOW:OnInitialize()
 	};
 
 	StaticPopupDialogs["CONFIRM_ADD_FRIEND"] = {
-		text = "Are you sure you want to add %s to your friend list?",
+		text = ADD_CHARACTER_FRIEND,
 		button1 = ACCEPT,
 		button2 = CANCEL,
-		OnAccept = function()
-			C_FriendList.AddFriend(recruitmentCharacter, recruitmenNotes);
-			recruitmentCharacter = nil;
+		OnAccept = function(self, data)
+			C_FriendList.AddFriend(data, "Guilds of WoW recruitment");
 			Core:DialogClosed();
 		end,
 		OnCancel = function()
-			recruitmentCharacter = nil;
 			Core:DialogClosed();
 		end,
 		timeout = 0,
@@ -273,17 +257,14 @@ function GOW:OnInitialize()
 		text                   = "Type your message",
 		button1                = "Send",
 		button2                = CANCEL,
-		OnAccept               = function(self, data, data2)
+		OnAccept               = function(self, data)
 			local text = self.editBox:GetText();
-
 			if (text ~= nil and text ~= "") then
-				SendChatMessage(text, "WHISPER", nil, recruitmentCharacter);
-				recruitmentCharacter = nil;
+				SendChatMessage(text, "WHISPER", nil, data);
 				Core:DialogClosed();
 			end
 		end,
 		OnCancel               = function()
-			recruitmentCharacter = nil;
 			Core:DialogClosed();
 		end,
 		EditBoxOnEscapePressed = StaticPopup_StandardEditBoxOnEscapePressed,
@@ -300,7 +281,7 @@ function GOW:OnInitialize()
 		text                   = "Select & copy following text",
 		button1                = DONE,
 		OnShow                 = function(self, data)
-			self.editBox:SetText(copyText);
+			self.editBox:SetText(data);
 			self.editBox:HighlightText();
 			self.editBox:SetFocus();
 		end,
@@ -320,13 +301,11 @@ function GOW:OnInitialize()
 		text = "Are you sure you want to invite %s member(s) to your party?",
 		button1 = ACCEPT,
 		button2 = CANCEL,
-		OnAccept = function()
-			Core:InviteAllToParty(invitingToPartyEvent);
-			invitingToPartyEvent = nil;
+		OnAccept = function(self, data)
+			Core:InviteAllToParty(data);
 			Core:DialogClosed();
 		end,
 		OnCancel = function()
-			invitingToPartyEvent = nil;
 			Core:DialogClosed();
 		end,
 		timeout = 0,
@@ -340,13 +319,11 @@ function GOW:OnInitialize()
 		text = "Are you sure you want to invite %s member(s) to your party?",
 		button1 = ACCEPT,
 		button2 = CANCEL,
-		OnAccept = function()
-			Core:InviteAllTeamMembersToParty(invitingToPartyTeam);
-			invitingToPartyTeam = nil;
+		OnAccept = function(self, data)
+			Core:InviteAllTeamMembersToParty(data);
 			Core:DialogClosed();
 		end,
 		OnCancel = function()
-			invitingToPartyTeam = nil;
 			Core:DialogClosed();
 		end,
 		timeout = 0,
@@ -538,7 +515,7 @@ function Core:ToggleWindow()
 	if (containerFrame:IsShown()) then
 		containerFrame:Hide();
 	else
-		Core:RefreshApplication()
+		Core:RefreshApplication();
 		containerFrame:Show();
 	end
 end
@@ -996,8 +973,7 @@ function Core:AppendCalendarList(event)
 	copyLinkButton:SetText("Copy Link");
 	copyLinkButton:SetWidth(100);
 	copyLinkButton:SetCallback("OnClick", function()
-		copyText = event.webUrl;
-		Core:OpenDialog("COPY_TEXT");
+		Core:OpenDialogWithData("COPY_TEXT", nil, nil, event.webUrl);
 	end);
 	buttonsGroup:AddChild(copyLinkButton);
 
@@ -1006,8 +982,7 @@ function Core:AppendCalendarList(event)
 		copyKeyButton:SetText("Copy Key");
 		copyKeyButton:SetWidth(100);
 		copyKeyButton:SetCallback("OnClick", function()
-			copyText = event.eventKey;
-			Core:OpenDialog("COPY_TEXT");
+			Core:OpenDialogWithData("COPY_TEXT", nil, nil, event.eventKey);
 		end);
 
 		copyKeyButton:SetCallback("OnEnter", function(self)
@@ -1082,8 +1057,7 @@ function Core:AppendTeam(teamData)
 	copyButton:SetText("Copy Link");
 	copyButton:SetWidth(100);
 	copyButton:SetCallback("OnClick", function()
-		copyText = teamData.webUrl;
-		Core:OpenDialog("COPY_TEXT");
+		Core:OpenDialogWithData("COPY_TEXT", nil, nil, teamData.webUrl);
 	end);
 	buttonsGroup:AddChild(copyButton);
 
@@ -1165,12 +1139,15 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	buttonsGroup:SetLayout("Flow");
 	buttonsGroup:SetFullWidth(true);
 
+	local recruitmentApplicationInviteLink = recruitmentApplication.title ..
+		"-" .. recruitmentApplication.realmNormalized;
+
 	local inviteToGuildButton = GOW.GUI:Create("Button");
 	inviteToGuildButton:SetText("Invite to Guild");
 	inviteToGuildButton:SetWidth(140);
 	inviteToGuildButton:SetCallback("OnClick", function()
-		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmNormalized;
-		Core:OpenDialog("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.title);
+		Core:OpenDialogWithData("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.title, nil,
+			recruitmentApplicationInviteLink);
 	end);
 	buttonsGroup:AddChild(inviteToGuildButton);
 
@@ -1178,7 +1155,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	inviteToPartyButton:SetText("Invite to Party");
 	inviteToPartyButton:SetWidth(140);
 	inviteToPartyButton:SetCallback("OnClick", function()
-		C_PartyInfo.InviteUnit(recruitmentApplication.title .. "-" .. recruitmentApplication.realmNormalized);
+		C_PartyInfo.InviteUnit(recruitmentApplicationInviteLink);
 	end);
 	buttonsGroup:AddChild(inviteToPartyButton);
 
@@ -1193,9 +1170,8 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	end
 
 	addFriendButton:SetCallback("OnClick", function()
-		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmNormalized;
-		recruitmenNotes = "Guilds of WoW recruitment";
-		Core:OpenDialog("CONFIRM_ADD_FRIEND", recruitmentApplication.title);
+		Core:OpenDialogWithData("CONFIRM_ADD_FRIEND", recruitmentApplication.title, nil,
+			recruitmentApplicationInviteLink);
 	end);
 	buttonsGroup:AddChild(addFriendButton);
 	itemGroup:AddChild(buttonsGroup);
@@ -1208,8 +1184,8 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	whisperButton:SetText("Whisper");
 	whisperButton:SetWidth(140);
 	whisperButton:SetCallback("OnClick", function()
-		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmNormalized;
-		Core:OpenDialog("WHISPER_PLAYER");
+		Core:OpenDialogWithData("WHISPER_PLAYER", nil, nil,
+			recruitmentApplicationInviteLink);
 	end);
 	buttonsGroup2:AddChild(whisperButton);
 
@@ -1217,9 +1193,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	copyButton:SetText("Copy Link");
 	copyButton:SetWidth(140);
 	copyButton:SetCallback("OnClick", function()
-		recruitmentCharacter = recruitmentApplication.title .. "-" .. recruitmentApplication.realmNormalized;
-		copyText = recruitmentApplication.webUrl;
-		Core:OpenDialog("COPY_TEXT");
+		Core:OpenDialogWithData("COPY_TEXT", nil, nil, recruitmentApplication.webUrl);
 	end);
 	buttonsGroup2:AddChild(copyButton);
 
@@ -1232,8 +1206,12 @@ function Core:OpenDialog(dialogName)
 	StaticPopup_Show(dialogName);
 end
 
-function Core:OpenDialog(dialogName, parameterStr)
+function Core:OpenDialogWithParams(dialogName, parameterStr)
 	StaticPopup_Show(dialogName, parameterStr);
+end
+
+function Core:OpenDialogWithData(dialogName, param1, param2, data)
+	StaticPopup_Show(dialogName, param1, param2, data);
 end
 
 function Core:DialogClosed()
@@ -1273,55 +1251,47 @@ function Core:CreateCalendarEvent(event)
 		C_Calendar.EventSetTime(event.hour, event.minute);
 		C_Calendar.EventSetDate(event.month, event.day, event.year);
 
-		currentMultiInvitingEvent = nil;
 		if (event.calendarType == 2 and not event.isManualInvite) then
 			C_Calendar.MassInviteGuild(event.minLevel, event.maxLevel, event.maxRank);
-		else
-			currentMultiInvitingEvent = event;
 		end
 
 		if (event.calendarType == 1) then
-			Core:OpenDialog("CONFIRM_GUILD_EVENT_CREATION");
+			Core:OpenDialogWithData("CONFIRM_GUILD_EVENT_CREATION", nil, nil, event);
 		else
-			Core:OpenDialog("CONFIRM_EVENT_CREATION");
+			Core:OpenDialogWithData("CONFIRM_EVENT_CREATION", nil, nil, event);
 		end
 	end
 end
 
-function Core:InviteMultiplePeopleToEvent()
-	if (currentMultiInvitingEvent ~= nil) then
-		local event = currentMultiInvitingEvent;
+function Core:InviteMultiplePeopleToEvent(event)
+	local name, realm = UnitName("player");
 
-		local name, realm = UnitName("player");
+	if (realm == nil) then
+		realm = GetNormalizedRealmName();
+	end
 
-		if (realm == nil) then
-			realm = GetNormalizedRealmName();
-		end
+	local currentPlayer = name .. "-" .. realm;
 
-		local currentPlayer = name .. "-" .. realm;
+	local numInvites = C_Calendar.GetNumInvites();
 
-		local numInvites = C_Calendar.GetNumInvites();
+	if (numInvites < event.totalMembers and numInvites < 100) then
+		Core:PrintMessage(
+			"Event invites are being sent in the background! Please wait for process to complete before logging out.");
 
-		if (numInvites < event.totalMembers and numInvites < 100) then
-			Core:PrintMessage(
-				"Event invites are being sent in the background! Please wait for process to complete before logging out.");
+		for i = 1, event.totalMembers do
+			local currentInviteMember = event.inviteMembers[i];
+			local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized;
 
-			for i = 1, event.totalMembers do
-				local currentInviteMember = event.inviteMembers[i];
-				local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized;
-
-				if (inviteName ~= currentPlayer) then
-					workQueue:addTask(function() C_Calendar.EventInvite(inviteName) end, nil, GOW.consts.INVITE_INTERVAL);
-				end
+			if (inviteName ~= currentPlayer) then
+				workQueue:addTask(function() C_Calendar.EventInvite(inviteName) end, nil, GOW.consts.INVITE_INTERVAL);
 			end
-		else
-			Core:EventAttendanceProcessCompleted(event, true);
 		end
+	else
+		Core:EventAttendanceProcessCompleted(event, true);
 	end
 end
 
 function Core:ClearEventInvites(restartInvites)
-	currentMultiInvitingEvent = nil;
 	workQueue:clearTasks();
 	workQueue = GOW.WorkQueue.new();
 	Core:Debug("Invites are canceled! Restart invites: " .. tostring(restartInvites));
@@ -1702,8 +1672,7 @@ function Core:InviteAllToPartyCheck(event)
 	end
 
 	if (eligibleMembers > 0) then
-		invitingToPartyEvent = event;
-		Core:OpenDialog("CONFIRM_INVITE_TO_PARTY", eligibleMembers);
+		Core:OpenDialogWithData("CONFIRM_INVITE_TO_PARTY", eligibleMembers, nil, event);
 	else
 		Core:OpenDialog("INVITE_TO_PARTY_NOONE_FOUND");
 	end
@@ -1755,8 +1724,7 @@ end
 
 function Core:InviteAllTeamMembersToPartyCheck(teamData)
 	if (teamData.totalMembers > 0) then
-		invitingToPartyTeam = teamData;
-		Core:OpenDialog("CONFIRM_INVITE_TEAM_TO_PARTY", teamData.totalMembers);
+		Core:OpenDialogWithData("CONFIRM_INVITE_TEAM_TO_PARTY", teamData.totalMembers, nil, teamData);
 	else
 		Core:OpenDialog("INVITE_TO_PARTY_NOONE_FOUND");
 	end
@@ -1967,5 +1935,5 @@ end
 
 function Core:GetColoredString(color, msg)
 	local colorString = "|cff";
-	return colorString .. color .. msg .."|r";
+	return colorString .. color .. msg .. "|r";
 end
