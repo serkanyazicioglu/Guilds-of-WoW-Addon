@@ -66,9 +66,9 @@ f:RegisterEvent("CALENDAR_CLOSE_EVENT");
 
 local isInitialLogin = false;
 local isPropogatingUpdate = false;
-local containerFrame = {};
-local containerTabs = {};
-local containerScrollFrame = {};
+local containerFrame = nil;
+local containerTabs = nil;
+local containerScrollFrame = nil;
 local currentOpenDialog = nil;
 
 local workQueue = nil;
@@ -144,6 +144,7 @@ function GOW:OnInitialize()
 	containerFrame = GOW.GUI:Create("Frame");
 	containerFrame:SetLayout("Fill");
 	containerFrame:SetHeight(550);
+	containerFrame.frame:SetFrameStrata("MEDIUM");
 	containerFrame:SetTitle("Guilds of WoW");
 	containerFrame:SetStatusText("Type /gow for quick access");
 	containerFrame:SetCallback("OnClose", function(widget)
@@ -180,6 +181,8 @@ function GOW:OnInitialize()
 		button2 = CANCEL,
 		OnAccept = function(self, data)
 			isNewEventBeingCreated = true;
+			Core:CreateUpcomingEvents();
+
 			C_Calendar.AddEvent();
 			if (data and data.isManualInvite) then
 				Core:InviteMultiplePeopleToEvent(data);
@@ -189,6 +192,9 @@ function GOW:OnInitialize()
 		OnCancel = function()
 			Core:DialogClosed();
 			C_Calendar.CloseEvent();
+		end,
+		OnHide = function()
+			Core:DialogClosed();
 		end,
 		timeout = 0,
 		whileDead = true,
@@ -216,6 +222,9 @@ function GOW:OnInitialize()
 			Core:DialogClosed();
 			C_Calendar.CloseEvent();
 		end,
+		OnHide = function()
+			Core:DialogClosed();
+		end,
 		timeout = 0,
 		whileDead = true,
 		hideOnEscape = true,
@@ -234,6 +243,9 @@ function GOW:OnInitialize()
 		OnCancel = function()
 			Core:DialogClosed();
 		end,
+		OnHide = function()
+			Core:DialogClosed();
+		end,
 		timeout = 0,
 		whileDead = true,
 		hideOnEscape = true,
@@ -250,6 +262,9 @@ function GOW:OnInitialize()
 			Core:DialogClosed();
 		end,
 		OnCancel = function()
+			Core:DialogClosed();
+		end,
+		OnHide = function()
 			Core:DialogClosed();
 		end,
 		timeout = 0,
@@ -273,6 +288,9 @@ function GOW:OnInitialize()
 		OnCancel               = function()
 			Core:DialogClosed();
 		end,
+		OnHide                 = function()
+			Core:DialogClosed();
+		end,
 		EditBoxOnEscapePressed = StaticPopup_StandardEditBoxOnEscapePressed,
 		timeout                = 100,
 		enterClicksFirstButton = 1,
@@ -294,6 +312,9 @@ function GOW:OnInitialize()
 		OnAccept               = function()
 			Core:DialogClosed();
 		end,
+		OnHide                 = function()
+			Core:DialogClosed();
+		end,
 		EditBoxOnEscapePressed = StaticPopup_StandardEditBoxOnEscapePressed,
 		timeout                = 0,
 		whileDead              = 1,
@@ -304,73 +325,88 @@ function GOW:OnInitialize()
 	};
 
 	StaticPopupDialogs["CONFIRM_INVITE_TO_PARTY"] = {
-		text = "Are you sure you want to invite %s member(s) to your party?",
-		button1 = ACCEPT,
-		button2 = CANCEL,
-		OnAccept = function(self, data)
+		text           = "Are you sure you want to invite %s member(s) to your party?",
+		button1        = ACCEPT,
+		button2        = CANCEL,
+		OnAccept       = function(self, data)
 			Core:InviteAllToParty(data);
 			Core:DialogClosed();
 		end,
-		OnCancel = function()
+		OnCancel       = function()
 			Core:DialogClosed();
 		end,
-		timeout = 0,
-		whileDead = true,
-		hideOnEscape = true,
-		exclusive = 1,
+		OnHide         = function()
+			Core:DialogClosed();
+		end,
+		timeout        = 0,
+		whileDead      = true,
+		hideOnEscape   = true,
+		exclusive      = 1,
 		preferredIndex = 1
 	};
 
 	StaticPopupDialogs["CONFIRM_INVITE_TEAM_TO_PARTY"] = {
-		text = "Are you sure you want to invite %s member(s) to your party?",
-		button1 = ACCEPT,
-		button2 = CANCEL,
-		OnAccept = function(self, data)
+		text           = "Are you sure you want to invite %s member(s) to your party?",
+		button1        = ACCEPT,
+		button2        = CANCEL,
+		OnAccept       = function(self, data)
 			Core:InviteAllTeamMembersToParty(data);
 			Core:DialogClosed();
 		end,
-		OnCancel = function()
+		OnCancel       = function()
 			Core:DialogClosed();
 		end,
-		timeout = 0,
-		whileDead = true,
-		hideOnEscape = true,
-		exclusive = 1,
+		OnHide         = function()
+			Core:DialogClosed();
+		end,
+		timeout        = 0,
+		whileDead      = true,
+		hideOnEscape   = true,
+		exclusive      = 1,
 		preferredIndex = 1
 	};
 
 	StaticPopupDialogs["INVITE_TO_PARTY_NOONE_FOUND"] = {
-		text = "No member from this event is available to invite!",
-		button1 = OKAY,
-		timeout = 0,
+		text                   = "No member from this event is available to invite!",
+		button1                = OKAY,
+		OnHide                 = function()
+			Core:DialogClosed();
+		end,
+		timeout                = 0,
 		enterClicksFirstButton = 1,
-		whileDead = true,
-		hideOnEscape = true,
-		exclusive = 1,
-		preferredIndex = 1
+		whileDead              = true,
+		hideOnEscape           = true,
+		exclusive              = 1,
+		preferredIndex         = 1
 	};
 
 	StaticPopupDialogs["INVITE_TO_PARTY_INVALID_CALENDAR"] = {
-		text =
+		text                   =
 		"Only 'Player Event' attendances can be invited via addon! For 'Guild Events' you can create the event and use that event's 'invite members' functionality.",
-		button1 = OKAY,
-		timeout = 0,
+		button1                = OKAY,
+		OnHide                 = function()
+			Core:DialogClosed();
+		end,
+		timeout                = 0,
 		enterClicksFirstButton = 1,
-		whileDead = true,
-		hideOnEscape = true,
-		exclusive = 1,
-		preferredIndex = 1
+		whileDead              = true,
+		hideOnEscape           = true,
+		exclusive              = 1,
+		preferredIndex         = 1
 	};
 
 	StaticPopupDialogs["INVITE_TO_PARTY_USE_CALENDAR"] = {
-		text = "This event is also created on calendar! Please use the calendar event's 'invite members' button.",
-		button1 = OKAY,
-		timeout = 0,
+		text                   = "This event is also created on calendar! Please use the calendar event's 'invite members' button.",
+		button1                = OKAY,
+		OnHide                 = function()
+			Core:DialogClosed();
+		end,
+		timeout                = 0,
 		enterClicksFirstButton = 1,
-		whileDead = true,
-		hideOnEscape = true,
-		exclusive = 1,
-		preferredIndex = 1
+		whileDead              = true,
+		hideOnEscape           = true,
+		exclusive              = 1,
+		preferredIndex         = 1
 	};
 end
 
@@ -531,8 +567,9 @@ function Core:CreateUpcomingEvents()
 		return;
 	end
 
+	containerScrollFrame:ReleaseChildren();
+
 	if (ns.UPCOMING_EVENTS == nil) then
-		containerScrollFrame:ReleaseChildren();
 		Core:AppendMessage(
 			"Upcoming events data is not found! Please make sure your sync app is installed and working properly!", true);
 	else
@@ -550,9 +587,12 @@ function Core:CreateUpcomingEvents()
 			return;
 		end
 
-		Core:Debug("Core:CreateUpcomingEvents");
-		containerScrollFrame:ReleaseChildren();
+		if (not isEventProcessCompleted or isNewEventBeingCreated) then
+			Core:AppendMessage("Addon is busy right now! Please wait for a while...");
+			return;
+		end
 
+		Core:Debug("Core:CreateUpcomingEvents");
 		if (realmName == nil) then
 			realmName = GetNormalizedRealmName();
 		end
@@ -732,7 +772,7 @@ function Core:searchForEvent(event)
 end
 
 function Core:AppendMessage(message, appendReloadUIButton)
-	local fontPath = "Fonts\\FRIZQT__.TTF";
+	local fontPath = STANDARD_TEXT_FONT;
 	local fontSize = 13;
 
 	local itemGroup = GOW.GUI:Create("SimpleGroup");
@@ -749,7 +789,7 @@ function Core:AppendMessage(message, appendReloadUIButton)
 	local messageLabel = GOW.GUI:Create("Label");
 	messageLabel:SetText(message);
 	messageLabel:SetFullWidth(true);
-	--messageLabel:SetFont(fontPath, fontSize);
+	messageLabel:SetFont(fontPath, fontSize, "");
 	itemGroup:AddChild(messageLabel);
 
 	if (appendReloadUIButton) then
@@ -1210,25 +1250,21 @@ end
 
 function Core:OpenDialog(dialogName)
 	currentOpenDialog = dialogName;
-	--containerFrame:SetAlpha(0.5);
 	StaticPopup_Show(dialogName);
 end
 
 function Core:OpenDialogWithParams(dialogName, parameterStr)
 	currentOpenDialog = dialogName;
-	--containerFrame:SetAlpha(0.5);
 	StaticPopup_Show(dialogName, parameterStr);
 end
 
 function Core:OpenDialogWithData(dialogName, param1, param2, data)
 	currentOpenDialog = dialogName;
-	--containerFrame:SetAlpha(0.5);
 	StaticPopup_Show(dialogName, param1, param2, data);
 end
 
 function Core:DialogClosed()
 	currentOpenDialog = nil;
-	--containerFrame:SetAlpha(1);
 end
 
 function Core:ShowTooltip(container, header, message)
@@ -1392,6 +1428,10 @@ function Core:CheckEventInvites()
 					isProcessedEventsPrinted = true;
 					Core:PrintSuccessMessage("Event invites are completed. Number of events: " ..
 						tostring(processedEvents:count()));
+
+					if (containerFrame:IsShown()) then
+						Core:CreateUpcomingEvents();
+					end
 				end
 			end
 		else
@@ -1657,6 +1697,9 @@ function Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
 		if (isNewEventBeingCreated) then
 			Core:PrintSuccessMessage("New event is successfully created: " .. upcomingEvent.titleWithKey);
 			isNewEventBeingCreated = false;
+			if (containerFrame:IsShown()) then
+				Core:CreateUpcomingEvents();
+			end
 		elseif (not isEventProcessCompleted) then
 			Core:PrintMessage("Event RSVP process completed: " .. upcomingEvent.titleWithKey);
 		end
