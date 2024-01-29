@@ -5,7 +5,7 @@ GuildsOfWow = GOW;
 
 GOW.consts = {
 	INVITE_INTERVAL = 2,
-	ENABLE_DEBUGGING = false
+	ENABLE_DEBUGGING = true
 };
 
 GOW.defaults = {
@@ -79,6 +79,7 @@ local isEventProcessCompleted = false;
 local isNewEventBeingCreated = false;
 local isProcessedEventsPrinted = false;
 local isCalendarOpened = false;
+local isCalendarOpenEventBound = false;
 
 local selectedTab = "events";
 local tabs = {
@@ -367,7 +368,7 @@ function GOW:OnInitialize()
 	};
 
 	StaticPopupDialogs["INVITE_TO_PARTY_NOONE_FOUND"] = {
-		text                   = "No member from this event is available to invite!",
+		text                   = "No member from this event is available to invite.",
 		button1                = OKAY,
 		OnHide                 = function()
 			Core:DialogClosed();
@@ -382,7 +383,7 @@ function GOW:OnInitialize()
 
 	StaticPopupDialogs["INVITE_TO_PARTY_INVALID_CALENDAR"] = {
 		text                   =
-		"Only 'Player Event' attendances can be invited via addon! For 'Guild Events' you can create the event and use that event's 'invite members' functionality.",
+		"Only 'Player Event' attendances can be invited via addon. For 'Guild Events' you can create the event and use that event's 'Invite Members' functionality.",
 		button1                = OKAY,
 		OnHide                 = function()
 			Core:DialogClosed();
@@ -396,7 +397,7 @@ function GOW:OnInitialize()
 	};
 
 	StaticPopupDialogs["INVITE_TO_PARTY_USE_CALENDAR"] = {
-		text                   = "This event is also created on calendar! Please use the calendar event's 'invite members' button.",
+		text                   = "This event is also created on calendar. Please use calendar event's 'Invite Members' button.",
 		button1                = OKAY,
 		OnHide                 = function()
 			Core:DialogClosed();
@@ -438,20 +439,44 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		Core:SetRosterInfo();
 	elseif event == "CALENDAR_UPDATE_EVENT_LIST" then
 		--f:UnregisterEvent("CALENDAR_UPDATE_EVENT_LIST");
+
+		if (CalendarFrame) then
+			if (not isCalendarOpenEventBound) then
+				isCalendarOpenEventBound = true;
+				hooksecurefunc(CalendarFrame, "Show", function()
+					if (isEventProcessCompleted and not isNewEventBeingCreated) then
+						workQueue:clearTasks();
+					end
+					containerFrame:Hide();
+				end);
+				if (containerFrame:IsShown()) then
+					containerFrame:Hide();
+				end
+			end
+		else
+			Core:Debug("Calendar frame is not ready yet");
+		end
+
 		Core:InitializeEventInvites();
+		Core:RefreshUpcomingEventsList();
 	elseif event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" or event == "CALENDAR_UPDATE_GUILD_EVENTS" then
+		if (CalendarFrame and CalendarFrame:IsShown()) then
+			Core:Debug("Calendar frame is open.");
+			return;
+		end
+
 		if (event == "CALENDAR_UPDATE_GUILD_EVENTS") then
 			--f:UnregisterEvent("CALENDAR_UPDATE_GUILD_EVENTS");
 			Core:InitializeEventInvites();
 		end
 
-		if (isPropogatingUpdate == false and selectedTab == "events") then
-			persistentWorkQueue:addTask(function()
-				isPropogatingUpdate = true;
-				Core:CreateUpcomingEvents();
-			end, nil, 2);
-		end
+		Core:RefreshUpcomingEventsList();
 	elseif event == "CALENDAR_OPEN_EVENT" then
+		if (CalendarFrame and CalendarFrame:IsShown()) then
+			Core:Debug("Calendar frame is open.");
+			return;
+		end
+
 		if (C_Calendar.IsEventOpen()) then
 			local eventInfo = C_Calendar.GetEventInfo();
 
@@ -498,18 +523,19 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 			end, nil, 10);
 		end
 	elseif event == "CALENDAR_CLOSE_EVENT" then
-		isNewEventBeingCreated = false;
-		if (isEventProcessCompleted == false) then
-			Core:ClearEventInvites(true);
+		if (isNewEventBeingCreated) then
+			isNewEventBeingCreated = false;
 		end
 
-		if (isEventProcessCompleted and isPropogatingUpdate == false and selectedTab == "events") then
-			persistentWorkQueue:addTask(function()
-				isPropogatingUpdate = true;
-				Core:CreateUpcomingEvents();
-			end, nil, 2);
+		if (not isEventProcessCompleted) then
+			Core:ClearEventInvites(true);
 		end
 	elseif event == "CALENDAR_UPDATE_INVITE_LIST" then
+		if (not isEventProcessCompleted and CalendarFrame and CalendarFrame:IsShown()) then
+			Core:Debug("Calendar frame is open.");
+			return;
+		end
+
 		if (C_Calendar.IsEventOpen()) then
 			local eventInfo = C_Calendar.GetEventInfo();
 
@@ -557,13 +583,26 @@ function Core:ToggleWindow()
 	if (containerFrame:IsShown()) then
 		containerFrame:Hide();
 	else
+		if (CalendarFrame) then
+			HideUIPanel(CalendarFrame);
+		end
 		Core:RefreshApplication();
 		containerFrame:Show();
 	end
 end
 
+function Core:RefreshUpcomingEventsList()
+	if (containerFrame:IsShown() and isPropogatingUpdate == false and selectedTab == "events") then
+		persistentWorkQueue:addTask(function()
+			isPropogatingUpdate = true;
+			Core:CreateUpcomingEvents();
+		end, nil, 2);
+	end
+end
+
 function Core:CreateUpcomingEvents()
 	if (selectedTab ~= "events") then
+		Core:Debug("Selected tab is not events.");
 		return;
 	end
 
@@ -575,14 +614,14 @@ function Core:CreateUpcomingEvents()
 	else
 		local isInGuild = IsInGuild();
 
-		if (isInGuild == false) then
+		if (not isInGuild) then
 			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false);
 			return;
 		end
 
 		local guildName, _, _, realmName = GetGuildInfo("player");
 
-		if (guildName == nil) then
+		if (not guildName) then
 			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false);
 			return;
 		end
@@ -593,7 +632,7 @@ function Core:CreateUpcomingEvents()
 		end
 
 		Core:Debug("Core:CreateUpcomingEvents");
-		if (realmName == nil) then
+		if (not realmName) then
 			realmName = GetNormalizedRealmName();
 		end
 
@@ -739,6 +778,10 @@ end
 
 function Core:searchForEvent(event)
 	local serverTime = C_DateAndTime.GetServerTimeLocal();
+
+	if (CalendarFrame and CalendarFrame:IsShown()) then
+		return -2;
+	end
 
 	if (event.eventDate < serverTime) then
 		return 0;
@@ -1343,21 +1386,29 @@ end
 
 function Core:ClearEventInvites(restartInvites)
 	workQueue:clearTasks();
-	workQueue = GOW.WorkQueue.new();
 	Core:Debug("Invites are canceled! Restart invites: " .. tostring(restartInvites));
 
 	if (restartInvites) then
-		Core:Debug("AddCheckEventsTask is called!");
-		workQueue:addTask(function()
-			Core:Debug("Check invites task started...");
-			if (not C_Calendar.IsEventOpen()) then
-				Core:CheckEventInvites();
-			else
-				Core:Debug("There is an event open! Re-trying checking event invites later...");
-				Core:AddCheckEventsTask();
-			end
-		end, nil, 6);
+		Core:AddCheckEventsTask();
 	end
+end
+
+local addCheckEventTimer = nil;
+
+function Core:AddCheckEventsTask()
+	if (addCheckEventTimer) then
+		Core:Debug("Clearing add check event timer.");
+		GOW.timers:CancelTimer(addCheckEventTimer);
+	end
+
+	addCheckEventTimer = GOW.timers:ScheduleTimer(function()
+		if ((CalendarFrame and CalendarFrame:IsShown()) or C_Calendar.IsEventOpen()) then
+			Core:Debug("Calendar or an event open! Re-trying checking event invites later...");
+			Core:AddCheckEventsTask();
+		else
+			Core:CheckEventInvites();
+		end
+	end, 6);
 end
 
 function Core:CheckEventInvites()
@@ -1399,7 +1450,14 @@ function Core:CheckEventInvites()
 							Core:Debug("Event search result: " ..
 								upcomingEvent.titleWithKey .. ". Result: " .. eventIndex);
 
-							if (eventIndex > 0) then
+							if (eventIndex == -2) then
+								Core:Debug("Aborting invites");
+								workQueue:clearTasks();
+								-- persistentWorkQueue:addTask(function()
+								-- 	Core:CheckEventInvites();
+								-- end, nil, 10);
+								return;
+							elseif (eventIndex > 0) then
 								local dayEvent = C_Calendar.GetDayEvent(0, upcomingEvent.day, eventIndex);
 								Core:Debug(dayEvent.title ..
 									" creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex);
@@ -1408,7 +1466,13 @@ function Core:CheckEventInvites()
 									if (dayEvent.modStatus == "CREATOR" or dayEvent.modStatus == "MODERATOR") then
 										Core:Debug("Trying opening event: " .. upcomingEvent.titleWithKey);
 										workQueue:addTask(
-											function() C_Calendar.OpenEvent(0, upcomingEvent.day, eventIndex) end, nil, 3);
+											function()
+												if (CalendarFrame and CalendarFrame:IsShown()) then
+													Core:Debug("Calendar frame is open.");
+												else
+													C_Calendar.OpenEvent(0, upcomingEvent.day, eventIndex);
+												end
+											end, nil, 3);
 										return;
 										--Core:CreateEventInvites(upcomingEvent);
 									else
@@ -1440,8 +1504,6 @@ function Core:CheckEventInvites()
 	else
 		Core:Debug("Player is not in a guild!");
 	end
-
-	--print("|cffffff00Guilds of WoW: |cff00ff00Calendar event processing completed!");
 end
 
 function Core:FindUpcomingEventFromName(eventTitle)
