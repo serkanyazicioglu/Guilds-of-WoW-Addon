@@ -1967,5 +1967,5 @@ end
 
 function Core:GetColoredString(color, msg)
 	local colorString = "|cff";
-	return colorString .. color .. msg;
+	return colorString .. color .. msg .."|r";
 end
