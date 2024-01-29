@@ -69,6 +69,7 @@ local isPropogatingUpdate = false;
 local containerFrame = {};
 local containerTabs = {};
 local containerScrollFrame = {};
+local currentOpenDialog = nil;
 
 local workQueue = nil;
 local persistentWorkQueue = nil;
@@ -145,8 +146,13 @@ function GOW:OnInitialize()
 	containerFrame:SetHeight(550);
 	containerFrame:SetTitle("Guilds of WoW");
 	containerFrame:SetStatusText("Type /gow for quick access");
-	containerFrame:SetCallback("OnClose", function(widget) containerFrame:Hide() end);
-	containerFrame:SetCallback("OnEscapePressed", function(widget) containerFrame:Hide() end);
+	containerFrame:SetCallback("OnClose", function(widget)
+		containerFrame:Hide();
+		if (currentOpenDialog) then
+			StaticPopup_Hide(currentOpenDialog);
+			currentOpenDialog = nil;
+		end
+	end);
 	containerFrame:Hide();
 
 	_G[FRAME_NAME] = containerFrame.frame;
@@ -1203,18 +1209,26 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 end
 
 function Core:OpenDialog(dialogName)
+	currentOpenDialog = dialogName;
+	--containerFrame:SetAlpha(0.5);
 	StaticPopup_Show(dialogName);
 end
 
 function Core:OpenDialogWithParams(dialogName, parameterStr)
+	currentOpenDialog = dialogName;
+	--containerFrame:SetAlpha(0.5);
 	StaticPopup_Show(dialogName, parameterStr);
 end
 
 function Core:OpenDialogWithData(dialogName, param1, param2, data)
+	currentOpenDialog = dialogName;
+	--containerFrame:SetAlpha(0.5);
 	StaticPopup_Show(dialogName, param1, param2, data);
 end
 
 function Core:DialogClosed()
+	currentOpenDialog = nil;
+	--containerFrame:SetAlpha(1);
 end
 
 function Core:ShowTooltip(container, header, message)
@@ -1276,7 +1290,7 @@ function Core:InviteMultiplePeopleToEvent(event)
 
 	if (numInvites < event.totalMembers and numInvites < 100) then
 		Core:PrintMessage(
-			"Event invites are being sent in the background! Please wait for process to complete before logging out.");
+			"Event invites are being processed in the background! Please wait for process to complete before logging out.");
 
 		for i = 1, event.totalMembers do
 			local currentInviteMember = event.inviteMembers[i];
