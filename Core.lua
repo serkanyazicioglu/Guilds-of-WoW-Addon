@@ -5,7 +5,7 @@ GuildsOfWow = GOW;
 
 GOW.consts = {
 	INVITE_INTERVAL = 2,
-	ENABLE_DEBUGGING = true
+	ENABLE_DEBUGGING = false
 };
 
 GOW.defaults = {
@@ -521,6 +521,10 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	elseif event == "CALENDAR_CLOSE_EVENT" then
 		if (isNewEventBeingCreated) then
 			isNewEventBeingCreated = false;
+
+			if (CalendarFrame and CalendarFrame:IsShown()) then
+				isEventProcessCompleted = false;
+			end
 		end
 
 		if (not isEventProcessCompleted) then
