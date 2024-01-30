@@ -440,21 +440,17 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	elseif event == "CALENDAR_UPDATE_EVENT_LIST" then
 		--f:UnregisterEvent("CALENDAR_UPDATE_EVENT_LIST");
 
-		if (CalendarFrame) then
-			if (not isCalendarOpenEventBound) then
-				isCalendarOpenEventBound = true;
-				hooksecurefunc(CalendarFrame, "Show", function()
-					if (isEventProcessCompleted and not isNewEventBeingCreated) then
-						workQueue:clearTasks();
-					end
-					containerFrame:Hide();
-				end);
-				if (containerFrame:IsShown()) then
-					containerFrame:Hide();
+		if (CalendarFrame and not isCalendarOpenEventBound) then
+			isCalendarOpenEventBound = true;
+			hooksecurefunc(CalendarFrame, "Show", function()
+				if (isEventProcessCompleted and not isNewEventBeingCreated) then
+					workQueue:clearTasks();
 				end
+				containerFrame:Hide();
+			end);
+			if (containerFrame:IsShown()) then
+				containerFrame:Hide();
 			end
-		else
-			Core:Debug("Calendar frame is not ready yet");
 		end
 
 		Core:InitializeEventInvites();
@@ -788,9 +784,7 @@ function Core:searchForEvent(event)
 	end
 
 	C_Calendar.SetAbsMonth(event.month, event.year);
-
 	local monthIndex = 0; -- tonumber(date("%m", event.eventDate)) - tonumber(date("%m", serverTime))
-
 	local numDayEvents = C_Calendar.GetNumDayEvents(monthIndex, event.day);
 
 	Core:Debug("Searching: " ..
@@ -802,7 +796,7 @@ function Core:searchForEvent(event)
 			local dayEvent = C_Calendar.GetDayEvent(monthIndex, event.day, i);
 
 			if (dayEvent.calendarType == "GUILD_EVENT" or dayEvent.calendarType == "PLAYER") then
-				Core:Debug("dayEvent: " .. dayEvent.title .. " - " .. dayEvent.calendarType);
+				--Core:Debug("dayEvent: " .. dayEvent.title .. " - " .. dayEvent.calendarType);
 
 				if (string.match(dayEvent.title, "*" .. event.eventKey)) then
 					return i;
@@ -1453,9 +1447,6 @@ function Core:CheckEventInvites()
 							if (eventIndex == -2) then
 								Core:Debug("Aborting invites");
 								workQueue:clearTasks();
-								-- persistentWorkQueue:addTask(function()
-								-- 	Core:CheckEventInvites();
-								-- end, nil, 10);
 								return;
 							elseif (eventIndex > 0) then
 								local dayEvent = C_Calendar.GetDayEvent(0, upcomingEvent.day, eventIndex);
@@ -1464,17 +1455,16 @@ function Core:CheckEventInvites()
 
 								if (dayEvent.calendarType == "PLAYER" or dayEvent.calendarType == "GUILD_EVENT") then
 									if (dayEvent.modStatus == "CREATOR" or dayEvent.modStatus == "MODERATOR") then
-										Core:Debug("Trying opening event: " .. upcomingEvent.titleWithKey);
-										workQueue:addTask(
-											function()
-												if (CalendarFrame and CalendarFrame:IsShown()) then
-													Core:Debug("Calendar frame is open.");
-												else
-													C_Calendar.OpenEvent(0, upcomingEvent.day, eventIndex);
-												end
-											end, nil, 3);
+										if (CalendarFrame and CalendarFrame:IsShown()) then
+											Core:Debug("Calendar frame is open.");
+										else
+											Core:Debug("Trying opening event: " .. upcomingEvent.titleWithKey);
+											if (not C_Calendar.OpenEvent(0, upcomingEvent.day, eventIndex)) then
+												Core:Debug("Calendar open event failed. Retrying updates.");
+												Core:AddCheckEventsTask();
+											end
+										end
 										return;
-										--Core:CreateEventInvites(upcomingEvent);
 									else
 										Core:Debug("Not creator or moderator!");
 									end
