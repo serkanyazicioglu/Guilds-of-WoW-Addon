@@ -13,4 +13,5 @@ embed.xml
 Core.lua
 Class.lua
 List.lua
+Options.lua
 WorkQueue.lua
