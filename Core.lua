@@ -1484,6 +1484,10 @@ function Core:CheckEventInvites()
 				isEventProcessCompleted = true;
 				if (not isProcessedEventsPrinted and processedEvents:count() > 0) then
 					isProcessedEventsPrinted = true;
+
+					local guildKey = Core:GetGuildKey();
+					GOW.DB.profile.guilds[guildKey].eventsRefreshTime = GetServerTime();
+
 					Core:PrintSuccessMessage("Event invites are completed. Number of events: " ..
 						tostring(processedEvents:count()));
 
@@ -2007,10 +2011,18 @@ function Core:InitializeEventInvites()
 
 		if (guildKey and not isEventAttendancesInitialProcessStarted and ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
 			isEventAttendancesInitialProcessStarted = true;
-			Core:Debug("Event attendance initial process started!");
 
-			GOW.DB.profile.guilds[guildKey].events = {};
-			Core:CheckEventInvites();
+			print(ns.UPCOMING_EVENTS.exportTime)
+			if (GOW.DB.profile.guilds[guildKey].eventsRefreshTime and ns.UPCOMING_EVENTS.exportTime and ns.UPCOMING_EVENTS.exportTime < GOW.DB.profile.guilds[guildKey].eventsRefreshTime) then
+				isEventProcessCompleted = true;
+
+				Core:PrintMessage("Last imported data is already processed. Skipping RSVP process...");
+			else
+				Core:Debug("Event attendance initial process started!");
+
+				GOW.DB.profile.guilds[guildKey].events = {};
+				Core:CheckEventInvites();
+			end
 		end
 	end
 end
