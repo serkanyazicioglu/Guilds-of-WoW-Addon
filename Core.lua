@@ -1922,8 +1922,11 @@ function Core:SetRosterInfo()
 			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD();
 			GOW.DB.profile.guilds[guildKey].roster = {};
 			GOW.DB.profile.guilds[guildKey].ranks = {};
-			GOW.DB.profile.guilds[guildKey].keystones = {};
-			GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = nil;
+
+			if (getGowGameVersionId() == 1) then
+				GOW.DB.profile.guilds[guildKey].keystones = {};
+				GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = nil;
+			end
 
 			local keystoneData = nil;
 
@@ -1944,42 +1947,44 @@ function Core:SetRosterInfo()
 						officerNote = officernote
 					};
 
-					local keystoneLevel = nil;
-					local keystoneMapId = nil;
+					if (getGowGameVersionId() == 1) then
+						local keystoneLevel = nil;
+						local keystoneMapId = nil;
 
-					if (C_AddOns.IsAddOnLoaded("AstralKeys") and AstralKeys) then
-						if (level >= _G['AstralEngine'].EXPANSION_LEVEL) then
-							keystoneLevel = _G['AstralEngine'].GetCharacterKeyLevel(name);
-							keystoneMapId = _G['AstralEngine'].GetCharacterMapID(name);
+						if (C_AddOns.IsAddOnLoaded("AstralKeys") and AstralKeys) then
+							if (level >= _G['AstralEngine'].EXPANSION_LEVEL) then
+								keystoneLevel = _G['AstralEngine'].GetCharacterKeyLevel(name);
+								keystoneMapId = _G['AstralEngine'].GetCharacterMapID(name);
+							end
 						end
-					end
 
-					if (openRaidLib and keystoneData) then
-						if (keystoneData) then
-							for unitName, keystoneInfo in pairs(keystoneData) do
-								if (keystoneInfo.level > 0) then
-									local unitNameToCheck = unitName;
+						if (openRaidLib and keystoneData) then
+							if (keystoneData) then
+								for unitName, keystoneInfo in pairs(keystoneData) do
+									if (keystoneInfo.level > 0) then
+										local unitNameToCheck = unitName;
 
-									if (not string.match(unitNameToCheck, "-")) then
-										unitNameToCheck = unitNameToCheck .. "-" .. GetNormalizedRealmName();
-									end
+										if (not string.match(unitNameToCheck, "-")) then
+											unitNameToCheck = unitNameToCheck .. "-" .. GetNormalizedRealmName();
+										end
 
-									if (unitNameToCheck == name) then
-										keystoneLevel = keystoneInfo.level;
-										keystoneMapId = keystoneInfo.challengeMapID;
+										if (unitNameToCheck == name) then
+											keystoneLevel = keystoneInfo.level;
+											keystoneMapId = keystoneInfo.challengeMapID;
+										end
 									end
 								end
 							end
 						end
-					end
 
-					if (keystoneLevel and keystoneMapId) then
-						GOW.DB.profile.guilds[guildKey].keystones[name] = {
-							keystoneLevel = keystoneLevel,
-							keystoneMapId = keystoneMapId
-						};
+						if (keystoneLevel and keystoneMapId) then
+							GOW.DB.profile.guilds[guildKey].keystones[name] = {
+								keystoneLevel = keystoneLevel,
+								keystoneMapId = keystoneMapId
+							};
 
-						anyKeystoneFound = true;
+							anyKeystoneFound = true;
+						end
 					end
 				end
 			end
@@ -2012,7 +2017,6 @@ function Core:InitializeEventInvites()
 		if (guildKey and not isEventAttendancesInitialProcessStarted and ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
 			isEventAttendancesInitialProcessStarted = true;
 
-			print(ns.UPCOMING_EVENTS.exportTime)
 			if (GOW.DB.profile.guilds[guildKey].eventsRefreshTime and ns.UPCOMING_EVENTS.exportTime and ns.UPCOMING_EVENTS.exportTime < GOW.DB.profile.guilds[guildKey].eventsRefreshTime) then
 				isEventProcessCompleted = true;
 
