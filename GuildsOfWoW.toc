@@ -3,9 +3,10 @@
 ## Notes: Guilds of WoW guild herald for retail World of Warcraft
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 1.4.1
+## Version: 1.4.2
 ## SavedVariables: GoWDB
 ## OptionalDeps: AstralKeys
+## AddonCompartmentFunc: GuildsOfWow_OnAddonButtonClick
 ## IconTexture: Interface\Icons\vas_guildfactionchange
 
 embed.xml

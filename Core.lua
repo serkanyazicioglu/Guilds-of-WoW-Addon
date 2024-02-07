@@ -124,7 +124,7 @@ function GOW:OnInitialize()
 			tooltip:SetText("Guilds of WoW");
 			tooltip:Show();
 		end,
-		OnClick = function() Core:ToggleWindow() end
+		OnClick = GuildsOfWow_OnAddonButtonClick
 	});
 
 	self.LDBIcon:Register("gowicon", dataobj, self.DB.profile.minimap);
@@ -2037,6 +2037,14 @@ function Core:ToggleMinimap()
 		GOW.LDBIcon:Hide("gowicon");
 	else
 		GOW.LDBIcon:Show("gowicon");
+	end
+end
+
+function GuildsOfWow_OnAddonButtonClick(name, mouseButton)
+	if mouseButton == "RightButton" then
+		GOW:OpenSettings();
+	else
+		Core:ToggleWindow();
 	end
 end
 
