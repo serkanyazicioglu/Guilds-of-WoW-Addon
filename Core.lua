@@ -16,9 +16,9 @@ GOW.defaults = {
 }
 
 local getGowGameVersionId = function()
-	if (GOW.consts.ENABLE_DEBUGGING) then
-		print("WOW_PROJECT_ID: " .. WOW_PROJECT_ID);
-	end
+	-- if (GOW.consts.ENABLE_DEBUGGING) then
+	-- 	print("WOW_PROJECT_ID: " .. WOW_PROJECT_ID);
+	-- end
 
 	if (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE) then
 		return 1;
@@ -444,6 +444,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 			isCalendarOpenEventBound = true;
 			hooksecurefunc(CalendarFrame, "Show", function()
 				if (isEventProcessCompleted and not isNewEventBeingCreated) then
+					Core:Debug("Clearing tasks: CALENDAR_UPDATE_EVENT_LIST");
 					workQueue:clearTasks();
 				end
 				containerFrame:Hide();
@@ -791,9 +792,7 @@ function Core:searchForEvent(event)
 	local monthIndex = 0; -- tonumber(date("%m", event.eventDate)) - tonumber(date("%m", serverTime))
 	local numDayEvents = C_Calendar.GetNumDayEvents(monthIndex, event.day);
 
-	Core:Debug("Searching: " ..
-		event.titleWithKey ..
-		". Found: " .. numDayEvents .. " : " .. event.day .. "/" .. event.month .. "/" .. event.year);
+	--Core:Debug("Searching: " .. event.titleWithKey .. ". Found: " .. numDayEvents .. " : " .. event.day .. "/" .. event.month .. "/" .. event.year);
 
 	if (numDayEvents > 0) then
 		for i = 1, numDayEvents do
@@ -1383,8 +1382,8 @@ function Core:InviteMultiplePeopleToEvent(event)
 end
 
 function Core:ClearEventInvites(restartInvites)
-	workQueue:clearTasks();
 	Core:Debug("Invites are canceled! Restart invites: " .. tostring(restartInvites));
+	workQueue:clearTasks();
 
 	if (restartInvites) then
 		Core:AddCheckEventsTask();
@@ -1445,11 +1444,10 @@ function Core:CheckEventInvites()
 						if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
 							local eventIndex = Core:searchForEvent(upcomingEvent);
 
-							Core:Debug("Event search result: " ..
-								upcomingEvent.titleWithKey .. ". Result: " .. eventIndex);
+							--Core:Debug("Event search result: " .. upcomingEvent.titleWithKey .. ". Result: " .. eventIndex);
 
 							if (eventIndex == -2) then
-								Core:Debug("Aborting invites");
+								Core:Debug("Aborting invites: CheckEventInvites.");
 								workQueue:clearTasks();
 								return;
 							elseif (eventIndex > 0) then

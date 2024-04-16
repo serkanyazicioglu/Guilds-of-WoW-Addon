@@ -52,18 +52,20 @@ function WQ:runTask()
 end
 
 function WQ:clearTasks()
-	if self.queue:isEmpty() then
-		return;
-	end
-
-	local elem = self.queue:pop();
+	-- if self.queue:isEmpty() then
+	-- 	return;
+	-- end
 
 	if self.runningTimer then
 		GOW.timers:CancelTimer(self.runningTimer);
+		self.runningTimer = nil;
 	end
 
-	if elem.event then
-		GOW.events:UnregisterEvent(elem.event);
+	while not self.queue:isEmpty() do
+		local elem = self.queue:pop();
+		if elem and elem.event then
+			GOW.events:UnregisterEvent(elem.event);
+		end
 	end
 
 	self.queue = GOW.List.new();
