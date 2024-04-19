@@ -3,7 +3,7 @@
 ## Notes: Guilds of WoW guild herald for Classic Era servers
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 1.4.6
+## Version: 1.4.7
 ## SavedVariables: GoWDB
 
 embed.xml
