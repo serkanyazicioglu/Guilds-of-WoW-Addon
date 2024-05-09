@@ -627,9 +627,11 @@ function Core:CreateUpcomingEvents()
 			return;
 		end
 
-		if (not isEventProcessCompleted or isNewEventBeingCreated) then
-			Core:AppendMessage("Addon is busy right now! Please wait for a while...");
-			return;
+		if (ns.UPCOMING_EVENTS.totalEvents > 0) then
+			if (not isEventProcessCompleted or isNewEventBeingCreated) then
+				Core:AppendMessage("Addon is busy right now! Please wait for a while...");
+				return;
+			end
 		end
 
 		Core:Debug("Core:CreateUpcomingEvents");
@@ -641,7 +643,7 @@ function Core:CreateUpcomingEvents()
 
 		local hasAnyData = false;
 
-		if (isInGuild and ns.UPCOMING_EVENTS.totalEvents > 0) then
+		if (ns.UPCOMING_EVENTS.totalEvents > 0) then
 			for i = 1, ns.UPCOMING_EVENTS.totalEvents do
 				local upcomingEvent = ns.UPCOMING_EVENTS.events[i];
 
