@@ -44,7 +44,7 @@ end
 
 local major = "LibOpenRaid-1.0"
 
-local CONST_LIB_VERSION = 127
+local CONST_LIB_VERSION = 131
 
 if (LIB_OPEN_RAID_MAX_VERSION) then
     if (CONST_LIB_VERSION <= LIB_OPEN_RAID_MAX_VERSION) then
@@ -2630,9 +2630,11 @@ openRaidLib.commHandler.RegisterComm(CONST_COMM_COOLDOWNREQUEST_PREFIX, openRaid
                 local itemId = GetContainerItemID(backpackId, slotId)
                 if (itemId == LIB_OPEN_RAID_MYTHICKEYSTONE_ITEMID) then
                     local itemLink = GetContainerItemLink(backpackId, slotId)
-                    local destroyedItemLink = itemLink:gsub("|", "")
-                    local color, itemID, mythicPlusMapID = strsplit(":", destroyedItemLink)
-                    return tonumber(mythicPlusMapID)
+                    if (itemLink) then
+                        local destroyedItemLink = itemLink:gsub("|", "")
+                        local color, itemID, mythicPlusMapID = strsplit(":", destroyedItemLink)
+                        return tonumber(mythicPlusMapID)
+                    end
                 end
             end
         end
