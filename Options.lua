@@ -18,6 +18,7 @@ local optionsTable = {
                     type = "toggle",
                     order = 1,
                     name = "Show minimap icon",
+                    width = "full",
                     get = function(info) return not GOW.DB.profile.minimap.hide end,
                     set = function(info, value)
                         GOW.DB.profile.minimap.hide = not value;
@@ -27,16 +28,29 @@ local optionsTable = {
                             GOW.LDBIcon:Show("gowicon");
                         end
                     end,
+                },
+                DisplayNewEventWarning = {
+                    type = "toggle",
+                    order = 2,
+                    name = "Warn when new events are found",
+                    desc = "Display a warning new new events which are not formed on in-game calendar are found",
+                    width = "full",
+                    get = function(info) return GOW.DB.profile.warnNewEvents end,
+                    set = function(info, value)
+                        GOW.DB.profile.warnNewEvents = value;
+                    end,
                 }
             }
         }
     }
-  }
+}
 
 AceConfig:RegisterOptionsTable(addonName, optionsTable, nil);
 AceConfigDialog:AddToBlizOptions(addonName, "Guilds of WoW");
+local GetAddOnMetadataFunc = GetAddOnMetadata or C_AddOns.GetAddOnMetadata;
+local OpenSettingsFunc =  InterfaceOptionsFrame_OpenToCategory or Settings.OpenToCategory;
 
 function GOW:OpenSettings()
-    local title = GetAddOnMetadata(addonName, "Title");
-    InterfaceOptionsFrame_OpenToCategory(title);
+    local title = GetAddOnMetadataFunc(addonName, "Title");
+    OpenSettingsFunc(title);
 end

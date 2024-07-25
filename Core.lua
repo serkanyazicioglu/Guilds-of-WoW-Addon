@@ -11,7 +11,8 @@ GOW.consts = {
 GOW.defaults = {
 	profile = {
 		version = 1,
-		minimap = { hide = false }
+		minimap = { hide = false },
+		warnNewEvents = true
 	}
 }
 
