@@ -5,7 +5,9 @@ GuildsOfWow = GOW;
 
 GOW.consts = {
 	INVITE_INTERVAL = 2,
-	ENABLE_DEBUGGING = false
+	ENABLE_DEBUGGING = false,
+	GUILD_EVENT = 1,
+	PLAYER_EVENT = 2
 };
 
 GOW.defaults = {
@@ -177,23 +179,39 @@ function GOW:OnInitialize()
 		Core:PrintErrorMessage("Data is not fetched! Please make sure your sync app is installed and working properly.");
 	end
 
-	StaticPopupDialogs["CONFIRM_EVENT_CREATION"] = {
-		text = "Are you sure you want to create this event on in-game calendar?",
-		button1 = ACCEPT,
-		button2 = CANCEL,
+	StaticPopupDialogs["NEW_EVENT_FOUND"] = {
+		text = "There are events not registered on calendar!\r\nDo you want to view upcoming events?",
+		button1 = "Yes",
+		button2 = "No",
+		button3 = "Don't ask again",
 		OnAccept = function(self, data)
-			isNewEventBeingCreated = true;
-			Core:CreateUpcomingEvents();
-
-			C_Calendar.AddEvent();
-			if (data and data.isManualInvite) then
-				Core:InviteMultiplePeopleToEvent(data);
-			end
+			containerFrame:Show();
+			containerTabs:SelectTab("events");
 			Core:DialogClosed();
 		end,
 		OnCancel = function()
 			Core:DialogClosed();
-			C_Calendar.CloseEvent();
+		end,
+		OnAlt = function()
+			GOW.DB.profile.warnNewEvents = false;
+			Core:DialogClosed();
+		end,
+		timeout = 0,
+		whileDead = true,
+		hideOnEscape = true,
+		exclusive = 1,
+		preferredIndex = 1
+	};
+
+	StaticPopupDialogs["CONFIRM_EVENT_CREATION"] = {
+		text = "Are you sure you want to create this event on in-game calendar?",
+		button1 = ACCEPT,
+		button2 = CANCEL,
+		OnAccept = function(self, event)
+			Core:ConfirmEventCreation(event);
+		end,
+		OnCancel = function()
+			Core:DialogClosed();
 		end,
 		OnHide = function()
 			Core:DialogClosed();
@@ -207,22 +225,14 @@ function GOW:OnInitialize()
 
 	StaticPopupDialogs["CONFIRM_GUILD_EVENT_CREATION"] = {
 		text =
-		"Are you sure you want to create this guild event on in-game calendar? (Note: Guild events RSVP integration only works single direction which is from WoW to GoW.)",
+		"Are you sure you want to create this guild event on in-game calendar?\r\n\r\n(Note: Guild events RSVP integration only works single direction which is from WoW to GoW.)",
 		button1 = ACCEPT,
 		button2 = CANCEL,
-		OnAccept = function(self, data)
-			isNewEventBeingCreated = true;
-			C_Calendar.AddEvent();
-			if (data.isManualInvite) then
-				Core:InviteMultiplePeopleToEvent(data);
-			else
-				Core:EventAttendanceProcessCompleted(data, true);
-			end
-			Core:DialogClosed();
+		OnAccept = function(self, event)
+			Core:ConfirmEventCreation(event);
 		end,
 		OnCancel = function()
 			Core:DialogClosed();
-			C_Calendar.CloseEvent();
 		end,
 		OnHide = function()
 			Core:DialogClosed();
@@ -476,7 +486,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		if (C_Calendar.IsEventOpen()) then
 			local eventInfo = C_Calendar.GetEventInfo();
 
-			if (eventInfo ~= nil) then
+			if (eventInfo and eventInfo.title and string.len(eventInfo.title) > 0) then
 				Core:Debug("CALENDAR_OPEN_EVENT: Opened: " ..
 					eventInfo.title .. " . Calendar Type: " .. eventInfo.calendarType);
 				Core:ClearEventInvites(false);
@@ -485,7 +495,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 				if (eventInfo.calendarType == "GUILD_EVENT" or eventInfo.calendarType == "PLAYER") then
 					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title);
 
-					if (upcomingEvent ~= nil) then
+					if (upcomingEvent) then
 						if (eventInfo.isLocked) then
 							if (not upcomingEvent.isLocked) then
 								C_Calendar.EventClearLocked();
@@ -906,7 +916,7 @@ function Core:AppendCalendarList(event)
 		teamLabel:SetLabel("Team");
 		teamLabel:SetText(event.team);
 		itemGroup:AddChild(teamLabel);
-	elseif (event.calendarType == 2) then
+	elseif (event.calendarType == GOW.consts.PLAYER_EVENT) then
 		local levelText = event.minLevel;
 
 		if event.minLevel ~= event.maxLevel then
@@ -934,7 +944,7 @@ function Core:AppendCalendarList(event)
 
 	local invitineDetailsText = "";
 
-	if (event.calendarType == 1) then
+	if (event.calendarType == GOW.consts.GUILD_EVENT) then
 		invitineDetailsText = "All guildies";
 	elseif (not event.isManualInvite) then
 		invitineDetailsText = "All guildies within level range";
@@ -962,7 +972,7 @@ function Core:AppendCalendarList(event)
 	if (canAddEvent) then
 		local eventCalendarTypeLabel = GOW.GUI:Create("SFX-Info");
 		eventCalendarTypeLabel:SetLabel("Calendar");
-		if (event.calendarType == 1) then
+		if (event.calendarType == GOW.consts.GUILD_EVENT) then
 			eventCalendarTypeLabel:SetText("Guild Event");
 		else
 			eventCalendarTypeLabel:SetText("Player Event");
@@ -1027,7 +1037,7 @@ function Core:AppendCalendarList(event)
 			inviteButton:SetWidth(140);
 			inviteButton:SetText("Invite Attendees");
 			inviteButton:SetCallback("OnClick", function()
-				if (event.calendarType == 2) then
+				if (event.calendarType == GOW.consts.PLAYER_EVENT) then
 					if (eventIndex > 0) then
 						Core:OpenDialog("INVITE_TO_PARTY_USE_CALENDAR");
 					else
@@ -1312,7 +1322,7 @@ function Core:ShowTooltip(container, header, message)
 end
 
 function Core:CreateCalendarEvent(event)
-	if (event.calendarType == 2 and event.totalMembers >= 100) then
+	if (event.calendarType == GOW.consts.PLAYER_EVENT and event.totalMembers >= 100) then
 		Core:PrintErrorMessage(
 			"You cannot create events with more than 100 members! Please narrow your audience by filtering or binding a team or disabling filtering at all to create a guild event.");
 		return;
@@ -1322,36 +1332,44 @@ function Core:CreateCalendarEvent(event)
 		Core:PrintErrorMessage("Addon is busy right now! Please wait for a while and try again...");
 		return;
 	end
-
-	local eventIndex = Core:searchForEvent(event);
-
-	if eventIndex >= 0 then
-		Core:DialogClosed();
-		Core:Debug("Event found or passed: " .. event.title);
+	
+	if (event.calendarType == GOW.consts.GUILD_EVENT) then
+		Core:OpenDialogWithData("CONFIRM_GUILD_EVENT_CREATION", nil, nil, event);
 	else
-		Core:ClearEventInvites(false);
-		C_Calendar.CloseEvent();
-		if (event.calendarType == 1) then
-			C_Calendar.CreateGuildSignUpEvent();
-		else
-			C_Calendar.CreatePlayerEvent();
-		end
-		C_Calendar.EventSetTitle(event.titleWithKey);
-		C_Calendar.EventSetDescription(event.description);
-		C_Calendar.EventSetType(event.eventType);
-		C_Calendar.EventSetTime(event.hour, event.minute);
-		C_Calendar.EventSetDate(event.month, event.day, event.year);
-
-		if (event.calendarType == 2 and not event.isManualInvite) then
-			C_Calendar.MassInviteGuild(event.minLevel, event.maxLevel, event.maxRank);
-		end
-
-		if (event.calendarType == 1) then
-			Core:OpenDialogWithData("CONFIRM_GUILD_EVENT_CREATION", nil, nil, event);
-		else
-			Core:OpenDialogWithData("CONFIRM_EVENT_CREATION", nil, nil, event);
-		end
+		Core:OpenDialogWithData("CONFIRM_EVENT_CREATION", nil, nil, event);
 	end
+end
+
+function Core:ConfirmEventCreation(event)
+	if (C_Calendar.IsEventOpen()) then
+		C_Calendar.CloseEvent();
+	end
+
+	isNewEventBeingCreated = true;
+	Core:CreateUpcomingEvents();
+	Core:ClearEventInvites(false);
+
+	if (event.calendarType == GOW.consts.GUILD_EVENT) then
+		C_Calendar.CreateGuildSignUpEvent();
+	else
+		C_Calendar.CreatePlayerEvent();
+	end
+	C_Calendar.EventSetTitle(event.titleWithKey);
+	C_Calendar.EventSetDescription(event.description);
+	C_Calendar.EventSetType(event.eventType);
+	C_Calendar.EventSetTime(event.hour, event.minute);
+	C_Calendar.EventSetDate(event.month, event.day, event.year);
+
+	if (event.calendarType == GOW.consts.PLAYER_EVENT and not event.isManualInvite) then
+		C_Calendar.MassInviteGuild(event.minLevel, event.maxLevel, event.maxRank);
+	end
+	C_Calendar.AddEvent();
+	if (event.isManualInvite) then
+		Core:InviteMultiplePeopleToEvent(event);
+	else
+		Core:EventAttendanceProcessCompleted(event, true);
+	end
+	Core:DialogClosed();
 end
 
 function Core:InviteMultiplePeopleToEvent(event)
@@ -1367,7 +1385,7 @@ function Core:InviteMultiplePeopleToEvent(event)
 
 	if (numInvites < event.totalMembers and numInvites < 100) then
 		Core:PrintMessage(
-			"Event invites are being processed in the background! Please wait for process to complete before logging out.");
+			"Event invites are currently being processed in the background. Please wait until the process is complete before logging out.");
 
 		for i = 1, event.totalMembers do
 			local currentInviteMember = event.inviteMembers[i];
@@ -1487,11 +1505,15 @@ function Core:CheckEventInvites()
 					local guildKey = Core:GetGuildKey();
 					GOW.DB.profile.guilds[guildKey].eventsRefreshTime = GetServerTime();
 
-					Core:PrintSuccessMessage("Event invites are completed. Number of events: " ..
+					Core:PrintSuccessMessage("Event invites have been completed. Number of events processed: " ..
 						tostring(processedEvents:count()));
 
 					if (containerFrame:IsShown()) then
 						Core:CreateUpcomingEvents();
+					else
+						if (processedEvents:count() < ns.UPCOMING_EVENTS.totalEvents) then
+							Core:OpenDialog("NEW_EVENT_FOUND");
+						end
 					end
 				end
 			end
