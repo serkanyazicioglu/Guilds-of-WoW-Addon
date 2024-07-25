@@ -180,7 +180,7 @@ function GOW:OnInitialize()
 	end
 
 	StaticPopupDialogs["NEW_EVENT_FOUND"] = {
-		text = "There are events not registered on calendar!\r\nDo you wish to view Guilds of WoW upcoming events?",
+		text = "There are events not registered on calendar!\r\n\r\nDo you wish to view Guilds of WoW upcoming events?",
 		button1 = YES,
 		button2 = NO,
 		button3 = "Don't ask again",
