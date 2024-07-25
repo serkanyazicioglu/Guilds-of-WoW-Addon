@@ -180,9 +180,9 @@ function GOW:OnInitialize()
 	end
 
 	StaticPopupDialogs["NEW_EVENT_FOUND"] = {
-		text = "There are events not registered on calendar!\r\nDo you want to view upcoming events?",
-		button1 = "Yes",
-		button2 = "No",
+		text = "There are events not registered on calendar!\r\nDo you wish to view Guilds of WoW upcoming events?",
+		button1 = YES,
+		button2 = NO,
 		button3 = "Don't ask again",
 		OnAccept = function(self, data)
 			containerFrame:Show();
@@ -1506,7 +1506,7 @@ function Core:CheckEventInvites()
 					GOW.DB.profile.guilds[guildKey].eventsRefreshTime = GetServerTime();
 
 					Core:PrintSuccessMessage("Event invites have been completed. Number of events processed: " ..
-						tostring(processedEvents:count()));
+						tostring(processedEvents:count()) .. "/" .. ns.UPCOMING_EVENTS.totalEvents);
 
 					if (containerFrame:IsShown()) then
 						Core:CreateUpcomingEvents();
