@@ -424,18 +424,16 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		isCalendarOpened = true;
 
 		if (isInitialLogin) then
-			Core:Debug("Opening Calendar");
-			C_Calendar.OpenCalendar();
+			persistentWorkQueue:addTask(function()
+				Core:InitializeEventInvites();
+			end, nil, 5);
 		else
-			Core:Debug("Triggering event invites for reload");
 			Core:InitializeEventInvites();
 		end
 
 		if (openRaidLib) then
 			openRaidLib.RequestKeystoneDataFromGuild();
 		end
-		--C_Calendar.GetNumDayEvents(0, 1)
-		--workQueue:addTask(function() Core:Debug("Opening Calendar") C_Calendar.OpenCalendar() C_Calendar.GetNumDayEvents(0, 1) C_Calendar.GetGuildEventInfo(0) end, nil, 30)
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		Core:SetRosterInfo();
 	elseif event == "CALENDAR_UPDATE_EVENT_LIST" then
@@ -2021,7 +2019,7 @@ function Core:InitializeEventInvites()
 			if (GOW.DB.profile.guilds[guildKey].eventsRefreshTime and ns.UPCOMING_EVENTS.exportTime and ns.UPCOMING_EVENTS.exportTime < GOW.DB.profile.guilds[guildKey].eventsRefreshTime) then
 				isEventProcessCompleted = true;
 
-				Core:PrintMessage("Last imported data is already processed. Skipping RSVP process...");
+				Core:PrintMessage("The most recently imported data has already been processed, the RSVP synchronization will be skipped...");
 			else
 				Core:Debug("Event attendance initial process started!");
 
