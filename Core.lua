@@ -1963,7 +1963,6 @@ function Core:SetRosterInfo()
 					GOW.DB.profile.guilds[guildKey].roster[name] = {
 						guid = guid,
 						note = note,
-						rank = rank,
 						rankIndex = rankIndex,
 						officerNote = officernote
 					};
