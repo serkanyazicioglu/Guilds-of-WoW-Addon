@@ -1499,14 +1499,15 @@ function Core:CheckEventInvites()
 
 				Core:Debug("|cff00ff00Event process is completed!");
 				isEventProcessCompleted = true;
-				if (not isProcessedEventsPrinted and processedEvents:count() > 0) then
+
+				if (not isProcessedEventsPrinted) then
 					isProcessedEventsPrinted = true;
 
-					local guildKey = Core:GetGuildKey();
-					GOW.DB.profile.guilds[guildKey].eventsRefreshTime = GetServerTime();
-
-					Core:PrintSuccessMessage("Event invites have been completed. Number of events processed: " ..
-						tostring(processedEvents:count()) .. "/" .. ns.UPCOMING_EVENTS.totalEvents);
+					if (processedEvents:count() > 0) then
+						GOW.DB.profile.guilds[Core:GetGuildKey()].eventsRefreshTime = GetServerTime();
+						Core:PrintSuccessMessage("Event invites have been completed. Number of events processed: " ..
+							tostring(processedEvents:count()) .. "/" .. ns.UPCOMING_EVENTS.totalEvents);
+					end
 
 					if (containerFrame:IsShown()) then
 						Core:CreateUpcomingEvents();
@@ -1516,6 +1517,7 @@ function Core:CheckEventInvites()
 						end
 					end
 				end
+				
 			end
 		else
 			Core:Debug("Event is open!");
