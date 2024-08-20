@@ -596,6 +596,8 @@ function Core:ToggleWindow()
 		if (CalendarFrame) then
 			HideUIPanel(CalendarFrame);
 		end
+		StaticPopup_Hide("NEW_EVENT_FOUND");
+
 		Core:RefreshApplication();
 		containerFrame:Show();
 	end
@@ -1455,10 +1457,8 @@ function Core:CheckEventInvites()
 				for i = 1, ns.UPCOMING_EVENTS.totalEvents do
 					local upcomingEvent = ns.UPCOMING_EVENTS.events[i];
 
-					Core:Debug("Checking event: " .. upcomingEvent.titleWithKey);
-
 					if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
-						--Core:Debug("Event found for guild: " .. upcomingEvent.titleWithKey);
+						Core:Debug("Event found for guild: " .. upcomingEvent.titleWithKey);
 
 						if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
 							local eventIndex = Core:searchForEvent(upcomingEvent);
@@ -1512,7 +1512,21 @@ function Core:CheckEventInvites()
 					if (containerFrame:IsShown()) then
 						Core:CreateUpcomingEvents();
 					else
-						if (processedEvents:count() < ns.UPCOMING_EVENTS.totalEvents) then
+						local currentGuildEventsCount = 0;
+
+						if (ns.UPCOMING_EVENTS.totalEvents > 0) then
+							for i = 1, ns.UPCOMING_EVENTS.totalEvents do
+								local upcomingEvent = ns.UPCOMING_EVENTS.events[i];
+				
+								if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
+									currentGuildEventsCount = currentGuildEventsCount + 1;
+								end
+							end
+						end
+
+						Core:Debug("Current guild events count: " .. currentGuildEventsCount);
+
+						if (processedEvents:count() < currentGuildEventsCount) then
 							Core:OpenDialog("NEW_EVENT_FOUND");
 						end
 					end
