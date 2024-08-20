@@ -1450,6 +1450,7 @@ function Core:CheckEventInvites()
 			end
 
 			local regionId = GetCurrentRegionByGameVersion();
+			local currentGuildEventsCount = 0;
 
 			Core:Debug("Guild name: " .. guildName .. ". Region id: " .. regionId);
 
@@ -1459,7 +1460,7 @@ function Core:CheckEventInvites()
 
 					if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
 						Core:Debug("Event found for guild: " .. upcomingEvent.titleWithKey);
-
+						currentGuildEventsCount = currentGuildEventsCount + 1;
 						if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
 							local eventIndex = Core:searchForEvent(upcomingEvent);
 
@@ -1512,18 +1513,6 @@ function Core:CheckEventInvites()
 					if (containerFrame:IsShown()) then
 						Core:CreateUpcomingEvents();
 					else
-						local currentGuildEventsCount = 0;
-
-						if (ns.UPCOMING_EVENTS.totalEvents > 0) then
-							for i = 1, ns.UPCOMING_EVENTS.totalEvents do
-								local upcomingEvent = ns.UPCOMING_EVENTS.events[i];
-				
-								if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
-									currentGuildEventsCount = currentGuildEventsCount + 1;
-								end
-							end
-						end
-
 						Core:Debug("Current guild events count: " .. currentGuildEventsCount);
 
 						if (processedEvents:count() < currentGuildEventsCount) then
