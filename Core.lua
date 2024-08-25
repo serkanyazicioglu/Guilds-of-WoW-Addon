@@ -1515,7 +1515,7 @@ function Core:CheckEventInvites()
 					else
 						Core:Debug("Current guild events count: " .. currentGuildEventsCount);
 
-						if (processedEvents:count() < currentGuildEventsCount) then
+						if (GOW.DB.profile.warnNewEvents and processedEvents:count() < currentGuildEventsCount) then
 							Core:OpenDialog("NEW_EVENT_FOUND");
 						end
 					end
