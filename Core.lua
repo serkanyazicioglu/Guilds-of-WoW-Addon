@@ -1954,12 +1954,15 @@ function Core:SetRosterInfo()
 		local guildKey = Core:GetGuildKey();
 
 		if (guildKey) then
+			local me = GetCurrentCharacterUniqueKey();
+			local isKeystonesEnabled = getGowGameVersionId() == 1;
+
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime();
 			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD();
 			GOW.DB.profile.guilds[guildKey].roster = {};
 			GOW.DB.profile.guilds[guildKey].ranks = {};
 
-			if (getGowGameVersionId() == 1) then
+			if (isKeystonesEnabled) then
 				GOW.DB.profile.guilds[guildKey].keystones = {};
 				GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = nil;
 			end
@@ -1982,11 +1985,11 @@ function Core:SetRosterInfo()
 						officerNote = officernote
 					};
 
-					if (getGowGameVersionId() == 1 and C_MythicPlus.IsMythicPlusActive()) then
+					if (isKeystonesEnabled and C_MythicPlus.IsMythicPlusActive()) then
 						local keystoneLevel = nil;
 						local keystoneMapId = nil;
 
-						if (name == GetCurrentCharacterUniqueKey()) then
+						if (name == me) then
 							keystoneLevel = C_MythicPlus.GetOwnedKeystoneLevel();
 							keystoneMapId = C_MythicPlus.GetOwnedKeystoneMapID();
 						else
