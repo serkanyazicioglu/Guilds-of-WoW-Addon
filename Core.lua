@@ -1982,30 +1982,35 @@ function Core:SetRosterInfo()
 						officerNote = officernote
 					};
 
-					if (getGowGameVersionId() == 1) then
+					if (getGowGameVersionId() == 1 and C_MythicPlus.IsMythicPlusActive()) then
 						local keystoneLevel = nil;
 						local keystoneMapId = nil;
 
-						if (C_AddOns.IsAddOnLoaded("AstralKeys") and AstralKeys) then
-							if (level >= _G['AstralEngine'].EXPANSION_LEVEL) then
-								keystoneLevel = _G['AstralEngine'].GetCharacterKeyLevel(name);
-								keystoneMapId = _G['AstralEngine'].GetCharacterMapID(name);
+						if (name == GetCurrentCharacterUniqueKey()) then
+							keystoneLevel = C_MythicPlus.GetOwnedKeystoneLevel();
+							keystoneMapId = C_MythicPlus.GetOwnedKeystoneMapID();
+						else
+							if (C_AddOns.IsAddOnLoaded("AstralKeys") and AstralKeys) then
+								if (level >= _G['AstralEngine'].EXPANSION_LEVEL) then
+									keystoneLevel = _G['AstralEngine'].GetCharacterKeyLevel(name);
+									keystoneMapId = _G['AstralEngine'].GetCharacterMapID(name);
+								end
 							end
-						end
 
-						if (openRaidLib and keystoneData) then
-							if (keystoneData) then
-								for unitName, keystoneInfo in pairs(keystoneData) do
-									if (keystoneInfo.level > 0) then
-										local unitNameToCheck = unitName;
+							if (openRaidLib and keystoneData) then
+								if (keystoneData) then
+									for unitName, keystoneInfo in pairs(keystoneData) do
+										if (keystoneInfo.level > 0) then
+											local unitNameToCheck = unitName;
 
-										if (not string.match(unitNameToCheck, "-")) then
-											unitNameToCheck = unitNameToCheck .. "-" .. GetNormalizedRealmName();
-										end
+											if (not string.match(unitNameToCheck, "-")) then
+												unitNameToCheck = unitNameToCheck .. "-" .. GetNormalizedRealmName();
+											end
 
-										if (unitNameToCheck == name) then
-											keystoneLevel = keystoneInfo.level;
-											keystoneMapId = keystoneInfo.challengeMapID;
+											if (unitNameToCheck == name) then
+												keystoneLevel = keystoneInfo.level;
+												keystoneMapId = keystoneInfo.challengeMapID;
+											end
 										end
 									end
 								end
@@ -2015,7 +2020,8 @@ function Core:SetRosterInfo()
 						if (keystoneLevel and keystoneMapId) then
 							GOW.DB.profile.guilds[guildKey].keystones[name] = {
 								keystoneLevel = keystoneLevel,
-								keystoneMapId = keystoneMapId
+								keystoneMapId = keystoneMapId,
+								date = GetServerTime()
 							};
 
 							anyKeystoneFound = true;
