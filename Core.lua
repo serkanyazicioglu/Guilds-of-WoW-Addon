@@ -46,6 +46,14 @@ function GetCurrentRegionByGameVersion()
 	return regionId;
 end
 
+function GetCurrentCharacterUniqueKey()
+	local name, characterRealm = UnitName("player");
+	if (characterRealm == nil) then
+		characterRealm = GetNormalizedRealmName();
+	end
+	return name .. "-" .. characterRealm;
+end
+
 local openRaidLib = nil;
 if (getGowGameVersionId() == 1) then
 	openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0");
@@ -1375,13 +1383,7 @@ function Core:ConfirmEventCreation(event)
 end
 
 function Core:InviteMultiplePeopleToEvent(event)
-	local name, realm = UnitName("player");
-
-	if (realm == nil) then
-		realm = GetNormalizedRealmName();
-	end
-
-	local currentPlayer = name .. "-" .. realm;
+	local currentPlayer = GetCurrentCharacterUniqueKey();
 
 	local numInvites = C_Calendar.GetNumInvites();
 
@@ -1450,17 +1452,25 @@ function Core:CheckEventInvites()
 			end
 
 			local regionId = GetCurrentRegionByGameVersion();
-			local currentGuildEventsCount = 0;
-
 			Core:Debug("Guild name: " .. guildName .. ". Region id: " .. regionId);
 
 			if (ns.UPCOMING_EVENTS.totalEvents) then
+				local hasAnyUninvitedEvent = false;
+				local currentCharacterInvite = GetCurrentCharacterUniqueKey();
+
 				for i = 1, ns.UPCOMING_EVENTS.totalEvents do
 					local upcomingEvent = ns.UPCOMING_EVENTS.events[i];
 
 					if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
 						Core:Debug("Event found for guild: " .. upcomingEvent.titleWithKey);
-						currentGuildEventsCount = currentGuildEventsCount + 1;
+						local isCurrentCharacterInvited = false;
+						for m = 1, upcomingEvent.totalMembers do
+							local currentInviteMember = upcomingEvent.inviteMembers[m];
+							if (currentCharacterInvite == currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized) then
+								isCurrentCharacterInvited = true;
+							end
+						end
+
 						if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
 							local eventIndex = Core:searchForEvent(upcomingEvent);
 
@@ -1470,6 +1480,10 @@ function Core:CheckEventInvites()
 								Core:Debug("Aborting invites: CheckEventInvites.");
 								workQueue:clearTasks();
 								return;
+							elseif (eventIndex == -1) then
+								if (isCurrentCharacterInvited) then
+									hasAnyUninvitedEvent = true;
+								end
 							elseif (eventIndex > 0) then
 								local dayEvent = C_Calendar.GetDayEvent(0, upcomingEvent.day, eventIndex);
 								Core:Debug(dayEvent.title ..
@@ -1513,9 +1527,7 @@ function Core:CheckEventInvites()
 					if (containerFrame:IsShown()) then
 						Core:CreateUpcomingEvents();
 					else
-						Core:Debug("Current guild events count: " .. currentGuildEventsCount);
-
-						if (GOW.DB.profile.warnNewEvents and processedEvents:count() < currentGuildEventsCount) then
+						if (GOW.DB.profile.warnNewEvents and hasAnyUninvitedEvent) then
 							Core:OpenDialog("NEW_EVENT_FOUND");
 						end
 					end
@@ -1797,8 +1809,7 @@ function Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
 end
 
 function Core:InviteAllToPartyCheck(event)
-	local name, _ = UnitName("player");
-	local me = name .. "-" .. GetNormalizedRealmName();
+	local me = GetCurrentCharacterUniqueKey();
 
 	local eligibleMembers = 0;
 
@@ -1825,8 +1836,7 @@ function Core:InviteAllToParty(event)
 	local invitingMembers = {};
 	local inviteIndex = 1;
 
-	local name, _ = UnitName("player");
-	local me = name .. "-" .. GetNormalizedRealmName();
+	local me = GetCurrentCharacterUniqueKey();
 
 	for i = 1, event.totalMembers do
 		local currentInviteMember = event.inviteMembers[i];
