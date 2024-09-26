@@ -1463,13 +1463,6 @@ function Core:CheckEventInvites()
 
 					if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
 						Core:Debug("Event found for guild: " .. upcomingEvent.titleWithKey);
-						local isCurrentCharacterInvited = false;
-						for m = 1, upcomingEvent.totalMembers do
-							local currentInviteMember = upcomingEvent.inviteMembers[m];
-							if (currentCharacterInvite == currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized) then
-								isCurrentCharacterInvited = true;
-							end
-						end
 
 						if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
 							local eventIndex = Core:searchForEvent(upcomingEvent);
@@ -1481,8 +1474,16 @@ function Core:CheckEventInvites()
 								workQueue:clearTasks();
 								return;
 							elseif (eventIndex == -1) then
-								if (isCurrentCharacterInvited) then
+								if (upcomingEvent.calendarType == 1) then
 									hasAnyUninvitedEvent = true;
+								else
+									for m = 1, upcomingEvent.totalMembers do
+										local currentInviteMember = upcomingEvent.inviteMembers[m];
+										if (currentInviteMember and currentCharacterInvite == currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized) then
+											hasAnyUninvitedEvent = true;
+											break;
+										end
+									end
 								end
 							elseif (eventIndex > 0) then
 								local dayEvent = C_Calendar.GetDayEvent(0, upcomingEvent.day, eventIndex);
