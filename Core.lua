@@ -257,7 +257,8 @@ function GOW:OnInitialize()
 		button1 = ACCEPT,
 		button2 = CANCEL,
 		OnAccept = function(self, data)
-			GuildInvite(data);
+			C_GuildInfo.Invite(data);
+			Core:PrintSuccessMessage("Invitation sent to " .. data);
 			Core:DialogClosed();
 		end,
 		OnCancel = function()
