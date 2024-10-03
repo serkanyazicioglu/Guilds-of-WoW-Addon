@@ -1993,7 +1993,7 @@ function Core:SetRosterInfo()
 
 						if (name == me) then
 							keystoneLevel = C_MythicPlus.GetOwnedKeystoneLevel();
-							keystoneMapId = C_MythicPlus.GetOwnedKeystoneMapID();
+							keystoneMapId = C_MythicPlus.GetOwnedKeystoneChallengeMapID();
 						else
 							if (C_AddOns.IsAddOnLoaded("AstralKeys") and AstralKeys) then
 								if (level >= _G['AstralEngine'].EXPANSION_LEVEL) then
