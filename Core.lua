@@ -839,20 +839,20 @@ function Core:searchForEvent(event)
 	--C_Calendar.SetAbsMonth(event.month, event.year);
 	--local month, year = C_Calendar.GetMonthInfo();
 
-	local monthIndex = tonumber(date("%m", event.eventDate)) - tonumber(date("%m", serverTime))
-	local numDayEvents = C_Calendar.GetNumDayEvents(monthIndex, event.day);
+	local offsetMonths = tonumber(date("%m", event.eventDate)) - tonumber(date("%m", serverTime))
+	local numDayEvents = C_Calendar.GetNumDayEvents(offsetMonths, event.day);
 
 	--Core:Debug("Searching: " .. event.titleWithKey .. ". Found: " .. numDayEvents .. " : " .. event.day .. "/" .. event.month .. "/" .. event.year);
 
 	if (numDayEvents > 0) then
 		for i = 1, numDayEvents do
-			local dayEvent = C_Calendar.GetDayEvent(monthIndex, event.day, i);
+			local dayEvent = C_Calendar.GetDayEvent(offsetMonths, event.day, i);
 
 			if (dayEvent.calendarType == "GUILD_EVENT" or dayEvent.calendarType == "PLAYER") then
 				--Core:Debug("dayEvent: " .. dayEvent.title .. " - " .. dayEvent.calendarType);
 
 				if (string.match(dayEvent.title, "*" .. event.eventKey)) then
-					return i;
+					return i, offsetMonths, dayEvent;
 				end
 			end
 		end
@@ -1000,7 +1000,7 @@ function Core:AppendCalendarList(event)
 	eventInvitingMembersLabel:SetText(invitineDetailsText);
 	itemGroup:AddChild(eventInvitingMembersLabel);
 
-	local eventIndex = Core:searchForEvent(event);
+	local eventIndex, offsetMonths, dayEvent = Core:searchForEvent(event);
 
 	local buttonsGroup = GOW.GUI:Create("SimpleGroup");
 	buttonsGroup:SetLayout("Flow");
@@ -1125,7 +1125,7 @@ function Core:AppendCalendarList(event)
 
 			local line = tooltip:AddLine();
 			tooltip:SetCell(line, 1,
-				"If you already created an in-game event related to this record, you can append this key to the end of event title in-game for GoW synchronization.",
+				"If you've already created an in-game event related to this record, you can append this key to the end of the in-game event title for GoW synchronization.",
 				"LEFT", 1, nil, 0, 0, 300, 50);
 			tooltip:SmartAnchorTo(self.frame);
 			tooltip:Show();
@@ -1361,7 +1361,7 @@ end
 function Core:CreateCalendarEvent(event)
 	if (event.calendarType == GOW.consts.PLAYER_EVENT and event.totalMembers >= 100) then
 		Core:PrintErrorMessage(
-			"You cannot create events with more than 100 members! Please narrow your audience by filtering or binding a team or disabling filtering at all to create a guild event.");
+			"You cannot create events with more than 100 members! To proceed, narrow your audience by using filters, binding a team, or disabling filters entirely to create a guild event.");
 		return;
 	end
 
@@ -1413,7 +1413,7 @@ function Core:InviteMultiplePeopleToEvent(event)
 
 	if (numInvites < event.totalMembers and numInvites < 100) then
 		Core:PrintMessage(
-			"Event invites are currently being processed in the background. Please wait until the process is complete before logging out.");
+			"Event invites are being processed in the background. Please wait for the process to complete before logging out.");
 
 		for i = 1, event.totalMembers do
 			local currentInviteMember = event.inviteMembers[i];
@@ -1492,7 +1492,7 @@ function Core:CheckEventInvites()
 						Core:Debug("Event found for guild: " .. upcomingEvent.titleWithKey);
 
 						if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
-							local eventIndex = Core:searchForEvent(upcomingEvent);
+							local eventIndex, offsetMonths, dayEvent = Core:searchForEvent(upcomingEvent);
 
 							Core:Debug("Event search result: " .. upcomingEvent.titleWithKey .. ". Result: " .. eventIndex);
 
@@ -1515,9 +1515,7 @@ function Core:CheckEventInvites()
 									end
 								end
 							elseif (eventIndex > 0) then
-								local dayEvent = C_Calendar.GetDayEvent(0, upcomingEvent.day, eventIndex);
-								Core:Debug(dayEvent.title ..
-									" creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex);
+								Core:Debug(dayEvent.title .. " creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex);
 
 								if (dayEvent.calendarType == "PLAYER" or dayEvent.calendarType == "GUILD_EVENT") then
 									if (dayEvent.modStatus == "CREATOR" or dayEvent.modStatus == "MODERATOR") then
@@ -1525,7 +1523,7 @@ function Core:CheckEventInvites()
 											Core:Debug("Calendar frame is open.");
 										else
 											Core:Debug("Trying opening event: " .. upcomingEvent.titleWithKey);
-											if (not C_Calendar.OpenEvent(0, upcomingEvent.day, eventIndex)) then
+											if (not C_Calendar.OpenEvent(offsetMonths, upcomingEvent.day, eventIndex)) then
 												Core:Debug("Calendar open event failed. Retrying updates.");
 												Core:AddCheckEventsTask();
 											end
@@ -1697,16 +1695,17 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 			if (inviteInfo.name) then
 				if (inviteInfo.inviteStatus > 0) then
 					local responseTime = C_Calendar.EventGetInviteResponseTime(a);
-					local responeTimeText = nil;
+					local responeTimeFormatted = nil;
 					if (responseTime) then
-						responeTimeText = responseTime.year ..
+						responeTimeFormatted = responseTime.year ..
 							"-" ..
 							string.lpad(tostring(responseTime.month), 2, '0') ..
 							"-" ..
 							string.lpad(tostring(responseTime.monthDay), 2, '0') ..
 							"T" ..
 							string.lpad(tostring(responseTime.hour), 2, '0') ..
-							":" .. string.lpad(tostring(responseTime.minute), 2, '0');
+							":" ..
+							string.lpad(tostring(responseTime.minute), 2, '0');
 					end
 
 					currentEventAttendances[attendanceIndex] = {
@@ -1715,7 +1714,7 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 						attendance = inviteInfo.inviteStatus,
 						classId = inviteInfo.classID,
 						guid = inviteInfo.guid,
-						date = responeTimeText
+						date = responeTimeFormatted
 					};
 
 					attendanceIndex = attendanceIndex + 1;
