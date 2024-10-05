@@ -74,6 +74,7 @@ f:RegisterEvent("CALENDAR_UPDATE_EVENT");
 f:RegisterEvent("CALENDAR_UPDATE_INVITE_LIST");
 f:RegisterEvent("CALENDAR_OPEN_EVENT");
 f:RegisterEvent("CALENDAR_CLOSE_EVENT");
+f:RegisterEvent("CALENDAR_ACTION_PENDING");
 
 local isInitialLogin = false;
 local isPropogatingUpdate = false;
@@ -455,6 +456,11 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		end
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		Core:SetRosterInfo();
+	elseif event == "CALENDAR_ACTION_PENDING" then
+		if (tostring(arg1) == "false")  then
+			Core:Debug("CALENDAR_ACTION_PENDING: " .. tostring(arg1));
+			Core:RefreshUpcomingEventsList();
+		end
 	elseif event == "CALENDAR_UPDATE_EVENT_LIST" then
 		--f:UnregisterEvent("CALENDAR_UPDATE_EVENT_LIST");
 
@@ -472,8 +478,8 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 			end
 		end
 
-		Core:InitializeEventInvites();
-		Core:RefreshUpcomingEventsList();
+		--Core:InitializeEventInvites();
+		--Core:RefreshUpcomingEventsList();
 	elseif event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" or event == "CALENDAR_UPDATE_GUILD_EVENTS" then
 		if (CalendarFrame and CalendarFrame:IsShown()) then
 			Core:Debug("Calendar frame is open.");
@@ -497,7 +503,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 
 			if (eventInfo and eventInfo.title and string.len(eventInfo.title) > 0) then
 				Core:Debug("CALENDAR_OPEN_EVENT: Opened: " ..
-					eventInfo.title .. " . Calendar Type: " .. eventInfo.calendarType);
+					eventInfo.title .. ". Calendar Type: " .. eventInfo.calendarType);
 				Core:ClearEventInvites(false);
 				isNewEventBeingCreated = false;
 
@@ -563,7 +569,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 					Core:ClearEventInvites(false);
 				else
 					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title);
-					if (upcomingEvent ~= nil) then
+					if (upcomingEvent) then
 						--processedEvents:remove(eventInfo.title);
 						Core:SetAttendance(upcomingEvent, false);
 					end
@@ -571,7 +577,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 			elseif (workQueue:isEmpty()) then
 				Core:Debug("Continuing event attendance and moderation!");
 				local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title);
-				if (upcomingEvent ~= nil) then
+				if (upcomingEvent) then
 					Core:SetAttendance(upcomingEvent, false);
 				end
 			end
@@ -613,7 +619,9 @@ function Core:ToggleWindow()
 end
 
 function Core:RefreshUpcomingEventsList()
-	if (containerFrame:IsShown() and isPropogatingUpdate == false and selectedTab == "events") then
+	Core:Debug("RefreshUpcomingEventsList: containerFrame:IsShown(): " .. tostring(containerFrame:IsShown()) .. ". isPropogatingUpdate: " .. tostring(isPropogatingUpdate) .. ". selectedTab: " .. selectedTab .. ". isEventProcessCompleted: " .. tostring(isEventProcessCompleted) .. ". isNewEventBeingCreated: " .. tostring(isNewEventBeingCreated));
+	if (containerFrame:IsShown() and isPropogatingUpdate == false and selectedTab == "events" and isEventProcessCompleted and not isNewEventBeingCreated) then
+		Core:Debug("Adding to work queue: CreateUpcomingEvents");
 		persistentWorkQueue:addTask(function()
 			isPropogatingUpdate = true;
 			Core:CreateUpcomingEvents();
@@ -648,8 +656,9 @@ function Core:CreateUpcomingEvents()
 		end
 
 		if (ns.UPCOMING_EVENTS.totalEvents > 0) then
-			if (not isEventProcessCompleted or isNewEventBeingCreated) then
+			if (not isEventProcessCompleted or isNewEventBeingCreated or C_Calendar.IsActionPending()) then
 				Core:AppendMessage("Addon is busy right now! Please wait for a while...");
+				isPropogatingUpdate = false;
 				return;
 			end
 		end
@@ -664,6 +673,8 @@ function Core:CreateUpcomingEvents()
 		local hasAnyData = false;
 
 		if (ns.UPCOMING_EVENTS.totalEvents > 0) then
+			Core:ResetCalendar();
+
 			for i = 1, ns.UPCOMING_EVENTS.totalEvents do
 				local upcomingEvent = ns.UPCOMING_EVENTS.events[i];
 
@@ -799,6 +810,21 @@ function Core:CreateRecruitmentApplications()
 	isPropogatingUpdate = false;
 end
 
+function Core:ResetCalendar()
+	local monthInfo = C_Calendar.GetMonthInfo();
+	local calendarMonth = monthInfo.month;
+	local calendarYear = monthInfo.year;
+
+	local serverTime = C_DateAndTime.GetServerTimeLocal();
+	local serverMonth = tonumber(date("%m", serverTime));
+	local serverYear = tonumber(date("%Y", serverTime));
+
+	if (calendarMonth ~= serverMonth or calendarYear ~= serverYear) then
+		Core:Debug("Resetting calendar to current date. Current: " .. calendarMonth .. "/" .. calendarYear .. " - Server: " .. serverMonth .. "/" .. serverYear);
+		C_Calendar.SetAbsMonth(serverMonth, serverYear);
+	end
+end
+
 function Core:searchForEvent(event)
 	local serverTime = C_DateAndTime.GetServerTimeLocal();
 
@@ -810,8 +836,10 @@ function Core:searchForEvent(event)
 		return 0;
 	end
 
-	C_Calendar.SetAbsMonth(event.month, event.year);
-	local monthIndex = 0; -- tonumber(date("%m", event.eventDate)) - tonumber(date("%m", serverTime))
+	--C_Calendar.SetAbsMonth(event.month, event.year);
+	--local month, year = C_Calendar.GetMonthInfo();
+
+	local monthIndex = tonumber(date("%m", event.eventDate)) - tonumber(date("%m", serverTime))
 	local numDayEvents = C_Calendar.GetNumDayEvents(monthIndex, event.day);
 
 	--Core:Debug("Searching: " .. event.titleWithKey .. ". Found: " .. numDayEvents .. " : " .. event.day .. "/" .. event.month .. "/" .. event.year);
@@ -957,8 +985,6 @@ function Core:AppendCalendarList(event)
 
 	if (event.calendarType == GOW.consts.GUILD_EVENT) then
 		invitineDetailsText = "All guildies";
-	elseif (not event.isManualInvite) then
-		invitineDetailsText = "All guildies within level range";
 	else
 		if (event.totalMembers > 1) then
 			invitineDetailsText = event.totalMembers .. " members";
@@ -1371,11 +1397,8 @@ function Core:ConfirmEventCreation(event)
 	C_Calendar.EventSetTime(event.hour, event.minute);
 	C_Calendar.EventSetDate(event.month, event.day, event.year);
 
-	if (event.calendarType == GOW.consts.PLAYER_EVENT and not event.isManualInvite) then
-		C_Calendar.MassInviteGuild(event.minLevel, event.maxLevel, event.maxRank);
-	end
 	C_Calendar.AddEvent();
-	if (event.isManualInvite) then
+	if (event.calendarType == GOW.consts.PLAYER_EVENT) then
 		Core:InviteMultiplePeopleToEvent(event);
 	else
 		Core:EventAttendanceProcessCompleted(event, true);
@@ -1456,7 +1479,10 @@ function Core:CheckEventInvites()
 			Core:Debug("Guild name: " .. guildName .. ". Region id: " .. regionId);
 
 			if (ns.UPCOMING_EVENTS.totalEvents) then
+				Core:ResetCalendar();
+
 				local hasAnyUninvitedEvent = false;
+				local canAddEvent = C_Calendar.CanAddEvent();
 				local currentCharacterInvite = GetCurrentCharacterUniqueKey();
 
 				for i = 1, ns.UPCOMING_EVENTS.totalEvents do
@@ -1468,21 +1494,23 @@ function Core:CheckEventInvites()
 						if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
 							local eventIndex = Core:searchForEvent(upcomingEvent);
 
-							--Core:Debug("Event search result: " .. upcomingEvent.titleWithKey .. ". Result: " .. eventIndex);
+							Core:Debug("Event search result: " .. upcomingEvent.titleWithKey .. ". Result: " .. eventIndex);
 
 							if (eventIndex == -2) then
 								Core:Debug("Aborting invites: CheckEventInvites.");
 								workQueue:clearTasks();
 								return;
 							elseif (eventIndex == -1) then
-								if (upcomingEvent.calendarType == 1) then
-									hasAnyUninvitedEvent = true;
-								else
-									for m = 1, upcomingEvent.totalMembers do
-										local currentInviteMember = upcomingEvent.inviteMembers[m];
-										if (currentInviteMember and currentCharacterInvite == currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized) then
-											hasAnyUninvitedEvent = true;
-											break;
+								if (canAddEvent) then
+									if (upcomingEvent.calendarType == 1) then
+										hasAnyUninvitedEvent = true;
+									else
+										for m = 1, upcomingEvent.totalMembers do
+											local currentInviteMember = upcomingEvent.inviteMembers[m];
+											if (currentInviteMember and currentCharacterInvite == currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized) then
+												hasAnyUninvitedEvent = true;
+												break;
+											end
 										end
 									end
 								end
@@ -1523,7 +1551,7 @@ function Core:CheckEventInvites()
 					if (processedEvents:count() > 0) then
 						GOW.DB.profile.guilds[Core:GetGuildKey()].eventsRefreshTime = GetServerTime();
 						Core:PrintSuccessMessage("Event invites have been completed. Number of events processed: " ..
-							tostring(processedEvents:count()) .. "/" .. ns.UPCOMING_EVENTS.totalEvents);
+							tostring(processedEvents:count()));
 					end
 
 					if (containerFrame:IsShown()) then
@@ -1552,7 +1580,7 @@ function Core:FindUpcomingEventFromName(eventTitle)
 		local guildName, _, _, realmName = GetGuildInfo("player");
 
 		if (guildName == nil) then
-			return;
+			return nil;
 		end
 
 		if (realmName == nil) then
@@ -1586,7 +1614,7 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 
 	local canSendInvite = C_Calendar.EventCanEdit();
 	if (canSendInvite) then
-		if (not upcomingEvent.isManualInvite) then
+		if (upcomingEvent.calendarType == GOW.consts.GUILD_EVENT) then
 			Core:SetAttendance(upcomingEvent, closeAfterEnd);
 			return;
 		end
