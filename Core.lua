@@ -1480,10 +1480,7 @@ function Core:CheckEventInvites()
 
 			if (ns.UPCOMING_EVENTS.totalEvents) then
 				Core:ResetCalendar();
-
 				local hasAnyUninvitedEvent = false;
-				local canAddEvent = C_Calendar.CanAddEvent();
-				local currentCharacterInvite = GetCurrentCharacterUniqueKey();
 
 				for i = 1, ns.UPCOMING_EVENTS.totalEvents do
 					local upcomingEvent = ns.UPCOMING_EVENTS.events[i];
@@ -1501,18 +1498,8 @@ function Core:CheckEventInvites()
 								workQueue:clearTasks();
 								return;
 							elseif (eventIndex == -1) then
-								if (canAddEvent) then
-									if (upcomingEvent.calendarType == 1) then
-										hasAnyUninvitedEvent = true;
-									else
-										for m = 1, upcomingEvent.totalMembers do
-											local currentInviteMember = upcomingEvent.inviteMembers[m];
-											if (currentInviteMember and currentCharacterInvite == currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized) then
-												hasAnyUninvitedEvent = true;
-												break;
-											end
-										end
-									end
+								if (upcomingEvent.isEventMember) then
+									hasAnyUninvitedEvent = true;
 								end
 							elseif (eventIndex > 0) then
 								Core:Debug(dayEvent.title .. " creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex);
@@ -1555,7 +1542,8 @@ function Core:CheckEventInvites()
 					if (containerFrame:IsShown()) then
 						Core:CreateUpcomingEvents();
 					else
-						if (GOW.DB.profile.warnNewEvents and hasAnyUninvitedEvent) then
+						local canAddEvent = C_Calendar.CanAddEvent();
+						if (GOW.DB.profile.warnNewEvents and canAddEvent and hasAnyUninvitedEvent) then
 							Core:OpenDialog("NEW_EVENT_FOUND");
 						end
 					end
