@@ -679,15 +679,16 @@ function Core:CreateUpcomingEvents()
 				local upcomingEvent = ns.UPCOMING_EVENTS.events[i];
 
 				if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
-					hasAnyData = true;
-					Core:AppendCalendarList(upcomingEvent);
+					if (Core:AppendCalendarList(upcomingEvent)) then
+						hasAnyData = true;
+					end
 				end
 			end
 		end
 
 		if (not hasAnyData) then
 			Core:AppendMessage(
-				"This guild doesn't have any upcoming event or you are not an event manager!\r\n\r\nGuild: " ..
+				"This guild either doesn't have any upcoming events that you are a member of, or you are not an event manager!\r\n\r\nGuild: " ..
 				guildName .. " / " .. realmName, true);
 		end
 	end
@@ -901,6 +902,10 @@ function Core:AppendMessage(message, appendReloadUIButton)
 end
 
 function Core:AppendCalendarList(event)
+	if not Core:IsInvitedToEvent(event) then
+		return false;
+	end
+	
 	local itemGroup = GOW.GUI:Create("InlineGroup");
 	itemGroup:SetTitle(event.title);
 	itemGroup:SetFullWidth(true);
@@ -1141,6 +1146,7 @@ function Core:AppendCalendarList(event)
 	itemGroup:AddChild(buttonsGroup);
 
 	containerScrollFrame:AddChild(itemGroup);
+	return true;
 end
 
 function Core:AppendTeam(teamData)
@@ -1455,6 +1461,23 @@ function Core:AddCheckEventsTask()
 	end, 6);
 end
 
+function Core:IsInvitedToEvent(upcomingEvent)
+	if (upcomingEvent.isEventMember) then
+		if (upcomingEvent.calendarType == 1) then
+			return true;
+		else
+			local currentCharacterInvite = GetCurrentCharacterUniqueKey();
+
+			for m = 1, upcomingEvent.totalMembers do
+				local currentInviteMember = upcomingEvent.inviteMembers[m];
+				if (currentInviteMember and currentCharacterInvite == currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized) then
+					return true;
+				end
+			end
+		end
+	end
+end
+
 function Core:CheckEventInvites()
 	Core:Debug("Starting event invites!");
 
@@ -1498,7 +1521,7 @@ function Core:CheckEventInvites()
 								workQueue:clearTasks();
 								return;
 							elseif (eventIndex == -1) then
-								if (upcomingEvent.isEventMember) then
+								if (Core:IsInvitedToEvent(upcomingEvent)) then
 									hasAnyUninvitedEvent = true;
 								end
 							elseif (eventIndex > 0) then
