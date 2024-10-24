@@ -1,14 +1,12 @@
 --[[
 
 	This file is part of 'AceGUI-3.0: SFX Widgets', an add-on for World of Warcraft. For bug reports,
-	documentation and license information, please visit https://github.com/SFX-WoW/AceGUI-3.0_SFX-Widgets.
+	documentation and license information, visit https://github.com/SFX-WoW/AceGUI-3.0_SFX-Widgets.
 
 	* File...: SFX-Info-URL.lua
 	* Author.: StormFX
 
 ]]
-
--- GLOBALS: GetLocale, LibStub
 
 ----------------------------------------
 -- Locals
@@ -59,7 +57,14 @@ if Locale == "itIT" then
 	L["Press %s to cancel."] = "Premi %s per cancellare."
 	L["Press %s to copy."] = "Premi %s per copiare."
 	L["Select"] = "Seleziona"
---elseif Locale == "koKR" then
+elseif Locale == "koKR" then
+	L["Click to select this text."] = "이 텍스트를 선택하려면 클릭하세요."
+	L["Copy"] = "복사"
+	L["CTRL+C"] = "CTRL+C"
+	L["ESC"] = "ESC"
+	L["Press %s to cancel."] = "취소하려면 %s 키를 누르세요."
+	L["Press %s to copy."] = "복사하려면 %s 키를 누르세요."
+	L["Select"] = "선택"
 --elseif Locale == "ptBR" then
 elseif Locale == "ruRU" then
 	L["Click to select this text."] = "Щелкните, чтобы выделить этот текст."
@@ -111,7 +116,7 @@ local function EditBox_OnEnter(self)
 end
 
 -- EditBox:OnLeave()
-local function EditBox_OnLeave(self)
+local function EditBox_OnLeave()
 	Tooltip:Hide()
 end
 
@@ -155,7 +160,7 @@ local function Button_OnEnter(self)
 end
 
 -- Button:OnLeave()
-local function Button_OnLeave(self)
+local function Button_OnLeave()
 	Tooltip:Hide()
 end
 

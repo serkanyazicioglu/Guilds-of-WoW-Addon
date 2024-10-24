@@ -1,14 +1,12 @@
 --[[
 
 	This file is part of 'AceGUI-3.0: SFX Widgets', an add-on for World of Warcraft. For bug reports,
-	documentation and license information, please visit https://github.com/SFX-WoW/AceGUI-3.0_SFX-Widgets.
+	documentation and license information, visit https://github.com/SFX-WoW/AceGUI-3.0_SFX-Widgets.
 
 	* File...: SFX-Info.lua
 	* Author.: StormFX
 
 ]]
-
--- GLOBALS: LibStub
 
 ----------------------------------------
 -- Locals
@@ -24,7 +22,7 @@ if not AceGUI or (AceGUI:GetWidgetVersion(Type) or 0) >= Version then return end
 -- Lua API
 ---
 
-local max, pairs = math.max, pairs
+local pairs = pairs
 
 ----------------------------------------
 -- WoW API

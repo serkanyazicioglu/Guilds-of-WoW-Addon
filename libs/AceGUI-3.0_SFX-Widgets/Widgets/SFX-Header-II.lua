@@ -1,14 +1,12 @@
 --[[
 
 	This file is part of 'AceGUI-3.0: SFX Widgets', an add-on for World of Warcraft. For bug reports,
-	documentation and license information, please visit https://github.com/SFX-WoW/AceGUI-3.0_SFX-Widgets.
+	documentation and license information, visit https://github.com/SFX-WoW/AceGUI-3.0_SFX-Widgets.
 
 	* File...: SFX-Header-II.lua
 	* Author.: StormFX
 
 ]]
-
--- GLOBALS: LibStub
 
 ----------------------------------------
 -- Locals
@@ -97,14 +95,15 @@ local Methods = {
 	-- Widget:SetText()
 	-- Sets the header text.
 	SetText = function(self, Text)
-		local Text, Count = gsub(Text or "", ">>>", "")
-		self.Text = Text
+		local Title, Count = gsub(Text or "", ">>>", "")
+
+		self.Text = Title
 
 		local Label = self.Label
-		Label:SetText(Text)
+		Label:SetText(Title)
 
-		if Text == "" then
-			self.Border:ClearPointByName("TOP")
+		if Title == "" then
+			self.Border:ClearPoint("TOP")
 		else
 			self.Border:SetPoint("TOP", Label, "BOTTOM", 0, 2)
 		end
