@@ -841,6 +841,11 @@ function Core:searchForEvent(event)
 	--local month, year = C_Calendar.GetMonthInfo();
 
 	local offsetMonths = tonumber(date("%m", event.eventDate)) - tonumber(date("%m", serverTime))
+
+	if (offsetMonths < 0) then
+		offsetMonths = offsetMonths + 12;
+	end
+
 	local numDayEvents = C_Calendar.GetNumDayEvents(offsetMonths, event.day);
 
 	--Core:Debug("Searching: " .. event.titleWithKey .. ". Found: " .. numDayEvents .. " : " .. event.day .. "/" .. event.month .. "/" .. event.year);
