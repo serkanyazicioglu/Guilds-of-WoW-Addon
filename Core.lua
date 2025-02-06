@@ -1154,6 +1154,8 @@ function Core:AppendCalendarList(event)
 	return true;
 end
 
+
+
 function Core:AppendTeam(teamData)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
 	itemGroup:SetTitle(teamData.title);
@@ -1197,6 +1199,19 @@ function Core:AppendTeam(teamData)
 		Core:InviteAllTeamMembersToPartyCheck(teamData);
 	end);
 	buttonsGroup:AddChild(inviteToPartyButton);
+
+	local viewTeamButton = GOW.GUI:Create("Button");
+	viewTeamButton:SetText("View Team");
+	viewTeamButton:SetWidth(200);
+	viewTeamButton:SetCallback("OnClick", function()
+		for i = 1, teamData.totalMembers do
+			local member = teamData.members[i];
+			Core:PrintTable(member);
+		end
+	end);
+	buttonsGroup:AddChild(viewTeamButton);
+
+
 
 	local copyButton = GOW.GUI:Create("Button");
 	copyButton:SetText("Copy Link");
@@ -2162,4 +2177,10 @@ end
 function Core:GetColoredString(color, msg)
 	local colorString = "|cff";
 	return colorString .. color .. msg .. "|r";
+end
+
+function Core:PrintTable(t)
+    for key, value in pairs(t) do
+        print(key, value)
+    end
 end
