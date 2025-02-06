@@ -42,6 +42,6 @@ Guilds of WoW website: https://guildsofwow.com
 
 Guilds of WoW support: https://guildsofwow.com/feedback
 
-Discord: https://discord.gg/VfGJnCS
+Discord: https://discord.gg/guildsofwow
 
 Twitter: https://twitter.com/guildsofwow
