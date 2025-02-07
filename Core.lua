@@ -607,6 +607,7 @@ end
 function Core:ToggleWindow()
 	if (containerFrame:IsShown()) then
 		containerFrame:Hide();
+		ViewGowTeamFrame:Hide();
 	else
 		if (CalendarFrame) then
 			HideUIPanel(CalendarFrame);
@@ -1200,15 +1201,36 @@ function Core:AppendTeam(teamData)
 	end);
 	buttonsGroup:AddChild(inviteToPartyButton);
 
+	-- add button to view team members
 	local viewTeamButton = GOW.GUI:Create("Button");
 	viewTeamButton:SetText("View Team");
 	viewTeamButton:SetWidth(200);
 	viewTeamButton:SetCallback("OnClick", function()
+	
+		-- create a new frame to show team members
+		ViewGowTeamFrame = GOW.GUI:Create("Frame");
+		ViewGowTeamFrame:SetLayout("List");
+		ViewGowTeamFrame:SetTitle(teamData.title .. " Members");
+				
+		-- creates a row that allows the user to copy/paste the team url
+		local row = GOW.GUI:Create("SFX-Info-URL")
+		row:SetLabel("Team URL")
+		row:SetText(teamData.webUrl)
+		row:SetDisabled(false)
+			
+		-- add the row to the frame
+		ViewGowTeamFrame:AddChild(row)
+		
+				
+		
+		
 		for i = 1, teamData.totalMembers do
 			local member = teamData.members[i];
 			Core:PrintTable(member);
 		end
 	end);
+	-- closes the ViewGowTeamFrame frame when the user presses esc
+	table.insert(UISpecialFrames, "ViewGowTeamFrame");
 	buttonsGroup:AddChild(viewTeamButton);
 
 
