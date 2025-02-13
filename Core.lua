@@ -157,6 +157,7 @@ function GOW:OnInitialize()
 	containerFrame = GOW.GUI:Create("Frame");
 	containerFrame:SetLayout("Fill");
 	containerFrame:SetHeight(550);
+	containerFrame:SetWidth(1000);
 	containerFrame.frame:SetFrameStrata("MEDIUM");
 	containerFrame:SetTitle("Guilds of WoW");
 	containerFrame:SetStatusText("Type /gow for quick access");
@@ -457,7 +458,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		Core:SetRosterInfo();
 	elseif event == "CALENDAR_ACTION_PENDING" then
-		if (tostring(arg1) == "false")  then
+		if (tostring(arg1) == "false") then
 			Core:Debug("CALENDAR_ACTION_PENDING: " .. tostring(arg1));
 			Core:RefreshUpcomingEventsList();
 		end
@@ -620,7 +621,14 @@ function Core:ToggleWindow()
 end
 
 function Core:RefreshUpcomingEventsList()
-	Core:Debug("RefreshUpcomingEventsList: containerFrame:IsShown(): " .. tostring(containerFrame:IsShown()) .. ". isPropogatingUpdate: " .. tostring(isPropogatingUpdate) .. ". selectedTab: " .. selectedTab .. ". isEventProcessCompleted: " .. tostring(isEventProcessCompleted) .. ". isNewEventBeingCreated: " .. tostring(isNewEventBeingCreated));
+	Core:Debug("RefreshUpcomingEventsList: containerFrame:IsShown(): " ..
+		tostring(containerFrame:IsShown()) ..
+		". isPropogatingUpdate: " ..
+		tostring(isPropogatingUpdate) ..
+		". selectedTab: " ..
+		selectedTab ..
+		". isEventProcessCompleted: " ..
+		tostring(isEventProcessCompleted) .. ". isNewEventBeingCreated: " .. tostring(isNewEventBeingCreated));
 	if (containerFrame:IsShown() and isPropogatingUpdate == false and selectedTab == "events" and isEventProcessCompleted and not isNewEventBeingCreated) then
 		Core:Debug("Adding to work queue: CreateUpcomingEvents");
 		persistentWorkQueue:addTask(function()
@@ -697,6 +705,7 @@ function Core:CreateUpcomingEvents()
 	isPropogatingUpdate = false;
 end
 
+-- //ANCHOR - Create Teams
 function Core:CreateTeams()
 	if (selectedTab ~= "teams") then
 		return;
@@ -732,6 +741,12 @@ function Core:CreateTeams()
 		local hasAnyData = false;
 
 		if (isInGuild and ns.TEAMS.totalTeams > 0) then
+			containerScrollFrame:ReleaseChildren();
+			GoWTeamNavContainer = GOW.GUI:Create("SimpleGroup");
+			GoWTeamNavContainer:SetLayout("list");
+			GoWTeamNavContainer:SetRelativeWidth(0.25);
+			GoWTeamNavContainer:SetFullHeight(true);
+			containerScrollFrame:AddChild(GoWTeamNavContainer);
 			for i = 1, ns.TEAMS.totalTeams do
 				local team = ns.TEAMS.teams[i];
 
@@ -822,7 +837,8 @@ function Core:ResetCalendar()
 	local serverYear = tonumber(date("%Y", serverTime));
 
 	if (calendarMonth ~= serverMonth or calendarYear ~= serverYear) then
-		Core:Debug("Resetting calendar to current date. Current: " .. calendarMonth .. "/" .. calendarYear .. " - Server: " .. serverMonth .. "/" .. serverYear);
+		Core:Debug("Resetting calendar to current date. Current: " ..
+			calendarMonth .. "/" .. calendarYear .. " - Server: " .. serverMonth .. "/" .. serverYear);
 		C_Calendar.SetAbsMonth(serverMonth, serverYear);
 	end
 end
@@ -911,7 +927,7 @@ function Core:AppendCalendarList(event)
 	if not Core:IsInvitedToEvent(event) then
 		return false;
 	end
-	
+
 	local itemGroup = GOW.GUI:Create("InlineGroup");
 	itemGroup:SetTitle(event.title);
 	itemGroup:SetFullWidth(true);
@@ -1155,33 +1171,19 @@ function Core:AppendCalendarList(event)
 	return true;
 end
 
-
-
+-- //ANCHOR - Append Teams
 function Core:AppendTeam(teamData)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
-	itemGroup:SetTitle(teamData.title);
+	itemGroup:SetLayout("list");
 	itemGroup:SetFullWidth(true);
 
-	if (teamData.description ~= nil and teamData.description ~= "") then
-		local teamDescriptionLabel = GOW.GUI:Create("SFX-Info");
-		teamDescriptionLabel:SetLabel("Description");
-		teamDescriptionLabel:SetDisabled(false);
-		teamDescriptionLabel:SetText(teamData.description);
-		teamDescriptionLabel:SetCallback("OnEnter", function(self)
-			local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT");
-			GOW.tooltip = tooltip;
+	if (teamData.title ~= nil and teamData.title ~= "") then
+		local teamTitleLabel = GOW.GUI:Create("SFX-Info");
+		teamTitleLabel:SetLabel("Name");
+		teamTitleLabel:SetDisabled(false);
+		teamTitleLabel:SetText(teamData.title);
 
-			tooltip:AddHeader('|cffffcc00Team Description');
-			local line = tooltip:AddLine();
-			tooltip:SetCell(line, 1, teamData.description, "LEFT", 1, nil, 0, 0, 300, 50);
-			tooltip:SmartAnchorTo(self.frame);
-			tooltip:Show();
-		end);
-		teamDescriptionLabel:SetCallback("OnLeave", function()
-			LibQTip:Release(GOW.tooltip);
-			GOW.tooltip = nil;
-		end);
-		itemGroup:AddChild(teamDescriptionLabel);
+		itemGroup:AddChild(teamTitleLabel);
 	end
 
 	local membersLabel = GOW.GUI:Create("SFX-Info");
@@ -1206,24 +1208,23 @@ function Core:AppendTeam(teamData)
 	viewTeamButton:SetText("View Team");
 	viewTeamButton:SetWidth(200);
 	viewTeamButton:SetCallback("OnClick", function()
-	
 		-- create a new frame to show team members
 		ViewGowTeamFrame = GOW.GUI:Create("Frame");
 		ViewGowTeamFrame:SetLayout("List");
 		ViewGowTeamFrame:SetTitle(teamData.title .. " Members");
-				
+
 		-- creates a row that allows the user to copy/paste the team url
 		local row = GOW.GUI:Create("SFX-Info-URL")
 		row:SetLabel("Team URL")
 		row:SetText(teamData.webUrl)
 		row:SetDisabled(false)
-			
+
 		-- add the row to the frame
 		ViewGowTeamFrame:AddChild(row)
-		
-				
-		
-		
+
+
+
+
 		for i = 1, teamData.totalMembers do
 			local member = teamData.members[i];
 			Core:PrintTable(member);
@@ -1245,7 +1246,7 @@ function Core:AppendTeam(teamData)
 
 	itemGroup:AddChild(buttonsGroup);
 
-	containerScrollFrame:AddChild(itemGroup);
+	GoWTeamNavContainer:AddChild(itemGroup);
 end
 
 function Core:AppendRecruitmentList(recruitmentApplication)
@@ -1417,7 +1418,7 @@ function Core:CreateCalendarEvent(event)
 		Core:PrintErrorMessage("Addon is busy right now! Please wait for a while and try again...");
 		return;
 	end
-	
+
 	if (event.calendarType == GOW.consts.GUILD_EVENT) then
 		Core:OpenDialogWithData("CONFIRM_GUILD_EVENT_CREATION", nil, nil, event);
 	else
@@ -1556,7 +1557,8 @@ function Core:CheckEventInvites()
 						if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
 							local eventIndex, offsetMonths, dayEvent = Core:searchForEvent(upcomingEvent);
 
-							Core:Debug("Event search result: " .. upcomingEvent.titleWithKey .. ". Result: " .. eventIndex);
+							Core:Debug("Event search result: " ..
+								upcomingEvent.titleWithKey .. ". Result: " .. eventIndex);
 
 							if (eventIndex == -2) then
 								Core:Debug("Aborting invites: CheckEventInvites.");
@@ -1567,7 +1569,8 @@ function Core:CheckEventInvites()
 									hasAnyUninvitedEvent = true;
 								end
 							elseif (eventIndex > 0) then
-								Core:Debug(dayEvent.title .. " creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex);
+								Core:Debug(dayEvent.title ..
+									" creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex);
 
 								if (dayEvent.calendarType == "PLAYER" or dayEvent.calendarType == "GUILD_EVENT") then
 									if (dayEvent.modStatus == "CREATOR" or dayEvent.modStatus == "MODERATOR") then
@@ -1613,7 +1616,6 @@ function Core:CheckEventInvites()
 						end
 					end
 				end
-				
 			end
 		else
 			Core:Debug("Event is open!");
@@ -2146,7 +2148,8 @@ function Core:InitializeEventInvites()
 			if (GOW.DB.profile.guilds[guildKey].eventsRefreshTime and ns.UPCOMING_EVENTS.exportTime and ns.UPCOMING_EVENTS.exportTime < GOW.DB.profile.guilds[guildKey].eventsRefreshTime) then
 				isEventProcessCompleted = true;
 
-				Core:PrintMessage("The most recently imported data has already been processed, the RSVP synchronization will be skipped...");
+				Core:PrintMessage(
+					"The most recently imported data has already been processed, the RSVP synchronization will be skipped...");
 			else
 				Core:Debug("Event attendance initial process started!");
 
@@ -2202,7 +2205,7 @@ function Core:GetColoredString(color, msg)
 end
 
 function Core:PrintTable(t)
-    for key, value in pairs(t) do
-        print(key, value)
-    end
+	for key, value in pairs(t) do
+		print(key, value)
+	end
 end
