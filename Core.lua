@@ -742,12 +742,20 @@ function Core:CreateTeams()
 		local hasAnyData = false;
 
 		if (isInGuild and ns.TEAMS.totalTeams > 0) then
-			containerScrollFrame:ReleaseChildren();
-			GoWTeamNavContainer = GOW.GUI:Create("SimpleGroup");
-			GoWTeamNavContainer:SetLayout("list");
-			GoWTeamNavContainer:SetRelativeWidth(0.25);
-			GoWTeamNavContainer:SetFullHeight(true);
-			containerScrollFrame:AddChild(GoWTeamNavContainer);
+			GoWTeamScrollContainer = GOW.GUI:Create("SimpleGroup");
+			GoWTeamScrollContainer:SetWidth(250);
+			GoWTeamScrollContainer:SetHeight(425);
+			GoWTeamScrollContainer:SetLayout("Fill");
+
+			containerScrollFrame:AddChild(GoWTeamScrollContainer);
+
+			GoWTeamScrollFrame = GOW.GUI:Create("ScrollFrame");
+			GoWTeamScrollFrame:SetFullHeight(true);
+			GoWTeamScrollFrame:SetFullWidth(true);
+			GoWTeamScrollFrame:SetLayout("Flow");
+
+			GoWTeamScrollContainer:AddChild(GoWTeamScrollFrame);
+
 			for i = 1, ns.TEAMS.totalTeams do
 				local team = ns.TEAMS.teams[i];
 
@@ -1247,7 +1255,7 @@ function Core:AppendTeam(teamData)
 
 	itemGroup:AddChild(buttonsGroup);
 
-	GoWTeamNavContainer:AddChild(itemGroup);
+	GoWTeamScrollFrame:AddChild(itemGroup);
 end
 
 function Core:AppendRecruitmentList(recruitmentApplication)
