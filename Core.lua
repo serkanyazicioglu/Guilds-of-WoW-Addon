@@ -158,6 +158,7 @@ function GOW:OnInitialize()
 	containerFrame:SetLayout("Fill");
 	containerFrame:SetHeight(550);
 	containerFrame:SetWidth(1000);
+	containerFrame:EnableResize(false);
 	containerFrame.frame:SetFrameStrata("MEDIUM");
 	containerFrame:SetTitle("Guilds of WoW");
 	containerFrame:SetStatusText("Type /gow for quick access");
