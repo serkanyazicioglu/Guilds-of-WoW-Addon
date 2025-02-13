@@ -1183,7 +1183,7 @@ end
 -- //ANCHOR - Append Teams
 function Core:AppendTeam(teamData)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
-	itemGroup:SetLayout("list");
+	itemGroup:SetLayout("Flow");
 	itemGroup:SetFullWidth(true);
 
 	if (teamData.title ~= nil and teamData.title ~= "") then
@@ -1206,7 +1206,7 @@ function Core:AppendTeam(teamData)
 
 	local inviteToPartyButton = GOW.GUI:Create("Button");
 	inviteToPartyButton:SetText("Invite Team");
-	inviteToPartyButton:SetWidth(200);
+	inviteToPartyButton:SetRelativeWidth(0.5);
 	inviteToPartyButton:SetCallback("OnClick", function()
 		Core:InviteAllTeamMembersToPartyCheck(teamData);
 	end);
@@ -1214,13 +1214,15 @@ function Core:AppendTeam(teamData)
 
 	-- add button to view team members
 	local viewTeamButton = GOW.GUI:Create("Button");
-	viewTeamButton:SetText("View Team");
-	viewTeamButton:SetWidth(200);
+	viewTeamButton:SetText("View");
+	viewTeamButton:SetRelativeWidth(0.5);
 	viewTeamButton:SetCallback("OnClick", function()
 		-- create a new frame to show team members
-		ViewGowTeamFrame = GOW.GUI:Create("Frame");
-		ViewGowTeamFrame:SetLayout("List");
-		ViewGowTeamFrame:SetTitle(teamData.title .. " Members");
+		ViewGowTeamFrame = GOW.GUI:Create("SimpleGroup");
+		ViewGowTeamFrame:SetWidth(690);
+		ViewGowTeamFrame:SetHeight(500);
+		ViewGowTeamFrame:ClearAllPoints();
+
 
 		-- creates a row that allows the user to copy/paste the team url
 		local row = GOW.GUI:Create("SFX-Info-URL")
@@ -1231,6 +1233,27 @@ function Core:AppendTeam(teamData)
 		-- add the row to the frame
 		ViewGowTeamFrame:AddChild(row)
 
+		local teamDescriptionLabel = GOW.GUI:Create("SFX-Info");
+		teamDescriptionLabel:SetLabel("Description");
+		teamDescriptionLabel:SetText(teamData.description);
+		teamDescriptionLabel:SetDisabled(false);
+		teamDescriptionLabel:SetCallback("OnEnter", function(self)
+			local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT");
+			GOW.tooltip = tooltip;
+
+			tooltip:AddHeader('|cffffcc00Team Description');
+			local line = tooltip:AddLine();
+			tooltip:SetCell(line, 1, teamData.description, "LEFT", 1, nil, 0, 0, 300, 50);
+			tooltip:SmartAnchorTo(self.frame);
+			tooltip:Show();
+		end);
+		teamDescriptionLabel:SetCallback("OnLeave", function()
+			LibQTip:Release(GOW.tooltip);
+			GOW.tooltip = nil;
+		end);
+		ViewGowTeamFrame:AddChild(teamDescriptionLabel);
+
+
 
 
 
@@ -1238,21 +1261,11 @@ function Core:AppendTeam(teamData)
 			local member = teamData.members[i];
 			Core:PrintTable(member);
 		end
+		containerScrollFrame:AddChild(ViewGowTeamFrame);
 	end);
-	-- closes the ViewGowTeamFrame frame when the user presses esc
-	table.insert(UISpecialFrames, "ViewGowTeamFrame");
+
+
 	buttonsGroup:AddChild(viewTeamButton);
-
-
-
-	local copyButton = GOW.GUI:Create("Button");
-	copyButton:SetText("Copy Link");
-	copyButton:SetWidth(100);
-	copyButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("COPY_TEXT", nil, nil, teamData.webUrl);
-	end);
-	buttonsGroup:AddChild(copyButton);
-
 	itemGroup:AddChild(buttonsGroup);
 
 	GoWTeamScrollFrame:AddChild(itemGroup);
