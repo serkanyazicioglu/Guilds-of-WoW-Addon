@@ -82,6 +82,7 @@ local containerFrame = nil;
 local containerTabs = nil;
 local containerScrollFrame = nil;
 local currentOpenDialog = nil;
+local GoWTeamFilterDropdown = nil;
 
 local workQueue = nil;
 local persistentWorkQueue = nil;
@@ -1308,7 +1309,9 @@ function Core:AppendTeam(teamData)
 		local teamMembersContainer = GOW.GUI:Create("SimpleGroup")
 		teamMembersContainer:SetLayout("Flow")
 		teamMembersContainer:SetFullWidth(true)
-		ViewGowTeamFrame:AddChild(teamMembersContainer)
+		if GoWTeamFilterDropdown then
+			GoWTeamFilterDropdown.content(teamMembersContainer)
+		end
 
 		function Core:FilterTeamMembers(role)
 			local filteredMembers = {}
@@ -1366,26 +1369,26 @@ function Core:AppendTeam(teamData)
 		end
 
 		-- create a dropdown to filter team members
-		local teamFilterDropdown = GOW.GUI:Create("DropdownGroup");
-		teamFilterDropdown:SetFullWidth(true);
-		teamFilterDropdown:SetTitle("Filter by Role");
-		teamFilterDropdown:SetHeight(30);
-		teamFilterDropdown:SetGroupList(teamRoles);
-		teamFilterDropdown:SetGroup(1);
-		teamFilterDropdown:SetCallback("OnGroupSelected", function(self, event, key)
+		GoWTeamFilterDropdown = GOW.GUI:Create("DropdownGroup");
+		GoWTeamFilterDropdown:SetFullWidth(true);
+		GoWTeamFilterDropdown:SetTitle("Filter by Role");
+		GoWTeamFilterDropdown:SetHeight(30);
+		GoWTeamFilterDropdown:SetGroupList(teamRoles);
+		GoWTeamFilterDropdown:SetGroup(teamRoles.All);
+		GoWTeamFilterDropdown:SetCallback("OnGroupSelected", function(self, event, key)
 			Core:FilterTeamMembers(key);
 		end);
-
-		ViewGowTeamFrame:AddChild(teamFilterDropdown);
-
+		GoWTeamFilterDropdown:Fire("OnGroupSelected", teamRoles.All);
+		ViewGowTeamFrame:AddChild(GoWTeamFilterDropdown);
 		containerScrollFrame:AddChild(ViewGowTeamFrame);
-	end);
+	end)
+
 
 
 	buttonsGroup:AddChild(viewTeamButton);
 	itemGroup:AddChild(buttonsGroup);
 
-	GoWTeamScrollFrame:AddChild(itemGroup);
+	GoWTeamScrollFrame:AddChild(itemGroup)
 end
 
 function Core:AppendRecruitmentList(recruitmentApplication)
