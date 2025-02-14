@@ -83,6 +83,7 @@ local containerTabs = nil;
 local containerScrollFrame = nil;
 local currentOpenDialog = nil;
 local GoWTeamFilterDropdown = nil;
+local GoWTeamMemberContainer = nil;
 
 local workQueue = nil;
 local persistentWorkQueue = nil;
@@ -1305,17 +1306,10 @@ function Core:AppendTeam(teamData)
 			"Devastation",
 		}
 
-		-- Create a container to hold the list of team members filtered by role.
-		local teamMembersContainer = GOW.GUI:Create("SimpleGroup")
-		teamMembersContainer:SetLayout("Flow")
-		teamMembersContainer:SetFullWidth(true)
-		if GoWTeamFilterDropdown then
-			GoWTeamFilterDropdown.content(teamMembersContainer)
-		end
-
-		function Core:FilterTeamMembers(role)
+		function Core:RenderFilteredTeamMembers(role)
 			local filteredMembers = {}
 			local totalMembers = 0
+			local currentPlayerName = UnitName("player")
 
 			for i = 1, teamData.totalMembers do
 				local member = teamData.members[i]
@@ -1345,11 +1339,10 @@ function Core:AppendTeam(teamData)
 				end
 			end
 
-			-- Clear the current list of rendered team members.
-			teamMembersContainer:ReleaseChildren()
-
 			-- Render each filtered member.
 			for _, member in ipairs(filteredMembers) do
+				-- Additional check if somehow the player's name slipped through.
+
 				local memberGroup = GOW.GUI:Create("InlineGroup")
 
 				local nameLabel = GOW.GUI:Create("Label")
@@ -1362,26 +1355,60 @@ function Core:AppendTeam(teamData)
 				specLabel:SetFullWidth(true)
 				memberGroup:AddChild(specLabel)
 
-				teamMembersContainer:AddChild(memberGroup)
+				local inviteMember = GOW.GUI:Create("Button")
+				inviteMember:SetText("Invite")
+				inviteMember:SetWidth(100)
+				inviteMember:SetCallback("OnClick", function()
+					C_PartyInfo.InviteUnit(member.name)
+				end)
+				if member.name ~= currentPlayerName then
+					inviteMember:SetDisabled(false)
+				else
+					inviteMember:SetDisabled(true)
+				end
+				memberGroup:AddChild(inviteMember)
+
+				if GoWTeamMemberContainer then
+					GoWTeamMemberContainer:AddChild(memberGroup)
+				end
 			end
 
 			return filteredMembers, totalMembers
 		end
 
+		-- Create a container to hold the list of team members filtered by role.
+		GoWTeamMemberContainer = GOW.GUI:Create("SimpleGroup")
+		GoWTeamMemberContainer:SetLayout("Flow")
+		GoWTeamMemberContainer:SetFullWidth(true)
+
+
+
+
+
 		-- create a dropdown to filter team members
-		GoWTeamFilterDropdown = GOW.GUI:Create("DropdownGroup");
-		GoWTeamFilterDropdown:SetFullWidth(true);
-		GoWTeamFilterDropdown:SetTitle("Filter by Role");
+		GoWTeamFilterDropdown = GOW.GUI:Create("Dropdown");
+		GoWTeamFilterDropdown:SetWidth(200);
+		GoWTeamFilterDropdown:SetLabel("Filter by Role");
 		GoWTeamFilterDropdown:SetHeight(30);
-		GoWTeamFilterDropdown:SetGroupList(teamRoles);
-		GoWTeamFilterDropdown:SetGroup(teamRoles.All);
-		GoWTeamFilterDropdown:SetCallback("OnGroupSelected", function(self, event, key)
-			Core:FilterTeamMembers(key);
+		GoWTeamFilterDropdown:SetList(teamRoles);
+		GoWTeamFilterDropdown:SetValue(teamRoles.All);
+		GoWTeamFilterDropdown:SetCallback("OnValueChanged", function(self, event, key)
+			-- Clear the current list of rendered team members.
+			GoWTeamMemberContainer:ReleaseChildren()
+
+			Core:RenderFilteredTeamMembers(key);
 		end);
-		GoWTeamFilterDropdown:Fire("OnGroupSelected", teamRoles.All);
+
+		-- align the dropdown to the right of its parent frame
+		GoWTeamFilterDropdown:ClearAllPoints();
+		GoWTeamFilterDropdown:SetPoint("TOPRIGHT", ViewGowTeamFrame.frame, "TOPRIGHT", 0, 0);
+		GoWTeamFilterDropdown:Fire("OnValueChanged", teamRoles.All);
 		ViewGowTeamFrame:AddChild(GoWTeamFilterDropdown);
+		ViewGowTeamFrame:AddChild(GoWTeamMemberContainer)
 		containerScrollFrame:AddChild(ViewGowTeamFrame);
 	end)
+
+
 
 
 
