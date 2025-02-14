@@ -1221,8 +1221,6 @@ function Core:AppendTeam(teamData)
 		ViewGowTeamFrame = GOW.GUI:Create("SimpleGroup");
 		ViewGowTeamFrame:SetWidth(690);
 		ViewGowTeamFrame:SetHeight(500);
-		ViewGowTeamFrame:ClearAllPoints();
-		ViewGowTeamFrame:SetPoint("TOP", UIParent, "BOTTOM", 0, 0);
 
 
 		-- creates a row that allows the user to copy/paste the team url
@@ -1230,6 +1228,7 @@ function Core:AppendTeam(teamData)
 		row:SetLabel("Team URL")
 		row:SetText(teamData.webUrl)
 		row:SetDisabled(false)
+		row:SetHeight(30)
 
 		-- add the row to the frame
 		ViewGowTeamFrame:AddChild(row)
@@ -1237,6 +1236,7 @@ function Core:AppendTeam(teamData)
 		local teamDescriptionLabel = GOW.GUI:Create("SFX-Info");
 		teamDescriptionLabel:SetLabel("Description");
 		teamDescriptionLabel:SetText(teamData.description);
+		teamDescriptionLabel:SetHeight(60);
 		teamDescriptionLabel:SetDisabled(false);
 		teamDescriptionLabel:SetCallback("OnEnter", function(self)
 			local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT");
@@ -1254,14 +1254,130 @@ function Core:AppendTeam(teamData)
 		end);
 		ViewGowTeamFrame:AddChild(teamDescriptionLabel);
 
+		local teamRoles = {
+			All = "All",
+			Tank = "Tank",
+			Healer = "Healer",
+			DPS = "DPS"
+		};
 
+		local tankSpecs = {
+			"Blood",
+			"Vengeance",
+			"Guardian",
+			"Brewmaster",
+			"Protection",
+		}
 
+		local healerSpecs = {
+			"Restoration",
+			"Mistweaver",
+			"Holy",
+			"Discipline",
+			"Preservation",
+		}
 
+		local dpsSpecs = {
+			"Balance",
+			"Feral",
+			"Havoc",
+			"Unholy",
+			"Beast Mastery",
+			"Marksmanship",
+			"Survival",
+			"Arcane",
+			"Fire",
+			"Frost",
+			"Windwalker",
+			"Retribution",
+			"Shadow",
+			"Assassination",
+			"Outlaw",
+			"Subtlety",
+			"Elemental",
+			"Enhancement",
+			"Affliction",
+			"Demonology",
+			"Destruction",
+			"Arms",
+			"Fury",
+			"Devastation",
+		}
 
-		for i = 1, teamData.totalMembers do
-			local member = teamData.members[i];
-			Core:PrintTable(member);
+		-- Create a container to hold the list of team members filtered by role.
+		local teamMembersContainer = GOW.GUI:Create("SimpleGroup")
+		teamMembersContainer:SetLayout("Flow")
+		teamMembersContainer:SetFullWidth(true)
+		ViewGowTeamFrame:AddChild(teamMembersContainer)
+
+		function Core:FilterTeamMembers(role)
+			local filteredMembers = {}
+			local totalMembers = 0
+
+			for i = 1, teamData.totalMembers do
+				local member = teamData.members[i]
+
+				if role == teamRoles.All then
+					totalMembers = totalMembers + 1
+					filteredMembers[totalMembers] = member
+				else
+					local specsToCheck = nil
+					if role == teamRoles.Tank then
+						specsToCheck = tankSpecs
+					elseif role == teamRoles.Healer then
+						specsToCheck = healerSpecs
+					elseif role == teamRoles.DPS then
+						specsToCheck = dpsSpecs
+					end
+
+					if specsToCheck then
+						for _, spec in ipairs(specsToCheck) do
+							if spec == member.spec then
+								totalMembers = totalMembers + 1
+								filteredMembers[totalMembers] = member
+								break
+							end
+						end
+					end
+				end
+			end
+
+			-- Clear the current list of rendered team members.
+			teamMembersContainer:ReleaseChildren()
+
+			-- Render each filtered member.
+			for _, member in ipairs(filteredMembers) do
+				local memberGroup = GOW.GUI:Create("InlineGroup")
+
+				local nameLabel = GOW.GUI:Create("Label")
+				nameLabel:SetText("Name: " .. member.name)
+				nameLabel:SetFullWidth(true)
+				memberGroup:AddChild(nameLabel)
+
+				local specLabel = GOW.GUI:Create("Label")
+				specLabel:SetText("Spec: " .. member.spec)
+				specLabel:SetFullWidth(true)
+				memberGroup:AddChild(specLabel)
+
+				teamMembersContainer:AddChild(memberGroup)
+			end
+
+			return filteredMembers, totalMembers
 		end
+
+		-- create a dropdown to filter team members
+		local teamFilterDropdown = GOW.GUI:Create("DropdownGroup");
+		teamFilterDropdown:SetFullWidth(true);
+		teamFilterDropdown:SetTitle("Filter by Role");
+		teamFilterDropdown:SetHeight(30);
+		teamFilterDropdown:SetGroupList(teamRoles);
+		teamFilterDropdown:SetGroup(1);
+		teamFilterDropdown:SetCallback("OnGroupSelected", function(self, event, key)
+			Core:FilterTeamMembers(key);
+		end);
+
+		ViewGowTeamFrame:AddChild(teamFilterDropdown);
+
 		containerScrollFrame:AddChild(ViewGowTeamFrame);
 	end);
 
