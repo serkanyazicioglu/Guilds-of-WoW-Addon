@@ -1222,6 +1222,7 @@ function Core:AppendTeam(teamData)
 		ViewGowTeamFrame:SetWidth(690);
 		ViewGowTeamFrame:SetHeight(500);
 		ViewGowTeamFrame:ClearAllPoints();
+		ViewGowTeamFrame:SetPoint("TOP", UIParent, "BOTTOM", 0, 0);
 
 
 		-- creates a row that allows the user to copy/paste the team url
