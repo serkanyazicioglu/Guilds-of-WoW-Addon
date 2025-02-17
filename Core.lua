@@ -82,6 +82,7 @@ local containerFrame = nil;
 local containerTabs = nil;
 local containerScrollFrame = nil;
 local currentOpenDialog = nil;
+local GoWTeamTabContainer = nil;
 local GoWTeamFilterDropdown = nil;
 local GoWTeamMemberContainer = nil;
 local ViewGowTeamFrame = nil;
@@ -612,6 +613,7 @@ end
 function Core:ToggleWindow()
 	if (containerFrame:IsShown()) then
 		containerFrame:Hide();
+		GoWTeamTabContainer:Hide();
 	else
 		if (CalendarFrame) then
 			HideUIPanel(CalendarFrame);
@@ -749,31 +751,6 @@ function Core:CreateTeams()
 		local hasAnyData = false;
 
 		if (isInGuild and ns.TEAMS.totalTeams > 0) then
-			GoWTeamScrollContainer = GOW.GUI:Create("SimpleGroup");
-			GoWTeamScrollContainer:SetWidth(250);
-			GoWTeamScrollContainer:SetHeight(425);
-			GoWTeamScrollContainer:SetLayout("Fill");
-
-			if containerScrollFrame then
-				containerScrollFrame:AddChild(GoWTeamScrollContainer);
-			end
-
-			GoWTeamScrollFrame = GOW.GUI:Create("ScrollFrame");
-			GoWTeamScrollFrame:SetFullHeight(true);
-			GoWTeamScrollFrame:SetFullWidth(true);
-			GoWTeamScrollFrame:SetLayout("Flow");
-
-			GoWTeamScrollContainer:AddChild(GoWTeamScrollFrame);
-
-			-- create a container to hold the team's data upon clicking view team
-			ViewGowTeamFrame = GOW.GUI:Create("SimpleGroup");
-			ViewGowTeamFrame:SetWidth(660);
-			ViewGowTeamFrame:SetHeight(500);
-
-			if containerScrollFrame then
-				containerScrollFrame:AddChild(ViewGowTeamFrame);
-			end
-
 			for i = 1, ns.TEAMS.totalTeams do
 				local team = ns.TEAMS.teams[i];
 
@@ -1201,10 +1178,10 @@ end
 -- //ANCHOR - Append Teams
 function Core:AppendTeam(teamData)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
-	itemGroup:SetLayout("Flow");
-	itemGroup:SetFullWidth(true);
-	itemGroup:ClearAllPoints();
-	itemGroup:SetPoint("TOPLEFT", 0, 0);
+	-- itemGroup:SetLayout("Flow");
+	itemGroup:SetWidth(300);
+	-- itemGroup:ClearAllPoints();
+	-- itemGroup:SetPoint("TOPLEFT", 0, 0);
 
 	if (teamData.title ~= nil and teamData.title ~= "") then
 		local teamTitleLabel = GOW.GUI:Create("SFX-Info");
@@ -1239,6 +1216,40 @@ function Core:AppendTeam(teamData)
 	viewTeamButton:SetCallback("OnClick", function()
 		if ViewGowTeamFrame then
 			ViewGowTeamFrame:ReleaseChildren();
+		end
+
+		GoWTeamTabContainer = GOW.GUI:Create("Frame");
+		GoWTeamTabContainer:SetTitle(teamData.title);
+		GoWTeamTabContainer:SetWidth(1000);
+		GoWTeamTabContainer:SetHeight(550);
+		GoWTeamTabContainer.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
+		GoWTeamTabContainer.frame:SetFrameStrata("DIALOG");
+		GoWTeamTabContainer.frame:SetFrameLevel(1000);
+		GoWTeamTabContainer:SetLayout("Flow");
+		GoWTeamTabContainer.frame:SetAlpha(1);
+		GoWTeamTabContainer.frame:SetBackdrop({
+			bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+			tile = true,
+			tileSize = 16,
+			edgeSize = 16,
+			insets = { left = 4, right = 4, top = 4, bottom = 4 },
+		});
+		GoWTeamTabContainer.frame:SetBackdropColor(0, 0, 0, 1);
+
+		GoWTeamTabContainer:SetCallback("OnClose", function()
+			GoWTeamTabContainer:ReleaseChildren();
+			GoWTeamTabContainer:Release();
+		end);
+
+
+		-- create a container to hold the team's data upon clicking view team
+		ViewGowTeamFrame = GOW.GUI:Create("SimpleGroup");
+		ViewGowTeamFrame:SetFullWidth(true);
+		ViewGowTeamFrame:SetFullHeight(true);
+
+		if GoWTeamTabContainer then
+			GoWTeamTabContainer:AddChild(ViewGowTeamFrame);
 		end
 
 
@@ -1295,6 +1306,9 @@ function Core:AppendTeam(teamData)
 			Backup = "Backup",
 			Trial = "Trial",
 		};
+
+
+
 
 		-- create table to hold the different tank specs
 		local tankSpecs = {
@@ -1469,14 +1483,12 @@ function Core:AppendTeam(teamData)
 		end
 	end)
 
-
-
-
+	if containerScrollFrame then
+		containerScrollFrame:AddChild(itemGroup);
+	end
 
 	buttonsGroup:AddChild(viewTeamButton);
 	itemGroup:AddChild(buttonsGroup);
-
-	GoWTeamScrollFrame:AddChild(itemGroup)
 end
 
 function Core:AppendRecruitmentList(recruitmentApplication)
