@@ -84,6 +84,7 @@ local containerScrollFrame = nil;
 local currentOpenDialog = nil;
 local GoWTeamFilterDropdown = nil;
 local GoWTeamMemberContainer = nil;
+local ViewGowTeamFrame = nil;
 
 local workQueue = nil;
 local persistentWorkQueue = nil;
@@ -611,7 +612,6 @@ end
 function Core:ToggleWindow()
 	if (containerFrame:IsShown()) then
 		containerFrame:Hide();
-		ViewGowTeamFrame:Hide();
 	else
 		if (CalendarFrame) then
 			HideUIPanel(CalendarFrame);
@@ -757,6 +757,15 @@ function Core:CreateTeams()
 			GoWTeamScrollFrame:SetLayout("Flow");
 
 			GoWTeamScrollContainer:AddChild(GoWTeamScrollFrame);
+
+			-- create a container to hold the team's data upon clicking view team
+			ViewGowTeamFrame = GOW.GUI:Create("SimpleGroup");
+			ViewGowTeamFrame:SetWidth(600);
+			ViewGowTeamFrame:SetHeight(500);
+
+			if containerScrollFrame then
+				containerScrollFrame:AddChild(ViewGowTeamFrame);
+			end
 
 			for i = 1, ns.TEAMS.totalTeams do
 				local team = ns.TEAMS.teams[i];
@@ -1178,7 +1187,9 @@ function Core:AppendCalendarList(event)
 
 	itemGroup:AddChild(buttonsGroup);
 
-	containerScrollFrame:AddChild(itemGroup);
+	if containerScrollFrame then
+		containerScrollFrame:AddChild(itemGroup);
+	end
 	return true;
 end
 
@@ -1219,10 +1230,9 @@ function Core:AppendTeam(teamData)
 	viewTeamButton:SetText("View");
 	viewTeamButton:SetRelativeWidth(0.5);
 	viewTeamButton:SetCallback("OnClick", function()
-		-- create a new frame to show team members
-		ViewGowTeamFrame = GOW.GUI:Create("SimpleGroup");
-		ViewGowTeamFrame:SetWidth(690);
-		ViewGowTeamFrame:SetHeight(500);
+		if ViewGowTeamFrame then
+			ViewGowTeamFrame:ReleaseChildren();
+		end
 
 
 		-- creates a row that allows the user to copy/paste the team url
@@ -1232,15 +1242,21 @@ function Core:AppendTeam(teamData)
 		row:SetDisabled(false)
 		row:SetHeight(30)
 
-		-- add the row to the frame
-		ViewGowTeamFrame:AddChild(row)
+		if ViewGowTeamFrame then
+			ViewGowTeamFrame:AddChild(row)
+		end
 
+		-- create a label to show the team description
 		local teamDescriptionLabel = GOW.GUI:Create("SFX-Info");
 		teamDescriptionLabel:SetLabel("Description");
-		teamDescriptionLabel:SetText(teamData.description);
-		teamDescriptionLabel:SetHeight(60);
+		if teamData.description == "" then
+			teamData.description = "No description provided."
+		else
+			teamDescriptionLabel:SetText(teamData.description);
+		end
 		teamDescriptionLabel:SetDisabled(false);
 		teamDescriptionLabel:SetCallback("OnEnter", function(self)
+			-- create a tooltip to show the team description
 			local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT");
 			GOW.tooltip = tooltip;
 
@@ -1254,8 +1270,13 @@ function Core:AppendTeam(teamData)
 			LibQTip:Release(GOW.tooltip);
 			GOW.tooltip = nil;
 		end);
-		ViewGowTeamFrame:AddChild(teamDescriptionLabel);
 
+		if ViewGowTeamFrame then
+			ViewGowTeamFrame:AddChild(teamDescriptionLabel);
+		end
+
+
+		-- create table to hold the different team roles
 		local teamRoles = {
 			All = "All",
 			Tank = "Tank",
@@ -1263,6 +1284,7 @@ function Core:AppendTeam(teamData)
 			DPS = "DPS"
 		};
 
+		-- create table to hold the different tank specs
 		local tankSpecs = {
 			"Blood",
 			"Vengeance",
@@ -1271,6 +1293,7 @@ function Core:AppendTeam(teamData)
 			"Protection",
 		}
 
+		-- create table to hold the different healer specs
 		local healerSpecs = {
 			"Restoration",
 			"Mistweaver",
@@ -1279,6 +1302,7 @@ function Core:AppendTeam(teamData)
 			"Preservation",
 		}
 
+		-- create table to hold the different dps specs
 		local dpsSpecs = {
 			"Balance",
 			"Feral",
@@ -1306,6 +1330,7 @@ function Core:AppendTeam(teamData)
 			"Devastation",
 		}
 
+		-- create a function to render the team members based on the role selected
 		function Core:RenderFilteredTeamMembers(role)
 			local filteredMembers = {}
 			local totalMembers = 0
@@ -1341,9 +1366,12 @@ function Core:AppendTeam(teamData)
 
 			-- Render each filtered member.
 			for _, member in ipairs(filteredMembers) do
-				-- Additional check if somehow the player's name slipped through.
-
+				-- Create a group to hold the member's name, spec, and invite button.
 				local memberGroup = GOW.GUI:Create("InlineGroup")
+
+				memberGroup:SetLayout("Flow")
+				memberGroup:SetFullWidth(true)
+
 
 				local nameLabel = GOW.GUI:Create("Label")
 				nameLabel:SetText("Name: " .. member.name)
@@ -1382,9 +1410,6 @@ function Core:AppendTeam(teamData)
 		GoWTeamMemberContainer:SetFullWidth(true)
 
 
-
-
-
 		-- create a dropdown to filter team members
 		GoWTeamFilterDropdown = GOW.GUI:Create("Dropdown");
 		GoWTeamFilterDropdown:SetWidth(200);
@@ -1403,9 +1428,10 @@ function Core:AppendTeam(teamData)
 		GoWTeamFilterDropdown:ClearAllPoints();
 		GoWTeamFilterDropdown:SetPoint("TOPRIGHT", ViewGowTeamFrame.frame, "TOPRIGHT", 0, 0);
 		GoWTeamFilterDropdown:Fire("OnValueChanged", teamRoles.All);
-		ViewGowTeamFrame:AddChild(GoWTeamFilterDropdown);
-		ViewGowTeamFrame:AddChild(GoWTeamMemberContainer)
-		containerScrollFrame:AddChild(ViewGowTeamFrame);
+		if ViewGowTeamFrame then
+			ViewGowTeamFrame:AddChild(GoWTeamFilterDropdown);
+			ViewGowTeamFrame:AddChild(GoWTeamMemberContainer)
+		end
 	end)
 
 
