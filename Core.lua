@@ -86,6 +86,7 @@ local GoWTeamTabContainer = nil;
 local GoWTeamFilterDropdown = nil;
 local GoWTeamMemberContainer = nil;
 local ViewGowTeamFrame = nil;
+local teamRoleContainer = nil;
 
 local workQueue = nil;
 local persistentWorkQueue = nil;
@@ -1178,10 +1179,7 @@ end
 -- //ANCHOR - Append Teams
 function Core:AppendTeam(teamData)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
-	-- itemGroup:SetLayout("Flow");
 	itemGroup:SetWidth(300);
-	-- itemGroup:ClearAllPoints();
-	-- itemGroup:SetPoint("TOPLEFT", 0, 0);
 
 	if (teamData.title ~= nil and teamData.title ~= "") then
 		local teamTitleLabel = GOW.GUI:Create("SFX-Info");
@@ -1214,17 +1212,17 @@ function Core:AppendTeam(teamData)
 	viewTeamButton:SetText("View");
 	viewTeamButton:SetRelativeWidth(0.5);
 	viewTeamButton:SetCallback("OnClick", function()
-		if ViewGowTeamFrame then
-			ViewGowTeamFrame:ReleaseChildren();
-		end
+		-- if ViewGowTeamFrame then
+		-- 	ViewGowTeamFrame:ReleaseChildren();
+		-- end
 
 		GoWTeamTabContainer = GOW.GUI:Create("Frame");
 		GoWTeamTabContainer:SetTitle(teamData.title);
 		GoWTeamTabContainer:SetWidth(1000);
 		GoWTeamTabContainer:SetHeight(550);
+		GoWTeamTabContainer:EnableResize(false);
 		GoWTeamTabContainer.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
 		GoWTeamTabContainer.frame:SetFrameStrata("DIALOG");
-		GoWTeamTabContainer.frame:SetFrameLevel(1000);
 		GoWTeamTabContainer:SetLayout("Flow");
 		GoWTeamTabContainer.frame:SetAlpha(1);
 		GoWTeamTabContainer.frame:SetBackdrop({
@@ -1242,11 +1240,21 @@ function Core:AppendTeam(teamData)
 			GoWTeamTabContainer:Release();
 		end);
 
+		teamRoleContainer = GOW.GUI:Create("InlineGroup");
+		teamRoleContainer:SetWidth(250);
+		teamRoleContainer:SetLayout("Flow");
+		teamRoleContainer:SetFullHeight(true);
+
+		if GoWTeamTabContainer then
+			GoWTeamTabContainer:AddChild(teamRoleContainer);
+		end
+
 
 		-- create a container to hold the team's data upon clicking view team
-		ViewGowTeamFrame = GOW.GUI:Create("SimpleGroup");
-		ViewGowTeamFrame:SetFullWidth(true);
+		ViewGowTeamFrame = GOW.GUI:Create("InlineGroup");
+		ViewGowTeamFrame:SetWidth(710);
 		ViewGowTeamFrame:SetFullHeight(true);
+		ViewGowTeamFrame:SetPoint("TOP", GoWTeamTabContainer.frame, "TOP", 0, 0);
 
 		if GoWTeamTabContainer then
 			GoWTeamTabContainer:AddChild(ViewGowTeamFrame);
@@ -1297,18 +1305,76 @@ function Core:AppendTeam(teamData)
 
 
 		-- create table to hold the different team roles
-		local teamRoles = {
-			All = "All",
-			Tank = "Tank",
-			Healer = "Healer",
-			DPS = "DPS",
-			Alts = "Alts",
-			Backup = "Backup",
-			Trial = "Trial",
-		};
+		local teamRoles = {};
+		local teamMembers = teamData.members or {}
+		local teamRoleMainFound = false
+		local teamRoleAltsFound = false
+		local teamRoleBackupFound = false
+		local teamRoleTrialFound = false
 
+		-- check if the team has the main, alts, backup, and trial roles
+		for _, member in pairs(teamMembers) do
+			local teamRole = member.teamRole
+			if teamRole == "Main" then
+				teamRoleMainFound = true
+			else
+				if teamRole == "Alts" then
+					teamRoleAltsFound = true
+				else
+					if teamRole == "Backup" then
+						teamRoleBackupFound = true
+					else
+						if teamRole == "Trial" then
+							teamRoleTrialFound = true
+						end
+					end
+				end
+			end
+		end
 
+		-- add the roles that are not found in the team to the teamRoles table
+		if teamRoleMainFound then
+			table.insert(teamRoles, "Main")
+		end
 
+		if teamRoleAltsFound then
+			table.insert(teamRoles, "Alts")
+		end
+
+		if teamRoleBackupFound then
+			table.insert(teamRoles, "Backup")
+		end
+
+		if teamRoleTrialFound then
+			table.insert(teamRoles, "Trial")
+		end
+
+		-- create a list of buttons for the different team roles present in the teamRoles
+		for _, role in ipairs(teamRoles) do
+			local roleButton = GOW.GUI:Create("Button");
+			roleButton:SetText(role);
+			roleButton:SetWidth(100);
+			roleButton:SetCallback("OnClick", function()
+				-- clear the team member container
+				if GoWTeamMemberContainer then
+					GoWTeamMemberContainer:ReleaseChildren();
+				end
+
+				-- render the team members based on the role selected
+				Core:RenderFilteredTeamMembers(role);
+			end);
+
+			if teamRoleContainer then
+				teamRoleContainer:AddChild(roleButton);
+			end
+		end
+
+		local teamClassRoles = {
+			"All",
+			"Tank",
+			"Healer",
+			"DPS",
+		}
 
 		-- create table to hold the different tank specs
 		local tankSpecs = {
@@ -1365,32 +1431,22 @@ function Core:AppendTeam(teamData)
 			for i = 1, teamData.totalMembers do
 				local member = teamData.members[i]
 
-				if role == teamRoles.All then
-					totalMembers = totalMembers + 1
-					filteredMembers[totalMembers] = member
-				else
-					local specsToCheck = nil
-					if role == teamRoles.Tank then
-						specsToCheck = tankSpecs
-					elseif role == teamRoles.Healer then
-						specsToCheck = healerSpecs
-					elseif role == teamRoles.DPS then
-						specsToCheck = dpsSpecs
-					elseif role == teamRoles.Alts then
-						specsToCheck = member.alts
-					elseif role == teamRoles.Backup then
-						specsToCheck = member.backup
-					elseif role == teamRoles.Trial then
-						specsToCheck = member.trial
-					end
 
-					if specsToCheck then
-						for _, spec in ipairs(specsToCheck) do
-							if spec == member.spec then
-								totalMembers = totalMembers + 1
-								filteredMembers[totalMembers] = member
-								break
-							end
+				local specsToCheck = nil
+				if role == teamClassRoles.Tank then
+					specsToCheck = tankSpecs
+				elseif role == teamClassRoles.Healer then
+					specsToCheck = healerSpecs
+				elseif role == teamClassRoles.DPS then
+					specsToCheck = dpsSpecs
+				end
+
+				if specsToCheck then
+					for _, spec in ipairs(specsToCheck) do
+						if spec == member.spec then
+							totalMembers = totalMembers + 1
+							filteredMembers[totalMembers] = member
+							break
 						end
 					end
 				end
@@ -1461,8 +1517,8 @@ function Core:AppendTeam(teamData)
 		GoWTeamFilterDropdown:SetWidth(200);
 		GoWTeamFilterDropdown:SetLabel("Filter by Role");
 		GoWTeamFilterDropdown:SetHeight(30);
-		GoWTeamFilterDropdown:SetList(teamRoles, { "All", "Tank", "Healer", "DPS", "Alts", "Backup", "Trial" });
-		GoWTeamFilterDropdown:SetValue(teamRoles.All);
+		GoWTeamFilterDropdown:SetList(teamClassRoles, { "All", "Tank", "Healer", "DPS" });
+		GoWTeamFilterDropdown:SetValue(teamClassRoles.All);
 		GoWTeamFilterDropdown:SetCallback("OnValueChanged", function(self, event, key)
 			-- Clear the current list of rendered team members.
 			GoWTeamMemberContainer:ReleaseChildren()
@@ -1475,7 +1531,7 @@ function Core:AppendTeam(teamData)
 		GoWTeamFilterDropdown:SetPoint("RIGHT", ViewGowTeamFrame.frame, "RIGHT", 0, 0);
 
 		-- Render the team members filtered by the default role.
-		GoWTeamFilterDropdown:Fire("OnValueChanged", teamRoles.All);
+		GoWTeamFilterDropdown:Fire("OnValueChanged", teamClassRoles.All);
 
 		if ViewGowTeamFrame then
 			ViewGowTeamFrame:AddChild(GoWTeamFilterDropdown);
