@@ -1480,6 +1480,27 @@ function Core:AppendTeam(teamData)
 					inviteMember:SetRelativeWidth(0.25)
 					inviteMember:SetCallback("OnClick", function()
 						C_PartyInfo.InviteUnit(member.name .. "-" .. member.realmNormalized)
+						inviteMember:SetText("Invite Pending")
+						inviteMember:SetDisabled(true)
+
+						-- Check whether the member is already in the party or raid.
+						C_Timer.NewTicker(0.2, function(ticker)
+							if IsInGroup() then
+								local numGroup = GetNumGroupMembers()
+								local unitPrefix = IsInRaid() and "raid" or "party"
+								local memberFullName = (member.name .. "-" .. member.realmNormalized) or member.name
+								for i = 1, numGroup do
+									local unitId = unitPrefix .. i
+									local unitName = UnitName(unitId)
+									if unitName and (unitName == memberFullName or unitName == member.name) then
+										inviteMember:SetText("Joined")
+										inviteMember:SetDisabled(true)
+										ticker:Cancel()
+										break
+									end
+								end
+							end
+						end)
 					end)
 
 
