@@ -711,7 +711,7 @@ function Core:CreateUpcomingEvents()
 	isPropogatingUpdate = false;
 end
 
--- //ANCHOR - Create Teams
+-- //SECTION - Create Teams
 function Core:CreateTeams()
 	if (selectedTab ~= "teams") then
 		return;
@@ -1176,8 +1176,10 @@ function Core:AppendCalendarList(event)
 	return true;
 end
 
--- //ANCHOR - Append Teams
+-- //SECTION - Append Teams
 function Core:AppendTeam(teamData)
+	-- //STUB Base Team Container
+	-- creates a container to hold the team's data for the user to view and interact with
 	local itemGroup = GOW.GUI:Create("InlineGroup");
 	itemGroup:SetWidth(300);
 
@@ -1212,10 +1214,10 @@ function Core:AppendTeam(teamData)
 	viewTeamButton:SetText("View");
 	viewTeamButton:SetRelativeWidth(0.5);
 	viewTeamButton:SetCallback("OnClick", function()
-		-- if ViewGowTeamFrame then
-		-- 	ViewGowTeamFrame:ReleaseChildren();
-		-- end
+		-- //SECTION - Team Details - Layout Creation
 
+		-- //STUB Base Detail Container
+		-- creates a base container to hold all the other widgets/frames for the specific team
 		GoWTeamTabContainer = GOW.GUI:Create("Frame");
 		GoWTeamTabContainer:SetTitle(teamData.title);
 		GoWTeamTabContainer:SetWidth(1000);
@@ -1240,27 +1242,31 @@ function Core:AppendTeam(teamData)
 			GoWTeamTabContainer:Release();
 		end);
 
+		-- //STUB Nav Container
+		-- creates a container to hold the different team roles (Main, Alt, Backup, Trial) for navigation
 		teamRoleContainer = GOW.GUI:Create("InlineGroup");
 		teamRoleContainer:SetWidth(250);
 		teamRoleContainer:SetLayout("Flow");
 		teamRoleContainer:SetFullHeight(true);
+		teamRoleContainer:SetTitle("Team Roles");
 
 		if GoWTeamTabContainer then
 			GoWTeamTabContainer:AddChild(teamRoleContainer);
 		end
 
-
-		-- create a container to hold the team's data upon clicking view team
+		-- //STUB Team Details Container
+		-- creates a container to hold the team's data upon clicking view team
 		ViewGowTeamFrame = GOW.GUI:Create("InlineGroup");
 		ViewGowTeamFrame:SetWidth(710);
 		ViewGowTeamFrame:SetFullHeight(true);
+		ViewGowTeamFrame:SetTitle("Team Summary");
 		ViewGowTeamFrame:SetPoint("TOP", GoWTeamTabContainer.frame, "TOP", 0, 0);
 
 		if GoWTeamTabContainer then
 			GoWTeamTabContainer:AddChild(ViewGowTeamFrame);
 		end
 
-
+		-- //STUB Team URL
 		-- creates a row that allows the user to copy/paste the team url
 		local row = GOW.GUI:Create("SFX-Info-URL")
 		row:SetLabel("Team URL")
@@ -1272,6 +1278,7 @@ function Core:AppendTeam(teamData)
 			ViewGowTeamFrame:AddChild(row)
 		end
 
+		-- //STUB Team Description
 		-- create a label to show the team description
 		local teamDescriptionLabel = GOW.GUI:Create("SFX-Info");
 		teamDescriptionLabel:SetLabel("Description");
@@ -1303,239 +1310,260 @@ function Core:AppendTeam(teamData)
 			ViewGowTeamFrame:AddChild(teamDescriptionLabel);
 		end
 
-
-		-- create table to hold the different team roles
-		local teamRoles = {};
-		local teamMembers = teamData.members or {}
-		local teamRoleMainFound = false
-		local teamRoleAltsFound = false
-		local teamRoleBackupFound = false
-		local teamRoleTrialFound = false
-
-		-- check if the team has the main, alts, backup, and trial roles
-		for _, member in pairs(teamMembers) do
-			local teamRole = member.teamRole
-			if teamRole == "Main" then
-				teamRoleMainFound = true
-			else
-				if teamRole == "Alts" then
-					teamRoleAltsFound = true
-				else
-					if teamRole == "Backup" then
-						teamRoleBackupFound = true
-					else
-						if teamRole == "Trial" then
-							teamRoleTrialFound = true
-						end
-					end
-				end
-			end
-		end
-
-		-- add the roles that are not found in the team to the teamRoles table
-		if teamRoleMainFound then
-			table.insert(teamRoles, "Main")
-		end
-
-		if teamRoleAltsFound then
-			table.insert(teamRoles, "Alts")
-		end
-
-		if teamRoleBackupFound then
-			table.insert(teamRoles, "Backup")
-		end
-
-		if teamRoleTrialFound then
-			table.insert(teamRoles, "Trial")
-		end
-
-		-- create a list of buttons for the different team roles present in the teamRoles
-		for _, role in ipairs(teamRoles) do
-			local roleButton = GOW.GUI:Create("Button");
-			roleButton:SetText(role);
-			roleButton:SetWidth(100);
-			roleButton:SetCallback("OnClick", function()
-				-- clear the team member container
-				if GoWTeamMemberContainer then
-					GoWTeamMemberContainer:ReleaseChildren();
-				end
-
-				-- render the team members based on the role selected
-				Core:RenderFilteredTeamMembers(role);
-			end);
-
-			if teamRoleContainer then
-				teamRoleContainer:AddChild(roleButton);
-			end
-		end
-
-		local teamClassRoles = {
-			"All",
-			"Tank",
-			"Healer",
-			"DPS",
-		}
-
-		-- create table to hold the different tank specs
-		local tankSpecs = {
-			"Blood",
-			"Vengeance",
-			"Guardian",
-			"Brewmaster",
-			"Protection",
-		}
-
-		-- create table to hold the different healer specs
-		local healerSpecs = {
-			"Restoration",
-			"Mistweaver",
-			"Holy",
-			"Discipline",
-			"Preservation",
-		}
-
-		-- create table to hold the different dps specs
-		local dpsSpecs = {
-			"Balance",
-			"Feral",
-			"Havoc",
-			"Unholy",
-			"Beast Mastery",
-			"Marksmanship",
-			"Survival",
-			"Arcane",
-			"Fire",
-			"Frost",
-			"Windwalker",
-			"Retribution",
-			"Shadow",
-			"Assassination",
-			"Outlaw",
-			"Subtlety",
-			"Elemental",
-			"Enhancement",
-			"Affliction",
-			"Demonology",
-			"Destruction",
-			"Arms",
-			"Fury",
-			"Devastation",
-		}
-
-		-- create a function to render the team members based on the role selected
-		function Core:RenderFilteredTeamMembers(role)
-			local filteredMembers = {}
-			local totalMembers = 0
-			local currentPlayerName = UnitName("player")
-
-			for i = 1, teamData.totalMembers do
-				local member = teamData.members[i]
-
-
-				local specsToCheck = nil
-				if role == teamClassRoles.Tank then
-					specsToCheck = tankSpecs
-				elseif role == teamClassRoles.Healer then
-					specsToCheck = healerSpecs
-				elseif role == teamClassRoles.DPS then
-					specsToCheck = dpsSpecs
-				end
-
-				if specsToCheck then
-					for _, spec in ipairs(specsToCheck) do
-						if spec == member.spec then
-							totalMembers = totalMembers + 1
-							filteredMembers[totalMembers] = member
-							break
-						end
-					end
-				end
-			end
-
-			-- Render each filtered member.
-			for _, member in ipairs(filteredMembers) do
-				-- Create a group to hold the member's name, spec, and invite button.
-				local memberGroup = GOW.GUI:Create("InlineGroup")
-
-				-- Get the class color for the member.
-				local classFile = GetClassInfo(member.classId)
-				local classColor = C_ClassColor.GetClassColor(classFile)
-				local classColorRGB = { r = classColor.r, g = classColor.g, b = classColor.b }
-
-				memberGroup:SetLayout("Flow")
-				memberGroup:SetFullWidth(true)
-
-				-- Create labels for the member's name, spec, and armor token.
-				local nameLabel = GOW.GUI:Create("Label")
-				nameLabel:SetRelativeWidth(0.25)
-				nameLabel:SetText(member.name)
-				nameLabel:SetColor(classColorRGB.r, classColorRGB.g, classColorRGB.b)
-				memberGroup:AddChild(nameLabel)
-
-				local specLabel = GOW.GUI:Create("Label")
-				specLabel:SetRelativeWidth(0.25)
-				specLabel:SetText(member.spec)
-				memberGroup:AddChild(specLabel)
-
-				local tokenLabel = GOW.GUI:Create("Label")
-				tokenLabel:SetRelativeWidth(0.25)
-				tokenLabel:SetText(member.armorToken)
-				memberGroup:AddChild(tokenLabel)
-
-				local inviteMember = GOW.GUI:Create("Button")
-				inviteMember:SetText("Invite")
-				inviteMember:SetRelativeWidth(0.25)
-				inviteMember:SetCallback("OnClick", function()
-					C_PartyInfo.InviteUnit(member.name)
-				end)
-
-				-- Disable the invite button if the member is the current player.
-				if member.name ~= currentPlayerName then
-					inviteMember:SetDisabled(false)
-				else
-					inviteMember:SetDisabled(true)
-				end
-
-				memberGroup:AddChild(inviteMember)
-
-				if GoWTeamMemberContainer then
-					GoWTeamMemberContainer:AddChild(memberGroup)
-				end
-			end
-
-			return filteredMembers, totalMembers
-		end
-
+		-- //STUB Team Member Container
 		-- Create a container to hold the list of team members filtered by role.
 		GoWTeamMemberContainer = GOW.GUI:Create("SimpleGroup")
 		GoWTeamMemberContainer:SetLayout("Flow")
 		GoWTeamMemberContainer:SetFullWidth(true)
 
-
-		-- create a dropdown to filter team members
-		GoWTeamFilterDropdown = GOW.GUI:Create("Dropdown");
-		GoWTeamFilterDropdown:SetWidth(200);
-		GoWTeamFilterDropdown:SetLabel("Filter by Role");
-		GoWTeamFilterDropdown:SetHeight(30);
-		GoWTeamFilterDropdown:SetList(teamClassRoles, { "All", "Tank", "Healer", "DPS" });
-		GoWTeamFilterDropdown:SetValue(teamClassRoles.All);
-		GoWTeamFilterDropdown:SetCallback("OnValueChanged", function(self, event, key)
-			-- Clear the current list of rendered team members.
-			GoWTeamMemberContainer:ReleaseChildren()
-
-			Core:RenderFilteredTeamMembers(key);
-		end);
-
-		-- align the dropdown to the right of its parent frame
-		GoWTeamFilterDropdown:ClearAllPoints();
-		GoWTeamFilterDropdown:SetPoint("RIGHT", ViewGowTeamFrame.frame, "RIGHT", 0, 0);
-
-		-- Render the team members filtered by the default role.
-		GoWTeamFilterDropdown:Fire("OnValueChanged", teamClassRoles.All);
-
 		if ViewGowTeamFrame then
-			ViewGowTeamFrame:AddChild(GoWTeamFilterDropdown);
 			ViewGowTeamFrame:AddChild(GoWTeamMemberContainer)
+		end
+
+		-- //STUB Tables and Variables
+		-- create tables to hold the different team roles and members
+		local GoWteamRoles = {}; -- holds the different team roles (Main, Alt, Backup, Trial) and used to render the nav buttons
+		local teamMembers = teamData.members or {}
+		local mainRoleMembers = {} -- holds the main role members
+		local altsRoleMembers = {} -- holds the alt role members
+		local backupRoleMembers = {} -- holds the backup role members
+		local trialRoleMembers = {} -- holds the trial role members
+
+		-- these are used to trigger a table.insert function that will be used to populate GoWteamRoles
+		local teamRoleMainFound = false
+		local teamRoleAltsFound = false
+		local teamRoleBackupFound = false
+		local teamRoleTrialFound = false
+
+		-- //STUB (Fn) RenderFilteredTeamMembers
+		-- a function to render the team members based on the GoWteamRole selected
+		function Core:RenderFilteredTeamMembers(role)
+			local filteredMembers = {}
+			local totalMembers = 0
+			local currentPlayerName = UnitName("player")
+
+			if role == "Main" then
+				filteredMembers = mainRoleMembers
+				totalMembers = #mainRoleMembers
+			else
+				if role == "Alt" then
+					filteredMembers = altsRoleMembers
+					totalMembers = #altsRoleMembers
+				else
+					if role == "Backup" then
+						filteredMembers = backupRoleMembers
+						totalMembers = #backupRoleMembers
+					else
+						if role == "Trial" then
+							filteredMembers = trialRoleMembers
+							totalMembers = #trialRoleMembers
+						else
+							for i = 1, teamData.totalMembers do
+								local member = teamData.members[i]
+								totalMembers = totalMembers + 1
+								filteredMembers[totalMembers] = member
+							end
+						end
+					end
+				end
+			end
+
+
+
+			-- Render each filtered member.
+			if filteredMembers then
+				for _, member in ipairs(filteredMembers) do
+					-- Creates a container to hold the member's name, spec, and invite button.
+					local memberContainer = GOW.GUI:Create("InlineGroup")
+
+					-- Get the class color for the member.
+					local classFile = GetClassInfo(member.classId)
+					local classColor = C_ClassColor.GetClassColor(classFile)
+					local classColorRGB = { r = classColor.r, g = classColor.g, b = classColor.b }
+
+					memberContainer:SetLayout("Flow")
+					memberContainer:SetFullWidth(true)
+
+					-- Create labels for the member's name, spec, and armor token.
+					local nameLabel = GOW.GUI:Create("Label")
+					nameLabel:SetRelativeWidth(0.25)
+					nameLabel:SetText(member.name)
+					nameLabel:SetColor(classColorRGB.r, classColorRGB.g, classColorRGB.b)
+					memberContainer:AddChild(nameLabel)
+
+					local specLabel = GOW.GUI:Create("Label")
+					specLabel:SetRelativeWidth(0.25)
+					specLabel:SetText(member.spec)
+					memberContainer:AddChild(specLabel)
+
+					local tokenLabel = GOW.GUI:Create("Label")
+					tokenLabel:SetRelativeWidth(0.25)
+					tokenLabel:SetText(member.armorToken)
+					memberContainer:AddChild(tokenLabel)
+
+					-- Change the invite button text to "Invite" if the member is connected, or "Offline" if not.
+					local isConnected = false
+					-- First, check guild roster
+					local numGuildMembers = GetNumGuildMembers()
+					for i = 1, numGuildMembers do
+						local name, _, _, _, _, _, _, _, online = GetGuildRosterInfo(i)
+						-- In guild roster names may include realm (e.g. "Player-Realm"), so compare only the base names
+						local baseName = name and name:match("^(.-)%-") or name
+						if baseName == (member.name .. "-" .. member.realmNormalized) or baseName == member.name and online then
+							isConnected = true
+							break
+						end
+					end
+					-- If not found in guild, check communities if available
+					if not isConnected and C_Club and C_Club.GetSubscribedCommunities then
+						local clubs = C_Club.GetSubscribedCommunities()
+						if clubs then
+							for _, club in ipairs(clubs) do
+								local clubMembers = C_Club.GetClubMembers(club.clubId)
+								if clubMembers then
+									for _, clubMember in ipairs(clubMembers) do
+										if clubMember.name == member.name and clubMember.isOnline then
+											isConnected = true
+											break
+										end
+									end
+								end
+								if isConnected then break end
+							end
+						end
+					end
+					-- Fallback (if no guild/community info found, default to offline)
+
+
+					local inviteMember = GOW.GUI:Create("Button")
+					-- Disable the invite button if the member is the current player.
+					if member.name == currentPlayerName then
+						inviteMember:SetDisabled(true)
+					end
+
+
+					-- Check whether the member is already in the party or raid.
+					C_Timer.After(0, function()
+						if IsInGroup() then
+							local numGroup = GetNumGroupMembers()
+							local unitPrefix = IsInRaid() and "raid" or "party"
+							-- Ensure realmNormalized is defined, fallback to member.name if not.
+							local memberFullName = (member.name .. "-" .. member.realmNormalized) or member.name
+							for i = 1, numGroup do
+								local unitId = unitPrefix .. i
+								local unitName = UnitName(unitId)
+								if unitName and (unitName == memberFullName or unitName == member.name) then
+									inviteMember:SetText("Joined")
+									inviteMember:SetDisabled(true)
+									break
+								end
+							end
+						end
+					end)
+
+
+
+
+					if isConnected and member.name ~= currentPlayerName then
+						inviteMember:SetText("Invite")
+						inviteMember:SetDisabled(false)
+					else
+						if member.name == currentPlayerName then
+							inviteMember:SetText("You")
+							inviteMember:SetDisabled(true)
+						else
+							inviteMember:SetText("Offline")
+							inviteMember:SetDisabled(true)
+						end
+					end
+
+					inviteMember:SetRelativeWidth(0.25)
+					inviteMember:SetCallback("OnClick", function()
+						C_PartyInfo.InviteUnit(member.name .. "-" .. member.realmNormalized)
+					end)
+
+
+					memberContainer:AddChild(inviteMember)
+
+					if GoWTeamMemberContainer then
+						GoWTeamMemberContainer:AddChild(memberContainer)
+					end
+				end
+
+				return filteredMembers, totalMembers
+			end
+		end
+
+		-- check if the team has the main, alts, backup, and trial roles
+		if teamMembers then
+			for _, member in pairs(teamMembers) do
+				local teamRole = member.teamRole
+				if teamRole == "Main" then
+					teamRoleMainFound = true
+					table.insert(mainRoleMembers, member)
+				else
+					if teamRole == "Alt" then
+						teamRoleAltsFound = true
+						table.insert(altsRoleMembers, member)
+					else
+						if teamRole == "Backup" then
+							teamRoleBackupFound = true
+							table.insert(backupRoleMembers, member)
+						else
+							if teamRole == "Trial" then
+								teamRoleTrialFound = true
+								table.insert(trialRoleMembers, member)
+							end
+						end
+					end
+				end
+			end
+		end
+
+		-- add the roles that are not found in the team to the GoWteamRoles table
+		if teamRoleMainFound then
+			table.insert(GoWteamRoles, "Main")
+		end
+
+		if teamRoleAltsFound then
+			table.insert(GoWteamRoles, "Alt")
+		end
+
+		if teamRoleBackupFound then
+			table.insert(GoWteamRoles, "Backup")
+		end
+
+		if teamRoleTrialFound then
+			table.insert(GoWteamRoles, "Trial")
+		end
+
+
+		-- //STUB Render Nav Buttons
+		-- create a list of buttons for the different team roles present in the GoWteamRoles
+		if GoWteamRoles then
+			for _, role in ipairs(GoWteamRoles) do
+				local roleButton = GOW.GUI:Create("Button");
+				roleButton:SetFullWidth(true);
+				roleButton:SetHeight(40);
+				roleButton:SetText(role)
+
+				-- set the callback for the button to render the team members for the selected role
+				roleButton:SetCallback("OnClick", function()
+					if GoWTeamMemberContainer then
+						GoWTeamMemberContainer:ReleaseChildren()
+					end
+
+					Core:RenderFilteredTeamMembers(role);
+				end);
+
+				if roleButton and role == "Main" then
+					C_Timer.After(0, function() roleButton:Fire("OnClick") end)
+				end
+
+				if teamRoleContainer then
+					teamRoleContainer:AddChild(roleButton);
+				end
+			end
 		end
 	end)
 
@@ -2507,3 +2535,133 @@ function Core:PrintTable(t)
 		print(key, value)
 	end
 end
+
+function Core:PrintTableContents(tbl)
+	if type(tbl) ~= "table" then
+		print("Not a table!")
+		return
+	end
+
+	-- Use pairs to support both array-like and key-value tables.
+	for key, value in pairs(tbl) do
+		local keyStr = tostring(key)
+
+		if type(value) == "table" then
+			print("Key " .. keyStr .. " -> table:")
+			-- Recursively print nested tables with indentation.
+			Core:PrintTableContents(value)
+		else
+			print("Key " .. keyStr .. ": " .. tostring(value))
+		end
+	end
+end
+
+-- function Core:RenderFilterWidget()
+-- 	-- create a dropdown to filter team members
+-- 	GoWTeamFilterDropdown = GOW.GUI:Create("Dropdown");
+-- 	GoWTeamFilterDropdown:SetWidth(200);
+-- 	GoWTeamFilterDropdown:SetLabel("Filter by Role");
+-- 	GoWTeamFilterDropdown:SetHeight(30);
+-- 	if GoWteamClassRoles then
+-- 		GoWTeamFilterDropdown:SetList(GoWteamClassRoles);
+-- 		GoWTeamFilterDropdown:SetValue(GoWteamClassRoles[1]);
+-- 	end
+
+-- 	GoWTeamFilterDropdown:SetCallback("OnValueChanged", function(self, event, key)
+-- 		-- Clear the current list of rendered team members.
+-- 		GoWTeamMemberContainer:ReleaseChildren()
+-- 	end);
+
+-- 	for i = 1, teamData.totalMembers do
+-- 		local member = teamData.members[i]
+
+
+-- 		local specsToCheck = nil
+-- 		if role == GoWteamClassRoles.Tank then
+-- 			specsToCheck = tankSpecs
+-- 		elseif role == GoWteamClassRoles.Healer then
+-- 			specsToCheck = healerSpecs
+-- 		elseif role == GoWteamClassRoles.DPS then
+-- 			specsToCheck = dpsSpecs
+-- 		end
+
+-- 		if specsToCheck then
+-- 			for _, spec in ipairs(specsToCheck) do
+-- 				if spec == member.spec then
+-- 					totalMembers = totalMembers + 1
+-- 					filteredMembers[totalMembers] = member
+-- 					break
+-- 				end
+-- 			end
+-- 		end
+-- 	end
+
+
+
+-- 	-- Render the team members filtered by the default role.
+-- 	GoWTeamFilterDropdown:Fire("OnValueChanged", GoWteamClassRoles.All);
+
+-- 	if ViewGowTeamFrame then
+-- 		ViewGowTeamFrame:AddChild(GoWTeamFilterDropdown)
+-- 		GoWTeamFilterDropdown:ClearAllPoints()
+-- 		GoWTeamFilterDropdown:SetPoint("RIGHT", ViewGowTeamFrame.frame, "RIGHT", 0, 0)
+
+
+-- 	end
+-- end
+
+
+-- -- this is used to populate the filter dropdown
+-- local GoWteamClassRoles = {
+-- 	"All",
+-- 	"Tank",
+-- 	"Healer",
+-- 	"DPS",
+-- }
+
+-- -- a table to hold the different tank specs
+-- local tankSpecs = {
+-- 	"Blood",
+-- 	"Vengeance",
+-- 	"Guardian",
+-- 	"Brewmaster",
+-- 	"Protection",
+-- }
+
+
+-- -- a table to hold the different healer specs
+-- local healerSpecs = {
+-- 	"Restoration",
+-- 	"Mistweaver",
+-- 	"Holy",
+-- 	"Discipline",
+-- 	"Preservation",
+-- }
+
+-- -- a table to hold the different dps specs
+-- local dpsSpecs = {
+-- 	"Balance",
+-- 	"Feral",
+-- 	"Havoc",
+-- 	"Unholy",
+-- 	"Beast Mastery",
+-- 	"Marksmanship",
+-- 	"Survival",
+-- 	"Arcane",
+-- 	"Fire",
+-- 	"Frost",
+-- 	"Windwalker",
+-- 	"Retribution",
+-- 	"Shadow",
+-- 	"Assassination",
+-- 	"Outlaw",
+-- 	"Subtlety",
+-- 	"Elemental",
+-- 	"Enhancement",
+-- 	"Affliction",
+-- 	"Demonology",
+-- 	"Destruction",
+-- 	"Arms",
+-- 	"Fury",
+-- 	"Devastation",
+-- }
