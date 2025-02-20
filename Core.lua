@@ -1413,7 +1413,6 @@ function Core:AppendTeam(teamData)
 			end
 		end)
 
-
 		if ViewGowTeamFrame then
 			ViewGowTeamFrame:AddChild(HideOfflineMembersButton)
 		end
@@ -1452,7 +1451,7 @@ function Core:AppendTeam(teamData)
 
 
 		if ViewGowTeamFrame then
-			ViewGowTeamFrame:AddChild(roleFilter, GoWTeamMemberContainer)
+			ViewGowTeamFrame:AddChild(roleFilter, GoWScrollTeamMemberContainer)
 		end
 
 		-- //STUB (Fn) RenderFilteredTeamMembers
@@ -1525,7 +1524,7 @@ function Core:AppendTeam(teamData)
 					end
 
 					if not isConnected and hideOffline == true then
-						break
+						-- do nothing
 					else
 						-- Creates a container to hold the member's name, spec, and invite button.
 						local memberContainer = GOW.GUI:Create("InlineGroup")
