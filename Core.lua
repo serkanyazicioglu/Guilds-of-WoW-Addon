@@ -1214,6 +1214,25 @@ function Core:AppendTeam(teamData)
 	viewTeamButton:SetText("View");
 	viewTeamButton:SetRelativeWidth(0.5);
 	viewTeamButton:SetCallback("OnClick", function()
+		-- //SECTION Team Details - Tables and Variables
+
+		-- create tables to hold the different team roles and members
+		local GoWteamRoles = {};  -- holds the different team roles (Main, Alt, Backup, Trial) and used to render the nav buttons
+		local teamMembers = teamData.members or {}
+		local mainRoleMembers = {} -- holds the main role members
+		local altsRoleMembers = {} -- holds the alt role members
+		local backupRoleMembers = {} -- holds the backup role members
+		local trialRoleMembers = {} -- holds the trial role members
+		local filteredMembers = {} -- holds the filtered members based on the GoWteamRole selected
+		local totalMembers = 0    -- holds the total number of members in the team
+		local offlineMemberWidgets = {} -- holds the offline member widgets
+
+		-- these are used to trigger a table.insert function that will be used to populate GoWteamRoles
+		local teamRoleMainFound = false
+		local teamRoleAltsFound = false
+		local teamRoleBackupFound = false
+		local teamRoleTrialFound = false
+
 		-- //SECTION - Team Details - Layout Creation
 
 		-- //STUB Base Detail Container
@@ -1257,6 +1276,7 @@ function Core:AppendTeam(teamData)
 		-- //STUB Team Details Container
 		-- creates a container to hold the team's data upon clicking view team
 		ViewGowTeamFrame = GOW.GUI:Create("InlineGroup");
+		ViewGowTeamFrame:SetLayout("Flow");
 		ViewGowTeamFrame:SetWidth(710);
 		ViewGowTeamFrame:SetFullHeight(true);
 		ViewGowTeamFrame:SetTitle("Team Summary");
@@ -1305,9 +1325,30 @@ function Core:AppendTeam(teamData)
 		end
 		teamDescriptionLabel:SetDisabled(false);
 
-
 		if ViewGowTeamFrame then
 			ViewGowTeamFrame:AddChild(teamDescriptionLabel);
+		end
+
+		-- // STUB Hide Offline Members Button
+		local HideOfflineMembersButton = GOW.GUI:Create("Button")
+		HideOfflineMembersButton:SetText("Hide Offline Members")
+		HideOfflineMembersButton:SetWidth(200)
+		HideOfflineMembersButton:ClearAllPoints()
+		HideOfflineMembersButton:SetPoint("RIGHT", ViewGowTeamFrame.frame, "RIGHT", -10, -10)
+		HideOfflineMembersButton:SetCallback("OnClick", function()
+			Core:HideOfflineMembers()
+		end)
+
+		function Core:HideOfflineMembers()
+			if offlineMemberWidgets then
+				for _, widget in ipairs(offlineMemberWidgets) do
+					widget.frame:Hide()
+				end
+			end
+		end
+
+		if ViewGowTeamFrame then
+			ViewGowTeamFrame:AddChild(HideOfflineMembersButton)
 		end
 
 		-- //STUB Team Member Container
@@ -1320,26 +1361,9 @@ function Core:AppendTeam(teamData)
 			ViewGowTeamFrame:AddChild(GoWTeamMemberContainer)
 		end
 
-		-- //STUB Tables and Variables
-		-- create tables to hold the different team roles and members
-		local GoWteamRoles = {}; -- holds the different team roles (Main, Alt, Backup, Trial) and used to render the nav buttons
-		local teamMembers = teamData.members or {}
-		local mainRoleMembers = {} -- holds the main role members
-		local altsRoleMembers = {} -- holds the alt role members
-		local backupRoleMembers = {} -- holds the backup role members
-		local trialRoleMembers = {} -- holds the trial role members
-
-		-- these are used to trigger a table.insert function that will be used to populate GoWteamRoles
-		local teamRoleMainFound = false
-		local teamRoleAltsFound = false
-		local teamRoleBackupFound = false
-		local teamRoleTrialFound = false
-
 		-- //STUB (Fn) RenderFilteredTeamMembers
 		-- a function to render the team members based on the GoWteamRole selected
 		function Core:RenderFilteredTeamMembers(role)
-			local filteredMembers = {}
-			local totalMembers = 0
 			local currentPlayerName = UnitName("player")
 
 			if role == "Main" then
@@ -1432,15 +1456,17 @@ function Core:AppendTeam(teamData)
 							end
 						end
 					end
-					-- Fallback (if no guild/community info found, default to offline)
 
+					-- adds offline members to the offlineMemberWidgets table so we can hide the offline members
+					if not isConnected then
+						table.insert(offlineMemberWidgets, memberContainer)
+					end
 
 					local inviteMember = GOW.GUI:Create("Button")
 					-- Disable the invite button if the member is the current player.
 					if member.name == currentPlayerName then
 						inviteMember:SetDisabled(true)
 					end
-
 
 					-- Check whether the member is already in the party or raid.
 					C_Timer.After(0, function()
@@ -1515,7 +1541,7 @@ function Core:AppendTeam(teamData)
 			end
 		end
 
-		-- check if the team has the main, alts, backup, and trial roles
+		-- check if the team has the main, alts, backup, and trial roles and add them to the correct tables
 		if teamMembers then
 			for _, member in pairs(teamMembers) do
 				local teamRole = member.teamRole
@@ -1541,7 +1567,7 @@ function Core:AppendTeam(teamData)
 			end
 		end
 
-		-- add the roles that are not found in the team to the GoWteamRoles table
+		-- add the roles that are found in the team to the GoWteamRoles table
 		if teamRoleMainFound then
 			table.insert(GoWteamRoles, "Main")
 		end
@@ -1570,6 +1596,7 @@ function Core:AppendTeam(teamData)
 
 				-- set the callback for the button to render the team members for the selected role
 				roleButton:SetCallback("OnClick", function()
+					roleButton.frame:SetButtonState("PUSHED", true)
 					if GoWTeamMemberContainer then
 						GoWTeamMemberContainer:ReleaseChildren()
 					end
