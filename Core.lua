@@ -1396,18 +1396,28 @@ function Core:AppendTeam(teamData)
 		end
 
 		-- // STUB Hide Offline Members Button
-		local HideOfflineMembersButton = GOW.GUI:Create("Button")
-		HideOfflineMembersButton:SetText("Hide Offline Members")
-		HideOfflineMembersButton:SetWidth(200)
+		local HideOfflineMembersButton = GOW.GUI:Create("CheckBox")
+		HideOfflineMembersButton:SetLabel("Hide Offline Members")
+		HideOfflineMembersButton:SetValue(false)
+		HideOfflineMembersButton:SetType("checkbox")
+		HideOfflineMembersButton:SetDisabled(false)
+		-- HideOfflineMembersButton:SetWidth(200)
 		HideOfflineMembersButton:ClearAllPoints()
 		HideOfflineMembersButton.frame:SetPoint("RIGHT", ViewGowTeamFrame.frame, "RIGHT", -10, -10)
-		HideOfflineMembersButton:SetCallback("OnClick", function()
+		HideOfflineMembersButton:SetCallback("OnValueChanged", function()
 			if GoWScrollTeamMemberContainer then
 				if GoWTeamMemberContainer then
 					GoWTeamMemberContainer:ReleaseChildren()
 				end
 				local role = GoWScrollTeamMemberContainer:GetUserData("role")
-				Core:RenderFilteredTeamMembers(role, true)
+				local checkBoxValue = HideOfflineMembersButton:GetValue()
+				print(checkBoxValue)
+				if checkBoxValue then
+					Core:RenderFilteredTeamMembers(role, true)
+				else
+					Core:RenderFilteredTeamMembers(role, false)
+				end
+				checkBoxValue = not checkBoxValue
 			end
 		end)
 
