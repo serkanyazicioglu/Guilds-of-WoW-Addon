@@ -1242,8 +1242,6 @@ function Core:AppendTeam(teamData)
 
 		local filteredMembers = {} -- holds the filtered members based on the GoWteamRole selected
 		local totalMembers = 0 -- holds the total number of members in the team
-		GoWOfflineMemberWidgets = {} -- holds the offline member widgets so we can hide them
-
 
 		-- these are used to trigger a table.insert function that will be used to populate GoWteamRoles
 		local teamRoleMainFound = false
@@ -1468,6 +1466,9 @@ function Core:AppendTeam(teamData)
 				filteredMembers = trialRoleMembers
 			end
 
+			-- creates a local variable to help us render empty states
+			local totalTeamMembers = #filteredMembers
+
 			-- function Core:SortMembersBySpec(key)
 			-- 	for i = 1, teamData.totalMembers do
 			-- 		local member = teamData.members[i]
@@ -1524,7 +1525,8 @@ function Core:AppendTeam(teamData)
 					end
 
 					if not isConnected and hideOffline == true then
-						-- do nothing
+						-- reduce the totalTeamMembers count
+						totalTeamMembers = totalTeamMembers - 1
 					else
 						-- Creates a container to hold the member's name, spec, and invite button.
 						local memberContainer = GOW.GUI:Create("InlineGroup")
@@ -1580,9 +1582,6 @@ function Core:AppendTeam(teamData)
 							end
 						end)
 
-
-
-
 						if isConnected and member.name ~= currentPlayerName then
 							inviteMember:SetText("Invite")
 							inviteMember:SetDisabled(false)
@@ -1627,6 +1626,16 @@ function Core:AppendTeam(teamData)
 
 						if GoWTeamMemberContainer then
 							GoWTeamMemberContainer:AddChild(memberContainer)
+						end
+					end
+
+					-- Render an empty state if no members are found.
+					if totalTeamMembers == 0 then
+						local noMembersLabel = GOW.GUI:Create("Label")
+						noMembersLabel:SetText("No members found.")
+						noMembersLabel:SetFullWidth(true)
+						if GoWTeamMemberContainer then
+							GoWTeamMemberContainer:AddChild(noMembersLabel)
 						end
 					end
 				end
@@ -1692,10 +1701,6 @@ function Core:AppendTeam(teamData)
 						GoWTeamMemberContainer:ReleaseChildren()
 					end
 
-					if GoWOfflineMemberWidgets then
-						GoWOfflineMemberWidgets = {}
-					end
-
 					Core:RenderFilteredTeamMembers(role, false);
 					GoWScrollTeamMemberContainer:SetTitle(role)
 					GoWScrollTeamMemberContainer:SetUserData("role", role)
@@ -1715,6 +1720,8 @@ function Core:AppendTeam(teamData)
 	if containerScrollFrame then
 		containerScrollFrame:AddChild(itemGroup);
 	end
+
+
 
 	buttonsGroup:AddChild(viewTeamButton);
 	itemGroup:AddChild(buttonsGroup);
@@ -2740,26 +2747,3 @@ end
 -- 			end
 -- 		end
 -- 	end
-
-
-
--- 	-- Render the team members filtered by the default role.
--- 	GoWTeamFilterDropdown:Fire("OnValueChanged", GoWteamClassRoles.All);
-
--- 	if ViewGowTeamFrame then
--- 		ViewGowTeamFrame:AddChild(GoWTeamFilterDropdown)
--- 		GoWTeamFilterDropdown:ClearAllPoints()
--- 		GoWTeamFilterDropdown:SetPoint("RIGHT", ViewGowTeamFrame.frame, "RIGHT", 0, 0)
-
-
--- 	end
--- end
-
-
--- -- this is used to populate the filter dropdown
--- local GoWteamClassRoles = {
--- 	"All",
--- 	"Tank",
--- 	"Healer",
--- 	"DPS",
--- }
