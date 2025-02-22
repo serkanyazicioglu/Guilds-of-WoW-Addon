@@ -1541,7 +1541,12 @@ function Core:AppendTeam(teamData)
 
 						-- Get the class color for the member.
 						local classFile = GetClassInfo(member.classId)
-						local classColor = C_ClassColor.GetClassColor(classFile)
+						local classColor = nil
+						if classFile then
+							classColor = C_ClassColor.GetClassColor(classFile)
+						else
+							classColor = { r = 1, g = 1, b = 1 }
+						end
 						local classColorRGB = { r = classColor.r, g = classColor.g, b = classColor.b }
 
 						memberContainer:SetLayout("Flow")
