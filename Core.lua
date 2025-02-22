@@ -1443,22 +1443,22 @@ function Core:AppendTeam(teamData)
 			GoWScrollTeamMemberContainer:AddChild(GoWTeamMemberContainer)
 		end
 
-		-- -- // STUB Role Filter
-		-- local roleFilter = GOW.GUI:Create("Dropdown")
-		-- roleFilter:SetLabel("Filter by Spec Role")
-		-- roleFilter:SetList({
-		-- 	["All"] = "All",
-		-- 	["Tanks"] = "Tanks",
-		-- 	["DPS"] = "DPS",
-		-- 	["Healers"] = "Healers",
-		-- })
-		-- roleFilter:SetValue("All")
-		-- roleFilter:SetWidth(200)
+		-- // STUB Role Filter
+		local roleFilter = GOW.GUI:Create("Dropdown")
+		roleFilter:SetLabel("Filter by Spec Role")
+		roleFilter:SetList({
+			["All"] = "All",
+			["Tanks"] = "Tanks",
+			["DPS"] = "DPS",
+			["Healers"] = "Healers",
+		})
+		roleFilter:SetValue("All")
+		roleFilter:SetWidth(200)
 
 
-		-- if ViewGowTeamFrame then
-		-- 	ViewGowTeamFrame:AddChild(roleFilter, GoWScrollTeamMemberContainer)
-		-- end
+		if ViewGowTeamFrame then
+			ViewGowTeamFrame:AddChild(roleFilter, GoWScrollTeamMemberContainer)
+		end
 
 		-- //STUB (Fn) RenderFilteredTeamMembers
 		-- a function to render the team members based on the GoWteamRole selected
@@ -1697,36 +1697,14 @@ function Core:AppendTeam(teamData)
 		-- //STUB Render Nav Buttons
 		-- create a list of buttons for the different team roles present in the GoWteamRoles
 		if GoWteamRoles then
-			-- function HandleSelectedButton(currentRole)
-			-- 	-- loop through the teamRoleContainer children to find the selected button
-			-- 	for _, child in ipairs(teamRoleContainer.children) do
-			-- 		local role = child.frame:GetAttribute("role")
-			-- 		local texture = child.frame:CreateTexture()
-			-- 		if role == currentRole then
-			-- 			-- create a texture and apply it to the selected button
-			-- 			print("Adding texture to selected button:" .. role)
-
-			-- 			texture:SetPoint("CENTER")
-			-- 			texture:SetTexture(130761)
-			-- 		elseif role ~= currentRole then
-			-- 			-- remove the texture from the unselected buttons
-			-- 			print("Removing texture from unselected button:" .. role)
-			-- 			texture:SetTexture(nil)
-			-- 		end
-			-- 	end
-			-- end
-
 			for _, role in ipairs(GoWteamRoles) do
 				local roleButton = GOW.GUI:Create("Button");
 				roleButton:SetFullWidth(true);
 				roleButton:SetHeight(40);
 				roleButton:SetText(role)
-				roleButton.frame:SetAttribute("role", role);
 
 				-- set the callback for the button to render the team members for the selected role
 				roleButton:SetCallback("OnClick", function()
-					-- HandleSelectedButton(role)
-
 					if GoWTeamMemberContainer then
 						GoWTeamMemberContainer:ReleaseChildren()
 					end
