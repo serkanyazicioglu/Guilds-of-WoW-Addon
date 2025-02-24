@@ -1297,6 +1297,17 @@ function Core:AppendTeam(teamData)
 			"Devastation",
 		}
 
+		local rolesForFilter = {
+			["All"] = "All",
+			["Tanks"] = "Tanks",
+			["DPS"] = "DPS",
+			["Healers"] = "Healers",
+		}
+
+		local currentFilterValue = "All"
+		local isOfflineChecked = false -- holds the value of the hide offline members checkbox
+
+
 
 		-- //SECTION - Team Details - Layout Creation
 
@@ -1308,7 +1319,7 @@ function Core:AppendTeam(teamData)
 		GoWTeamTabContainer:SetHeight(550);
 		GoWTeamTabContainer:EnableResize(false);
 		GoWTeamTabContainer.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
-		GoWTeamTabContainer.frame:SetFrameStrata("DIALOG");
+		GoWTeamTabContainer.frame:SetFrameStrata("HIGH");
 		GoWTeamTabContainer:SetLayout("Flow");
 		GoWTeamTabContainer.frame:SetAlpha(1);
 		GoWTeamTabContainer.frame:SetBackdrop({
@@ -1397,7 +1408,7 @@ function Core:AppendTeam(teamData)
 		-- // STUB Hide Offline Members Button
 		local HideOfflineMembersButton = GOW.GUI:Create("CheckBox")
 		HideOfflineMembersButton:SetLabel("Hide Offline Members")
-		HideOfflineMembersButton:SetValue(false)
+		HideOfflineMembersButton:SetValue(isOfflineChecked)
 		HideOfflineMembersButton:SetType("checkbox")
 		HideOfflineMembersButton:SetDisabled(false)
 		HideOfflineMembersButton:SetCallback("OnValueChanged", function()
@@ -1406,12 +1417,14 @@ function Core:AppendTeam(teamData)
 					GoWTeamMemberContainer:ReleaseChildren()
 				end
 				local role = GoWScrollTeamMemberContainer:GetUserData("role")
+				local filterValue = currentFilterValue
 				local checkBoxValue = HideOfflineMembersButton:GetValue()
 				if checkBoxValue then
-					Core:RenderFilteredTeamMembers(role, true)
+					Core:RenderFilteredTeamMembers(role, true, filterValue)
 				else
-					Core:RenderFilteredTeamMembers(role, false)
+					Core:RenderFilteredTeamMembers(role, false, filterValue)
 				end
+				isOfflineChecked = checkBoxValue
 				checkBoxValue = not checkBoxValue
 			end
 		end)
@@ -1433,7 +1446,7 @@ function Core:AppendTeam(teamData)
 		-- Create a container to hold the list of team members filtered by role.
 		GoWTeamMemberContainer = GOW.GUI:Create("ScrollFrame")
 		GoWTeamMemberContainer:SetFullHeight(true)
-		GoWTeamMemberContainer:SetLayout("Flow")
+		GoWTeamMemberContainer:SetLayout("List")
 		GoWTeamMemberContainer:SetFullWidth(true)
 
 		if GoWScrollTeamMemberContainer then
@@ -1443,14 +1456,39 @@ function Core:AppendTeam(teamData)
 		-- // STUB Role Filter
 		local roleFilter = GOW.GUI:Create("Dropdown")
 		roleFilter:SetLabel("  Filter by Role")
-		roleFilter:SetList({
-			["All"] = "All",
-			["Tanks"] = "Tanks",
-			["DPS"] = "DPS",
-			["Healers"] = "Healers",
-		})
+		roleFilter:SetList(rolesForFilter)
 		roleFilter:SetValue("All")
 		roleFilter:SetWidth(150)
+		roleFilter:SetCallback("OnValueChanged", function(key)
+			local selectedRole = key:GetValue()
+
+			-- clear the team member container before rendering the filtered members
+			if GoWTeamMemberContainer then
+				GoWTeamMemberContainer:ReleaseChildren()
+			end
+
+			-- get the role selected from the dropdown
+			local role = nil
+			if GoWScrollTeamMemberContainer then
+				-- get the current role selected from the navigation buttons
+				role = GoWScrollTeamMemberContainer:GetUserData("role")
+			end
+
+			if selectedRole then
+				-- render the team members based on the role selected and whether or not the hide offline members checkbox is checked
+				if isOfflineChecked then
+					Core:RenderFilteredTeamMembers(role, true, selectedRole)
+				else
+					Core:RenderFilteredTeamMembers(role, false, selectedRole)
+				end
+				-- set the current filter value to the selected role
+				currentFilterValue = selectedRole
+			end
+		end)
+
+		if roleFilter then
+			C_Timer.After(0, function() roleFilter:Fire("OnValueChanged") end)
+		end
 
 
 		if ViewGowTeamFrame then
@@ -1464,7 +1502,10 @@ function Core:AppendTeam(teamData)
 
 		-- //STUB (Fn) RenderFilteredTeamMembers
 		-- a function to render the team members based on the GoWteamRole selected
-		function Core:RenderFilteredTeamMembers(role, hideOffline)
+		function Core:RenderFilteredTeamMembers(role, hideOffline, specRole)
+			-- Get the latest information from the guild roster.
+			C_GuildInfo.GuildRoster()
+
 			local currentPlayerName = UnitName("player")
 			if role == "Main" then
 				filteredMembers = mainRoleMembers
@@ -1476,31 +1517,67 @@ function Core:AppendTeam(teamData)
 				filteredMembers = trialRoleMembers
 			end
 
-			-- Get the latest information from the guild roster.
-			C_GuildInfo.GuildRoster()
+			-- //TODO - I could probably remove the above logic, its not needed as the below logic covers it
+			-- //TODO - Fix offlinecheck not being persistent after changing roles via filter
+
+			-- if specRole is selected, filter the members based on the specRole
+			if specRole then
+				if specRole == "All" and role == "Main" then
+					filteredMembers = mainRoleMembers
+				elseif specRole == "All" and role == "Alt" then
+					filteredMembers = altsRoleMembers
+				elseif specRole == "All" and role == "Backup" then
+					filteredMembers = backupRoleMembers
+				elseif specRole == "All" and role == "Trial" then
+					filteredMembers = trialRoleMembers
+				end
+
+				if specRole == "Tanks" then
+					if role == "Main" then
+						filteredMembers = mainRoleTanks
+					elseif role == "Alt" then
+						filteredMembers = altRoleTanks
+					elseif role == "Backup" then
+						filteredMembers = backupRoleTanks
+					elseif role == "Trial" then
+						filteredMembers = trialRoleTanks
+					end
+				elseif specRole == "Healers" then
+					if role == "Main" then
+						filteredMembers = mainRoleHealers
+					elseif role == "Alt" then
+						filteredMembers = altRoleHealers
+					elseif role == "Backup" then
+						filteredMembers = backupRoleHealers
+					elseif role == "Trial" then
+						filteredMembers = trialRoleHealers
+					end
+				elseif specRole == "DPS" then
+					if role == "Main" then
+						filteredMembers = mainRoleDPS
+					elseif role == "Alt" then
+						filteredMembers = altRoleDPS
+					elseif role == "Backup" then
+						filteredMembers = backupRoleDPS
+					elseif role == "Trial" then
+						filteredMembers = trialRoleDPS
+					end
+				end
+			end
 
 			-- creates a local variable to help us render empty states
 			local totalTeamMembers = #filteredMembers
+			print("Total team members: " .. totalTeamMembers)
 
-			-- function Core:SortMembersBySpec(key)
-			-- 	for i = 1, teamData.totalMembers do
-			-- 		local member = teamData.members[i]
-			-- 		totalMembers = totalMembers + 1
-			-- 		filteredMembers[totalMembers] = member
-
-			-- 		if key == "Tank" and tankSpecs[member.spec] and member.teamRole == role then
-			-- 			table.insert(mainRoleTanks, member)
-			-- 		else
-			-- 			if key == "Healer" and healerSpecs[member.spec] and member.teamRole == role then
-			-- 				table.insert(mainRoleHealers, member)
-			-- 			else
-			-- 				if key == "DPS" and dpsSpecs[member.spec] and member.teamRole == role then
-			-- 					table.insert(mainRoleDPS, member)
-			-- 				end
-			-- 			end
-			-- 		end
-			-- 	end
-			-- end
+			-- Render an empty state if no members are found.
+			if totalTeamMembers == 0 then
+				local noMembersLabel = GOW.GUI:Create("Label")
+				noMembersLabel:SetText("No members found.")
+				noMembersLabel:SetFullWidth(true)
+				if GoWTeamMemberContainer then
+					GoWTeamMemberContainer:AddChild(noMembersLabel)
+				end
+			end
 
 			-- Render each filtered member.
 			if filteredMembers then
@@ -1582,10 +1659,14 @@ function Core:AppendTeam(teamData)
 
 					if not isConnected and hideOffline == true then
 						-- reduce the totalTeamMembers count
-						totalTeamMembers = totalTeamMembers - 1
+						if totalTeamMembers > 0 then
+							totalTeamMembers = totalTeamMembers - 1
+						end
 					else
 						-- Creates a container to hold the member's information and invite button.
 						local memberContainer = GOW.GUI:Create("InlineGroup")
+						memberContainer:SetLayout("Flow")
+						memberContainer:SetFullWidth(true)
 
 						-- Get the class color for the member.
 						local className, classFile, classID = GetClassInfo(member.classId)
@@ -1597,8 +1678,6 @@ function Core:AppendTeam(teamData)
 						end
 						local classColorRGB = { r = classColor.r, g = classColor.g, b = classColor.b }
 
-						memberContainer:SetLayout("Flow")
-						memberContainer:SetFullWidth(true)
 
 						-- Create labels for the member's name, spec, guild rank and armor token.
 						local nameLabel = GOW.GUI:Create("Label")
@@ -1690,22 +1769,12 @@ function Core:AppendTeam(teamData)
 							-- end, 60)
 						end)
 
-						if memberContainer then
-							memberContainer:AddChild(inviteMember)
-						end
-
 						if GoWTeamMemberContainer then
 							GoWTeamMemberContainer:AddChild(memberContainer)
 						end
-					end
 
-					-- Render an empty state if no members are found.
-					if totalTeamMembers == 0 then
-						local noMembersLabel = GOW.GUI:Create("Label")
-						noMembersLabel:SetText("No members found.")
-						noMembersLabel:SetFullWidth(true)
-						if GoWTeamMemberContainer then
-							GoWTeamMemberContainer:AddChild(noMembersLabel)
+						if memberContainer then
+							memberContainer:AddChild(inviteMember)
 						end
 					end
 				end
@@ -1720,18 +1789,62 @@ function Core:AppendTeam(teamData)
 				if teamRole == "Main" then
 					teamRoleMainFound = true
 					table.insert(mainRoleMembers, member)
+					if Core:Contains(tankSpecs, member.spec) then
+						table.insert(mainRoleTanks, member)
+					else
+						if Core:Contains(healerSpecs, member.spec) then
+							table.insert(mainRoleHealers, member)
+						else
+							if Core:Contains(dpsSpecs, member.spec) then
+								table.insert(mainRoleDPS, member)
+							end
+						end
+					end
 				else
 					if teamRole == "Alt" then
 						teamRoleAltsFound = true
 						table.insert(altsRoleMembers, member)
+						if Core:Contains(tankSpecs, member.spec) then
+							table.insert(altRoleTanks, member)
+						else
+							if Core:Contains(healerSpecs, member.spec) then
+								table.insert(altRoleHealers, member)
+							else
+								if Core:Contains(dpsSpecs, member.spec) then
+									table.insert(altRoleDPS, member)
+								end
+							end
+						end
 					else
 						if teamRole == "Backup" then
 							teamRoleBackupFound = true
 							table.insert(backupRoleMembers, member)
+							if Core:Contains(tankSpecs, member.spec) then
+								table.insert(backupRoleTanks, member)
+							else
+								if Core:Contains(healerSpecs, member.spec) then
+									table.insert(backupRoleHealers, member)
+								else
+									if Core:Contains(dpsSpecs, member.spec) then
+										table.insert(backupRoleDPS, member)
+									end
+								end
+							end
 						else
 							if teamRole == "Trial" then
 								teamRoleTrialFound = true
 								table.insert(trialRoleMembers, member)
+								if Core:Contains(tankSpecs, member.spec) then
+									table.insert(trialRoleTanks, member)
+								else
+									if Core:Contains(healerSpecs, member.spec) then
+										table.insert(trialRoleHealers, member)
+									else
+										if Core:Contains(dpsSpecs, member.spec) then
+											table.insert(trialRoleDPS, member)
+										end
+									end
+								end
 							end
 						end
 					end
@@ -1773,7 +1886,18 @@ function Core:AppendTeam(teamData)
 
 					HideOfflineMembersButton:SetValue(false)
 
-					Core:RenderFilteredTeamMembers(role, false);
+					if isOfflineChecked then
+						print("Hide Offline Members is checked")
+						print(currentFilterValue)
+						HideOfflineMembersButton:SetValue(isOfflineChecked)
+						Core:RenderFilteredTeamMembers(role, true, currentFilterValue);
+					else
+						print("Hide Offline Members is not checked")
+						print(currentFilterValue)
+						HideOfflineMembersButton:SetValue(isOfflineChecked)
+						Core:RenderFilteredTeamMembers(role, false, currentFilterValue);
+					end
+
 					GoWScrollTeamMemberContainer:SetTitle(role .. " Members")
 					GoWScrollTeamMemberContainer:SetUserData("role", role)
 				end);
@@ -2780,42 +2904,11 @@ function Core:PrintTableContents(tbl)
 	end
 end
 
--- function Core:RenderFilterWidget()
--- 	-- create a dropdown to filter team members
--- 	GoWTeamFilterDropdown = GOW.GUI:Create("Dropdown");
--- 	GoWTeamFilterDropdown:SetWidth(200);
--- 	GoWTeamFilterDropdown:SetLabel("Filter by Role");
--- 	GoWTeamFilterDropdown:SetHeight(30);
--- 	if GoWteamClassRoles then
--- 		GoWTeamFilterDropdown:SetList(GoWteamClassRoles);
--- 		GoWTeamFilterDropdown:SetValue(GoWteamClassRoles[1]);
--- 	end
-
--- 	GoWTeamFilterDropdown:SetCallback("OnValueChanged", function(self, event, key)
--- 		-- Clear the current list of rendered team members.
--- 		GoWTeamMemberContainer:ReleaseChildren()
--- 	end);
-
--- 	for i = 1, teamData.totalMembers do
--- 		local member = teamData.members[i]
-
-
--- 		local specsToCheck = nil
--- 		if role == GoWteamClassRoles.Tank then
--- 			specsToCheck = tankSpecs
--- 		elseif role == GoWteamClassRoles.Healer then
--- 			specsToCheck = healerSpecs
--- 		elseif role == GoWteamClassRoles.DPS then
--- 			specsToCheck = dpsSpecs
--- 		end
-
--- 		if specsToCheck then
--- 			for _, spec in ipairs(specsToCheck) do
--- 				if spec == member.spec then
--- 					totalMembers = totalMembers + 1
--- 					filteredMembers[totalMembers] = member
--- 					break
--- 				end
--- 			end
--- 		end
--- 	end
+function Core:Contains(table, element)
+	for _, value in pairs(table) do
+		if value == element then
+			return true
+		end
+	end
+	return false
+end
