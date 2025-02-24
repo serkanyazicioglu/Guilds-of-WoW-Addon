@@ -1540,14 +1540,14 @@ function Core:AppendTeam(teamData)
 						local memberContainer = GOW.GUI:Create("InlineGroup")
 
 						-- Get the class color for the member.
-						-- local classFile = GetClassInfo(member.classId)
-						-- local classColor = nil
-						-- if classFile then
-						-- 	classColor = C_ClassColor.GetClassColor(classFile)
-						-- else
-						-- 	classColor = { r = 1, g = 1, b = 1 }
-						-- end
-						-- local classColorRGB = { r = classColor.r, g = classColor.g, b = classColor.b }
+						local className, classFile, classID = GetClassInfo(member.classId)
+						local classColor = nil
+						if classFile then
+							classColor = C_ClassColor.GetClassColor(classFile)
+						else
+							classColor = { r = 1, g = 1, b = 1 }
+						end
+						local classColorRGB = { r = classColor.r, g = classColor.g, b = classColor.b }
 
 						memberContainer:SetLayout("Flow")
 						memberContainer:SetFullWidth(true)
@@ -1556,7 +1556,7 @@ function Core:AppendTeam(teamData)
 						local nameLabel = GOW.GUI:Create("Label")
 						nameLabel:SetRelativeWidth(0.25)
 						nameLabel:SetText(member.name)
-						-- nameLabel:SetColor(classColorRGB.r, classColorRGB.g, classColorRGB.b)
+						nameLabel:SetColor(classColorRGB.r, classColorRGB.g, classColorRGB.b)
 						memberContainer:AddChild(nameLabel)
 
 						local specLabel = GOW.GUI:Create("Label")
