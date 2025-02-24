@@ -1714,6 +1714,8 @@ function Core:AppendTeam(teamData)
 						GoWTeamMemberContainer:ReleaseChildren()
 					end
 
+					HideOfflineMembersButton:SetValue(false)
+
 					Core:RenderFilteredTeamMembers(role, false);
 					GoWScrollTeamMemberContainer:SetTitle(role)
 					GoWScrollTeamMemberContainer:SetUserData("role", role)
