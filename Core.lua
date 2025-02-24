@@ -1332,7 +1332,6 @@ function Core:AppendTeam(teamData)
 		teamRoleContainer:SetWidth(250);
 		teamRoleContainer:SetLayout("Flow");
 		teamRoleContainer:SetFullHeight(true);
-		teamRoleContainer:SetTitle("Team Roles");
 
 		if GoWTeamTabContainer then
 			GoWTeamTabContainer:AddChild(teamRoleContainer);
@@ -1344,7 +1343,6 @@ function Core:AppendTeam(teamData)
 		ViewGowTeamFrame:SetLayout("Flow");
 		ViewGowTeamFrame:SetWidth(710);
 		ViewGowTeamFrame:SetFullHeight(true);
-		ViewGowTeamFrame:SetTitle("Team Summary");
 		ViewGowTeamFrame:SetPoint("TOP", GoWTeamTabContainer.frame, "TOP", 0, 0);
 
 		if GoWTeamTabContainer then
@@ -1358,10 +1356,11 @@ function Core:AppendTeam(teamData)
 		row:SetLabel("Team URL")
 		row:SetText(teamData.webUrl)
 		row:SetDisabled(false)
-		row:SetHeight(30)
 
 		if ViewGowTeamFrame then
 			ViewGowTeamFrame:AddChild(row)
+			row:ClearAllPoints()
+			row:SetPoint("LEFT", ViewGowTeamFrame.frame, "LEFT", 0, 0)
 		end
 
 		-- //STUB Team Description
@@ -1401,8 +1400,6 @@ function Core:AppendTeam(teamData)
 		HideOfflineMembersButton:SetValue(false)
 		HideOfflineMembersButton:SetType("checkbox")
 		HideOfflineMembersButton:SetDisabled(false)
-		HideOfflineMembersButton:ClearAllPoints()
-		HideOfflineMembersButton.frame:SetPoint("RIGHT", ViewGowTeamFrame.frame, "RIGHT", -10, -10)
 		HideOfflineMembersButton:SetCallback("OnValueChanged", function()
 			if GoWScrollTeamMemberContainer then
 				if GoWTeamMemberContainer then
@@ -1445,7 +1442,7 @@ function Core:AppendTeam(teamData)
 
 		-- // STUB Role Filter
 		local roleFilter = GOW.GUI:Create("Dropdown")
-		roleFilter:SetLabel("Filter by Spec Role")
+		roleFilter:SetLabel("  Filter by Role")
 		roleFilter:SetList({
 			["All"] = "All",
 			["Tanks"] = "Tanks",
@@ -1453,11 +1450,16 @@ function Core:AppendTeam(teamData)
 			["Healers"] = "Healers",
 		})
 		roleFilter:SetValue("All")
-		roleFilter:SetWidth(200)
+		roleFilter:SetWidth(150)
 
 
 		if ViewGowTeamFrame then
 			ViewGowTeamFrame:AddChild(roleFilter, GoWScrollTeamMemberContainer)
+		end
+
+		if GoWTeamMemberContainer then
+			roleFilter:ClearAllPoints()
+			roleFilter:SetPoint("BOTTOMRIGHT", GoWTeamMemberContainer.frame, "TOPRIGHT", 7, 12)
 		end
 
 		-- //STUB (Fn) RenderFilteredTeamMembers
@@ -1473,6 +1475,9 @@ function Core:AppendTeam(teamData)
 			elseif role == "Trial" then
 				filteredMembers = trialRoleMembers
 			end
+
+			-- Get the latest information from the guild roster.
+			C_GuildInfo.GuildRoster()
 
 			-- creates a local variable to help us render empty states
 			local totalTeamMembers = #filteredMembers
@@ -1499,20 +1504,52 @@ function Core:AppendTeam(teamData)
 
 			-- Render each filtered member.
 			if filteredMembers then
+				-- Sort the members by online status.
+				table.sort(filteredMembers, function(a, b)
+					local function isOnline(member)
+						local num = GetNumGuildMembers()
+						for i = 1, num do
+							local name, _, _, _, _, _, _, _, online = GetGuildRosterInfo(i)
+							local baseName = name and name:match("^(.-)%-") or name
+							if baseName == member.name then
+								return online
+							end
+						end
+						return false
+					end
+					return isOnline(a) and not isOnline(b)
+				end)
+
 				for _, member in ipairs(filteredMembers) do
 					-- Change the invite button text to "Invite" if the member is connected, or "Offline" if not.
 					local isConnected = false
-					-- First, check guild roster
+
+					-- First, get the totalMembers of guild roster
 					local numGuildMembers = GetNumGuildMembers()
+
+					local guildRankName = nil
+					local isInGuildOrCommunity = false
+
+					-- Iterate through the guild roster to find the member.
 					for i = 1, numGuildMembers do
-						local name, _, _, _, _, _, _, _, online = GetGuildRosterInfo(i)
+						local name, rankName, _, _, _, _, _, _, online = GetGuildRosterInfo(i)
 						-- In guild roster names may include realm (e.g. "Player-Realm"), so compare only the base names
 						local baseName = name and name:match("^(.-)%-") or name
 						if baseName == (member.name .. "-" .. member.realmNormalized) or baseName == member.name and online then
 							isConnected = true
-							break
+							guildRankName = rankName
+							isInGuildOrCommunity = true
+						else
+							if baseName == (member.name .. "-" .. member.realmNormalized) or baseName == member.name and not online then
+								isConnected = false
+								guildRankName = rankName
+								isInGuildOrCommunity = true
+							end
 						end
 					end
+
+
+
 					-- If not found in guild, check communities if available
 					if not isConnected and C_Club and C_Club.GetSubscribedCommunities then
 						local clubs = C_Club.GetSubscribedCommunities()
@@ -1523,7 +1560,14 @@ function Core:AppendTeam(teamData)
 									for _, clubMember in ipairs(clubMembers) do
 										if clubMember.name == member.name and clubMember.isOnline then
 											isConnected = true
-											break
+											guildRankName = "Non-Guildie"
+											isInGuildOrCommunity = true
+										else
+											if clubMember.name == member.name and not clubMember.isOnline then
+												isConnected = false
+												guildRankName = "Non-Guildie"
+												isInGuildOrCommunity = true
+											end
 										end
 									end
 								end
@@ -1532,11 +1576,15 @@ function Core:AppendTeam(teamData)
 						end
 					end
 
+					if not isInGuildOrCommunity then
+						guildRankName = "Non-Guildie"
+					end
+
 					if not isConnected and hideOffline == true then
 						-- reduce the totalTeamMembers count
 						totalTeamMembers = totalTeamMembers - 1
 					else
-						-- Creates a container to hold the member's name, spec, and invite button.
+						-- Creates a container to hold the member's information and invite button.
 						local memberContainer = GOW.GUI:Create("InlineGroup")
 
 						-- Get the class color for the member.
@@ -1552,29 +1600,30 @@ function Core:AppendTeam(teamData)
 						memberContainer:SetLayout("Flow")
 						memberContainer:SetFullWidth(true)
 
-						-- Create labels for the member's name, spec, and armor token.
+						-- Create labels for the member's name, spec, guild rank and armor token.
 						local nameLabel = GOW.GUI:Create("Label")
-						nameLabel:SetRelativeWidth(0.25)
+						nameLabel:SetWidth(100)
 						nameLabel:SetText(member.name)
 						nameLabel:SetColor(classColorRGB.r, classColorRGB.g, classColorRGB.b)
 						memberContainer:AddChild(nameLabel)
 
 						local specLabel = GOW.GUI:Create("Label")
-						specLabel:SetRelativeWidth(0.25)
+						specLabel:SetWidth(100)
 						specLabel:SetText(member.spec)
 						memberContainer:AddChild(specLabel)
 
 						local tokenLabel = GOW.GUI:Create("Label")
-						tokenLabel:SetRelativeWidth(0.25)
+						tokenLabel:SetWidth(100)
 						tokenLabel:SetText(member.armorToken)
+						tokenLabel:SetColor(0.64, 0.21, 0.93)
 						memberContainer:AddChild(tokenLabel)
 
+						local guildRankLabel = GOW.GUI:Create("Label")
+						guildRankLabel:SetWidth(100)
+						guildRankLabel:SetText(guildRankName)
+						memberContainer:AddChild(guildRankLabel)
 
 						local inviteMember = GOW.GUI:Create("Button")
-						-- Disable the invite button if the member is the current player.
-						if member.name == currentPlayerName then
-							inviteMember:SetDisabled(true)
-						end
 
 						-- Check whether the member is already in the party or raid.
 						C_Timer.After(0, function()
@@ -1608,34 +1657,42 @@ function Core:AppendTeam(teamData)
 							end
 						end
 
-						inviteMember:SetRelativeWidth(0.25)
+						inviteMember:SetWidth(200)
 						inviteMember:SetCallback("OnClick", function()
 							C_PartyInfo.InviteUnit(member.name .. "-" .. member.realmNormalized)
 							inviteMember:SetText("Invite Pending")
 							inviteMember:SetDisabled(true)
 
-							-- Check whether the member is already in the party or raid.
-							C_Timer.NewTicker(0.2, function(ticker)
-								if IsInGroup() then
-									local numGroup = GetNumGroupMembers()
-									local unitPrefix = IsInRaid() and "raid" or "party"
-									local memberFullName = (member.name .. "-" .. member.realmNormalized) or member.name
-									for i = 1, numGroup do
-										local unitId = unitPrefix .. i
-										local unitName = UnitName(unitId)
-										if unitName and (unitName == memberFullName or unitName == member.name) then
-											inviteMember:SetText("Joined")
-											inviteMember:SetDisabled(true)
-											ticker:Cancel()
-											break
-										end
-									end
+							inviteMember:SetScript("OnEvent", function(self, event, ...)
+								if event == "PARTY_INVITE_SUCCESS" then
+									inviteMember:SetText("Joined")
+									inviteMember:SetDisabled(true)
 								end
 							end)
+
+							-- -- Check whether the member is already in the party or raid.
+							-- C_Timer.NewTicker(1, function(ticker)
+							-- 	if IsInGroup() then
+							-- 		local numGroup = GetNumGroupMembers()
+							-- 		local unitPrefix = IsInRaid() and "raid" or "party"
+							-- 		local memberFullName = (member.name .. "-" .. member.realmNormalized) or member.name
+							-- 		for i = 1, numGroup do
+							-- 			local unitId = unitPrefix .. i
+							-- 			local unitName = UnitName(unitId)
+							-- 			if unitName and (unitName == memberFullName or unitName == member.name) then
+							-- 				inviteMember:SetText("Joined")
+							-- 				inviteMember:SetDisabled(true)
+							-- 				ticker:Cancel()
+							-- 				break
+							-- 			end
+							-- 		end
+							-- 	end
+							-- end, 60)
 						end)
 
-
-						memberContainer:AddChild(inviteMember)
+						if memberContainer then
+							memberContainer:AddChild(inviteMember)
+						end
 
 						if GoWTeamMemberContainer then
 							GoWTeamMemberContainer:AddChild(memberContainer)
@@ -1717,16 +1774,16 @@ function Core:AppendTeam(teamData)
 					HideOfflineMembersButton:SetValue(false)
 
 					Core:RenderFilteredTeamMembers(role, false);
-					GoWScrollTeamMemberContainer:SetTitle(role)
+					GoWScrollTeamMemberContainer:SetTitle(role .. " Members")
 					GoWScrollTeamMemberContainer:SetUserData("role", role)
 				end);
 
-				if roleButton and role == "Main" then
-					C_Timer.After(0, function() roleButton:Fire("OnClick") end)
-				end
 
 				if teamRoleContainer then
 					teamRoleContainer:AddChild(roleButton);
+				end
+				if roleButton and role == "Main" then
+					C_Timer.After(0, function() roleButton:Fire("OnClick") end)
 				end
 			end
 		end
