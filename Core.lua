@@ -85,8 +85,8 @@ local currentOpenDialog = nil;
 local GoWTeamTabContainer = nil;
 local GoWScrollTeamMemberContainer = nil;
 local GoWTeamMemberContainer = nil;
-local ViewGowTeamFrame = nil;
-local teamRoleContainer = nil;
+local teamInfoContainer = nil;
+local teamNavContainer = nil;
 
 local workQueue = nil;
 local persistentWorkQueue = nil;
@@ -711,7 +711,6 @@ function Core:CreateUpcomingEvents()
 	isPropogatingUpdate = false;
 end
 
--- //SECTION - Create Teams
 function Core:CreateTeams()
 	if (selectedTab ~= "teams") then
 		return;
@@ -1176,10 +1175,8 @@ function Core:AppendCalendarList(event)
 	return true;
 end
 
--- //SECTION - Append Teams
+-- //SECTION - AppendTeams
 function Core:AppendTeam(teamData)
-	-- //STUB Base Team Container
-	-- creates a container to hold the team's data for the user to view and interact with
 	local itemGroup = GOW.GUI:Create("InlineGroup");
 	itemGroup:SetWidth(300);
 
@@ -1209,48 +1206,50 @@ function Core:AppendTeam(teamData)
 	end);
 	buttonsGroup:AddChild(inviteToPartyButton);
 
-	-- add button to view team members
+	-- add button to view team details
 	local viewTeamButton = GOW.GUI:Create("Button");
 	viewTeamButton:SetText("View");
 	viewTeamButton:SetRelativeWidth(0.5);
 	viewTeamButton:SetCallback("OnClick", function()
-		-- //SECTION Team Details - Tables and Variables
-
-		-- create tables to hold the different team roles and members
-		local GoWteamRoles = {}; -- holds the different team roles (Main, Alt, Backup, Trial) and used to render the nav buttons
+		-- //SECTION Team Details (TD) - Tables and Variables
+		local teamNavItems = {}; -- holds the different team groups (Main, Alt, Backup, Trial) and used to render the nav buttons
 		local teamMembers = teamData.members or {}
 
-		local mainRoleMembers = {} -- holds the main role members
-		local mainRoleTanks = {}
-		local mainRoleHealers = {}
-		local mainRoleDPS = {}
+		-- holds information about the Main group members and roles
+		local mainGroupMembers = {}
+		local mainGroupTanks = {}
+		local mainGroupHealers = {}
+		local mainGroupDPS = {}
 
-		local altsRoleMembers = {} -- holds the alt role members
-		local altRoleTanks = {}
-		local altRoleHealers = {}
-		local altRoleDPS = {}
+		-- holds information about the Alt group members and roles
+		local altGroupMembers = {}
+		local altGroupTanks = {}
+		local altGroupHealers = {}
+		local altGroupDPS = {}
 
-		local backupRoleMembers = {} -- holds the backup role members
-		local backupRoleTanks = {}
-		local backupRoleHealers = {}
-		local backupRoleDPS = {}
+		-- holds information about the Backup group members and roles
+		local backupGroupMembers = {}
+		local backupGroupTanks = {}
+		local backupGroupHealers = {}
+		local backupGroupDPS = {}
 
-		local trialRoleMembers = {} -- holds the trial role members
-		local trialRoleTanks = {}
-		local trialRoleHealers = {}
-		local trialRoleDPS = {}
+		-- holds information about the Trial group members and roles
+		local trialGroupMembers = {}
+		local trialGroupTanks = {}
+		local trialGroupHealers = {}
+		local trialGroupDPS = {}
 
-		local filteredMembers = {} -- holds the filtered members based on the GoWteamRole selected
+		local filteredMembers = {} -- holds the filtered members based on the navigation selected
 		local totalMembers = 0 -- holds the total number of members in the team
 
-		-- these are used to trigger a table.insert function that will be used to populate GoWteamRoles
-		local teamRoleMainFound = false
-		local teamRoleAltsFound = false
-		local teamRoleBackupFound = false
-		local teamRoleTrialFound = false
+		-- these are used to trigger a table.insert function that will be used to populate teamNavItems
+		local mainGroupFound = false
+		local altGroupFound = false
+		local backupGroupFound = false
+		local trialGroupFound = false
 
 
-		-- a table to hold the different tank specs
+		-- the following tables are used to hold the different tank, healer, and dps specs
 		local tankSpecs = {
 			"Blood",
 			"Vengeance",
@@ -1259,8 +1258,6 @@ function Core:AppendTeam(teamData)
 			"Protection",
 		}
 
-
-		-- a table to hold the different healer specs
 		local healerSpecs = {
 			"Restoration",
 			"Mistweaver",
@@ -1269,7 +1266,6 @@ function Core:AppendTeam(teamData)
 			"Preservation",
 		}
 
-		-- a table to hold the different dps specs
 		local dpsSpecs = {
 			"Balance",
 			"Feral",
@@ -1297,6 +1293,7 @@ function Core:AppendTeam(teamData)
 			"Devastation",
 		}
 
+		-- these are used to populate the "Filter by Role" dropdown
 		local rolesForFilter = {
 			["All"] = "All",
 			["Tanks"] = "Tanks",
@@ -1304,15 +1301,12 @@ function Core:AppendTeam(teamData)
 			["Healers"] = "Healers",
 		}
 
-		local currentFilterValue = "All"
+		local currentFilterValue = "All" -- holds the current value of the filter dropdown
 		local isOfflineChecked = false -- holds the value of the hide offline members checkbox
 
+		-- //!SECTION
 
-
-		-- //SECTION - Team Details - Layout Creation
-
-		-- //STUB Base Detail Container
-		-- creates a base container to hold all the other widgets/frames for the specific team
+		-- //SECTION - TD - Layout Creation
 		GoWTeamTabContainer = GOW.GUI:Create("Frame");
 		GoWTeamTabContainer:SetTitle(teamData.title);
 		GoWTeamTabContainer:SetWidth(1000);
@@ -1337,45 +1331,39 @@ function Core:AppendTeam(teamData)
 			GoWTeamTabContainer:Release();
 		end);
 
-		-- //STUB Nav Container
-		-- creates a container to hold the different team roles (Main, Alt, Backup, Trial) for navigation
-		teamRoleContainer = GOW.GUI:Create("InlineGroup");
-		teamRoleContainer:SetWidth(250);
-		teamRoleContainer:SetLayout("Flow");
-		teamRoleContainer:SetFullHeight(true);
+		-- //STUB TD - Nav Container
+		teamNavContainer = GOW.GUI:Create("InlineGroup");
+		teamNavContainer:SetWidth(250);
+		teamNavContainer:SetLayout("Flow");
+		teamNavContainer:SetFullHeight(true);
 
 		if GoWTeamTabContainer then
-			GoWTeamTabContainer:AddChild(teamRoleContainer);
+			GoWTeamTabContainer:AddChild(teamNavContainer);
 		end
 
-		-- //STUB Team Details Container
-		-- creates a container to hold the team's data upon clicking a team role
-		ViewGowTeamFrame = GOW.GUI:Create("InlineGroup");
-		ViewGowTeamFrame:SetLayout("Flow");
-		ViewGowTeamFrame:SetWidth(710);
-		ViewGowTeamFrame:SetFullHeight(true);
-		ViewGowTeamFrame:SetPoint("TOP", GoWTeamTabContainer.frame, "TOP", 0, 0);
+		-- //STUB TD - Information Container
+		teamInfoContainer = GOW.GUI:Create("InlineGroup");
+		teamInfoContainer:SetLayout("Flow");
+		teamInfoContainer:SetWidth(710);
+		teamInfoContainer:SetFullHeight(true);
+		teamInfoContainer:SetPoint("TOP", GoWTeamTabContainer.frame, "TOP", 0, 0);
 
 		if GoWTeamTabContainer then
-			GoWTeamTabContainer:AddChild(ViewGowTeamFrame);
+			GoWTeamTabContainer:AddChild(teamInfoContainer);
 		end
 
-		-- //SECTION - Team Content
+		-- //!SECTION
+
+		-- //SECTION - TD - Summary
 		-- //STUB Team URL
-		-- creates a row that allows the user to copy/paste the team url
-		local row = GOW.GUI:Create("SFX-Info-URL")
-		row:SetLabel("Team URL")
-		row:SetText(teamData.webUrl)
-		row:SetDisabled(false)
+		local teamURL = GOW.GUI:Create("SFX-Info-URL")
+		teamURL:SetLabel("Team Link")
+		teamURL:SetText(teamData.webUrl)
+		teamURL:SetDisabled(false)
+		teamInfoContainer:AddChild(teamURL)
 
-		if ViewGowTeamFrame then
-			ViewGowTeamFrame:AddChild(row)
-			row:ClearAllPoints()
-			row:SetPoint("LEFT", ViewGowTeamFrame.frame, "LEFT", 0, 0)
-		end
 
 		-- //STUB Team Description
-		-- create a label to show the team description
 		local teamDescriptionLabel = GOW.GUI:Create("SFX-Info");
 		teamDescriptionLabel:SetLabel("Description");
 		if teamData.description == "" then
@@ -1384,7 +1372,6 @@ function Core:AppendTeam(teamData)
 			teamDescriptionLabel:SetText(teamData.description);
 
 			teamDescriptionLabel:SetCallback("OnEnter", function(self)
-				-- create a tooltip to show the team description
 				local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT");
 				GOW.tooltip = tooltip;
 
@@ -1401,8 +1388,8 @@ function Core:AppendTeam(teamData)
 		end
 		teamDescriptionLabel:SetDisabled(false);
 
-		if ViewGowTeamFrame then
-			ViewGowTeamFrame:AddChild(teamDescriptionLabel);
+		if teamInfoContainer then
+			teamInfoContainer:AddChild(teamDescriptionLabel);
 		end
 
 		-- // STUB Hide Offline Members Button
@@ -1416,21 +1403,22 @@ function Core:AppendTeam(teamData)
 				if GoWTeamMemberContainer then
 					GoWTeamMemberContainer:ReleaseChildren()
 				end
-				local role = GoWScrollTeamMemberContainer:GetUserData("role")
+				local teamGroup = GoWScrollTeamMemberContainer:GetUserData("teamGroup") -- used to get the current teamGroup selected from the navigation buttons
 				local filterValue = currentFilterValue
 				local checkBoxValue = HideOfflineMembersButton:GetValue()
 				if checkBoxValue then
-					Core:RenderFilteredTeamMembers(role, true, filterValue)
+					-- args: teamGroup, hideOffline, specRole
+					Core:RenderFilteredTeamMembers(teamGroup, true, filterValue)
 				else
-					Core:RenderFilteredTeamMembers(role, false, filterValue)
+					Core:RenderFilteredTeamMembers(teamGroup, false, filterValue)
 				end
 				isOfflineChecked = checkBoxValue
 				checkBoxValue = not checkBoxValue
 			end
 		end)
 
-		if ViewGowTeamFrame then
-			ViewGowTeamFrame:AddChild(HideOfflineMembersButton)
+		if teamInfoContainer then
+			teamInfoContainer:AddChild(HideOfflineMembersButton)
 		end
 
 		-- //STUB Team Member Container
@@ -1439,11 +1427,10 @@ function Core:AppendTeam(teamData)
 		GoWScrollTeamMemberContainer:SetLayout("Fill")
 		GoWScrollTeamMemberContainer:SetFullWidth(true)
 
-		if ViewGowTeamFrame then
-			ViewGowTeamFrame:AddChild(GoWScrollTeamMemberContainer)
+		if teamInfoContainer then
+			teamInfoContainer:AddChild(GoWScrollTeamMemberContainer)
 		end
 
-		-- Create a container to hold the list of team members filtered by role.
 		GoWTeamMemberContainer = GOW.GUI:Create("ScrollFrame")
 		GoWTeamMemberContainer:SetFullHeight(true)
 		GoWTeamMemberContainer:SetLayout("List")
@@ -1467,32 +1454,32 @@ function Core:AppendTeam(teamData)
 				GoWTeamMemberContainer:ReleaseChildren()
 			end
 
-			-- get the role selected from the dropdown
-			local role = nil
+			local teamGroup = nil
 			if GoWScrollTeamMemberContainer then
 				-- get the current role selected from the navigation buttons
-				role = GoWScrollTeamMemberContainer:GetUserData("role")
+				teamGroup = GoWScrollTeamMemberContainer:GetUserData("teamGroup")
 			end
 
 			if selectedRole then
 				-- render the team members based on the role selected and whether or not the hide offline members checkbox is checked
 				if isOfflineChecked then
-					Core:RenderFilteredTeamMembers(role, true, selectedRole)
+					Core:RenderFilteredTeamMembers(teamGroup, true, selectedRole)
 				else
-					Core:RenderFilteredTeamMembers(role, false, selectedRole)
+					Core:RenderFilteredTeamMembers(teamGroup, false, selectedRole)
 				end
 				-- set the current filter value to the selected role
 				currentFilterValue = selectedRole
 			end
 		end)
 
+		-- ensures that the OnValueChanged callback is fired when the dropdown is created
 		if roleFilter then
 			C_Timer.After(0, function() roleFilter:Fire("OnValueChanged") end)
 		end
 
 
-		if ViewGowTeamFrame then
-			ViewGowTeamFrame:AddChild(roleFilter, GoWScrollTeamMemberContainer)
+		if teamInfoContainer then
+			teamInfoContainer:AddChild(roleFilter, GoWScrollTeamMemberContainer)
 		end
 
 		if GoWTeamMemberContainer then
@@ -1500,9 +1487,9 @@ function Core:AppendTeam(teamData)
 			roleFilter:SetPoint("BOTTOMRIGHT", GoWTeamMemberContainer.frame, "TOPRIGHT", 7, 12)
 		end
 
+		-- //SECTION TD - Render Team Members
 		-- //STUB (Fn) RenderFilteredTeamMembers
-		-- a function to render the team members based on the GoWteamRole selected
-		function Core:RenderFilteredTeamMembers(role, hideOffline, specRole)
+		function Core:RenderFilteredTeamMembers(teamGroup, hideOffline, specRole)
 			-- Get the latest information from the guild roster.
 			C_GuildInfo.GuildRoster()
 
@@ -1510,50 +1497,50 @@ function Core:AppendTeam(teamData)
 
 			-- if specRole is selected, filter the members based on the specRole
 			if specRole then
-				if specRole == "All" and role == "Main" then
-					filteredMembers = mainRoleMembers
-				elseif specRole == "All" and role == "Alt" then
-					filteredMembers = altsRoleMembers
-				elseif specRole == "All" and role == "Backup" then
-					filteredMembers = backupRoleMembers
-				elseif specRole == "All" and role == "Trial" then
-					filteredMembers = trialRoleMembers
+				if specRole == "All" and teamGroup == "Main" then
+					filteredMembers = mainGroupMembers
+				elseif specRole == "All" and teamGroup == "Alt" then
+					filteredMembers = altGroupMembers
+				elseif specRole == "All" and teamGroup == "Backup" then
+					filteredMembers = backupGroupMembers
+				elseif specRole == "All" and teamGroup == "Trial" then
+					filteredMembers = trialGroupMembers
 				end
 
 				if specRole == "Tanks" then
-					if role == "Main" then
-						filteredMembers = mainRoleTanks
-					elseif role == "Alt" then
-						filteredMembers = altRoleTanks
-					elseif role == "Backup" then
-						filteredMembers = backupRoleTanks
-					elseif role == "Trial" then
-						filteredMembers = trialRoleTanks
+					if teamGroup == "Main" then
+						filteredMembers = mainGroupTanks
+					elseif teamGroup == "Alt" then
+						filteredMembers = altGroupTanks
+					elseif teamGroup == "Backup" then
+						filteredMembers = backupGroupTanks
+					elseif teamGroup == "Trial" then
+						filteredMembers = trialGroupTanks
 					end
 				elseif specRole == "Healers" then
-					if role == "Main" then
-						filteredMembers = mainRoleHealers
-					elseif role == "Alt" then
-						filteredMembers = altRoleHealers
-					elseif role == "Backup" then
-						filteredMembers = backupRoleHealers
-					elseif role == "Trial" then
-						filteredMembers = trialRoleHealers
+					if teamGroup == "Main" then
+						filteredMembers = mainGroupHealers
+					elseif teamGroup == "Alt" then
+						filteredMembers = altGroupHealers
+					elseif teamGroup == "Backup" then
+						filteredMembers = backupGroupHealers
+					elseif teamGroup == "Trial" then
+						filteredMembers = trialGroupHealers
 					end
 				elseif specRole == "DPS" then
-					if role == "Main" then
-						filteredMembers = mainRoleDPS
-					elseif role == "Alt" then
-						filteredMembers = altRoleDPS
-					elseif role == "Backup" then
-						filteredMembers = backupRoleDPS
-					elseif role == "Trial" then
-						filteredMembers = trialRoleDPS
+					if teamGroup == "Main" then
+						filteredMembers = mainGroupDPS
+					elseif teamGroup == "Alt" then
+						filteredMembers = altGroupDPS
+					elseif teamGroup == "Backup" then
+						filteredMembers = backupGroupDPS
+					elseif teamGroup == "Trial" then
+						filteredMembers = trialGroupDPS
 					end
 				end
 			end
 
-			-- creates a local variable to help us render empty states
+			-- a local variable to help us render empty states
 			local totalTeamMembers = #filteredMembers
 
 			local function checkForEmptyState()
@@ -1588,17 +1575,13 @@ function Core:AppendTeam(teamData)
 					return isOnline(a) and not isOnline(b)
 				end)
 
+				-- attempt to find the member in the guild roster
 				for _, member in ipairs(filteredMembers) do
-					-- Change the invite button text to "Invite" if the member is connected, or "Offline" if not.
 					local isConnected = false
-
-					-- First, get the totalMembers of guild roster
 					local numGuildMembers = GetNumGuildMembers()
-
 					local guildRankName = nil
 					local isInGuildOrCommunity = false
 
-					-- Iterate through the guild roster to find the member.
 					for i = 1, numGuildMembers do
 						local name, rankName, _, _, _, _, _, _, online = GetGuildRosterInfo(i)
 						-- In guild roster names may include realm (e.g. "Player-Realm"), so compare only the base names
@@ -1615,8 +1598,6 @@ function Core:AppendTeam(teamData)
 							end
 						end
 					end
-
-
 
 					-- If not found in guild, check communities if available
 					if not isConnected and C_Club and C_Club.GetSubscribedCommunities then
@@ -1649,14 +1630,13 @@ function Core:AppendTeam(teamData)
 					end
 
 					if not isConnected and hideOffline == true then
-						print("Hiding offline members")
 						-- reduce the totalTeamMembers count
 						if totalTeamMembers > 0 then
 							totalTeamMembers = totalTeamMembers - 1
-							print("Total team members: " .. totalTeamMembers)
 							checkForEmptyState()
 						end
 					else
+						-- //STUB TD - Member Container
 						-- Creates a container to hold the member's information and invite button.
 						local memberContainer = GOW.GUI:Create("InlineGroup")
 						memberContainer:SetLayout("Flow")
@@ -1756,6 +1736,7 @@ function Core:AppendTeam(teamData)
 								end
 							end)
 
+							-- //TODO - either remove or re-add
 							-- -- Check whether the member is already in the party or raid.
 							-- C_Timer.NewTicker(1, function(ticker)
 							-- 	if IsInGroup() then
@@ -1789,66 +1770,68 @@ function Core:AppendTeam(teamData)
 			end
 		end
 
+		-- //!SECTION
+
 		-- check if the team has the main, alts, backup, and trial roles and add them to the correct tables
 		if teamMembers then
 			for _, member in pairs(teamMembers) do
 				local teamRole = member.teamRole
 				if teamRole == "Main" then
-					teamRoleMainFound = true
-					table.insert(mainRoleMembers, member)
+					mainGroupFound = true
+					table.insert(mainGroupMembers, member)
 					if Core:Contains(tankSpecs, member.spec) then
-						table.insert(mainRoleTanks, member)
+						table.insert(mainGroupTanks, member)
 					else
 						if Core:Contains(healerSpecs, member.spec) then
-							table.insert(mainRoleHealers, member)
+							table.insert(mainGroupHealers, member)
 						else
 							if Core:Contains(dpsSpecs, member.spec) then
-								table.insert(mainRoleDPS, member)
+								table.insert(mainGroupDPS, member)
 							end
 						end
 					end
 				else
 					if teamRole == "Alt" then
-						teamRoleAltsFound = true
-						table.insert(altsRoleMembers, member)
+						altGroupFound = true
+						table.insert(altGroupMembers, member)
 						if Core:Contains(tankSpecs, member.spec) then
-							table.insert(altRoleTanks, member)
+							table.insert(altGroupTanks, member)
 						else
 							if Core:Contains(healerSpecs, member.spec) then
-								table.insert(altRoleHealers, member)
+								table.insert(altGroupHealers, member)
 							else
 								if Core:Contains(dpsSpecs, member.spec) then
-									table.insert(altRoleDPS, member)
+									table.insert(altGroupDPS, member)
 								end
 							end
 						end
 					else
 						if teamRole == "Backup" then
-							teamRoleBackupFound = true
-							table.insert(backupRoleMembers, member)
+							backupGroupFound = true
+							table.insert(backupGroupMembers, member)
 							if Core:Contains(tankSpecs, member.spec) then
-								table.insert(backupRoleTanks, member)
+								table.insert(backupGroupTanks, member)
 							else
 								if Core:Contains(healerSpecs, member.spec) then
-									table.insert(backupRoleHealers, member)
+									table.insert(backupGroupHealers, member)
 								else
 									if Core:Contains(dpsSpecs, member.spec) then
-										table.insert(backupRoleDPS, member)
+										table.insert(backupGroupDPS, member)
 									end
 								end
 							end
 						else
 							if teamRole == "Trial" then
-								teamRoleTrialFound = true
-								table.insert(trialRoleMembers, member)
+								trialGroupFound = true
+								table.insert(trialGroupMembers, member)
 								if Core:Contains(tankSpecs, member.spec) then
-									table.insert(trialRoleTanks, member)
+									table.insert(trialGroupTanks, member)
 								else
 									if Core:Contains(healerSpecs, member.spec) then
-										table.insert(trialRoleHealers, member)
+										table.insert(trialGroupHealers, member)
 									else
 										if Core:Contains(dpsSpecs, member.spec) then
-											table.insert(trialRoleDPS, member)
+											table.insert(trialGroupDPS, member)
 										end
 									end
 								end
@@ -1859,36 +1842,36 @@ function Core:AppendTeam(teamData)
 			end
 		end
 
-		-- add the roles that are found in the team to the GoWteamRoles table
-		if teamRoleMainFound then
-			table.insert(GoWteamRoles, "Main")
+		-- add the roles that are found in the team to the teamNavItems table
+		if mainGroupFound then
+			table.insert(teamNavItems, "Main")
 		end
 
-		if teamRoleAltsFound then
-			table.insert(GoWteamRoles, "Alt")
+		if altGroupFound then
+			table.insert(teamNavItems, "Alt")
 		end
 
-		if teamRoleBackupFound then
-			table.insert(GoWteamRoles, "Backup")
+		if backupGroupFound then
+			table.insert(teamNavItems, "Backup")
 		end
 
-		if teamRoleTrialFound then
-			table.insert(GoWteamRoles, "Trial")
+		if trialGroupFound then
+			table.insert(teamNavItems, "Trial")
 		end
 
 		-- //STUB Render Nav Buttons
-		-- create a list of buttons for the different team roles present in the GoWteamRoles
-		if GoWteamRoles then
-			for _, role in ipairs(GoWteamRoles) do
-				local roleButton = GOW.GUI:Create("Button");
-				roleButton:SetFullWidth(true);
-				roleButton:SetHeight(40);
-				roleButton:SetText(role)
-				local roleButtonTexture = roleButton.frame:CreateTexture(nil, "BACKGROUND")
-				roleButtonTexture:SetAllPoints()
+		-- create a list of buttons for the different team roles present in the teamNavItems
+		if teamNavItems then
+			for _, teamGroup in ipairs(teamNavItems) do
+				local teamGroupNavBtn = GOW.GUI:Create("Button");
+				teamGroupNavBtn:SetFullWidth(true);
+				teamGroupNavBtn:SetHeight(40);
+				teamGroupNavBtn:SetText(teamGroup)
+				local teamGroupNavBtnTexture = teamGroupNavBtn.frame:CreateTexture(nil, "BACKGROUND")
+				teamGroupNavBtnTexture:SetAllPoints()
 
-				-- set the callback for the button to render the team members for the selected role
-				roleButton:SetCallback("OnClick", function()
+				-- set the callback for the button to render the team members for the selected teamGroup
+				teamGroupNavBtn:SetCallback("OnClick", function()
 					if GoWTeamMemberContainer then
 						GoWTeamMemberContainer:ReleaseChildren()
 					end
@@ -1897,23 +1880,23 @@ function Core:AppendTeam(teamData)
 
 					if isOfflineChecked then
 						HideOfflineMembersButton:SetValue(isOfflineChecked)
-						Core:RenderFilteredTeamMembers(role, true, currentFilterValue);
+						Core:RenderFilteredTeamMembers(teamGroup, true, currentFilterValue);
 					else
 						HideOfflineMembersButton:SetValue(isOfflineChecked)
-						Core:RenderFilteredTeamMembers(role, false, currentFilterValue);
+						Core:RenderFilteredTeamMembers(teamGroup, false, currentFilterValue);
 					end
 
-					GoWScrollTeamMemberContainer:SetTitle(role .. " Members")
-					GoWScrollTeamMemberContainer:SetUserData("role", role)
+					GoWScrollTeamMemberContainer:SetTitle(teamGroup .. " Members")
+					GoWScrollTeamMemberContainer:SetUserData("teamGroup", teamGroup)
 				end);
 
 
-				if teamRoleContainer then
-					teamRoleContainer:AddChild(roleButton);
+				if teamNavContainer then
+					teamNavContainer:AddChild(teamGroupNavBtn);
 				end
 
-				if roleButton and role == "Main" then
-					C_Timer.After(0, function() roleButton:Fire("OnClick") end)
+				if teamGroupNavBtn and teamGroup == "Main" then
+					C_Timer.After(0, function() teamGroupNavBtn:Fire("OnClick") end)
 				end
 			end
 		end
@@ -1923,11 +1906,15 @@ function Core:AppendTeam(teamData)
 		containerScrollFrame:AddChild(itemGroup);
 	end
 
+	-- //!SECTION
+
 
 
 	buttonsGroup:AddChild(viewTeamButton);
 	itemGroup:AddChild(buttonsGroup);
 end
+
+-- //!SECTION
 
 function Core:AppendRecruitmentList(recruitmentApplication)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
