@@ -75,6 +75,7 @@ f:RegisterEvent("CALENDAR_UPDATE_INVITE_LIST");
 f:RegisterEvent("CALENDAR_OPEN_EVENT");
 f:RegisterEvent("CALENDAR_CLOSE_EVENT");
 f:RegisterEvent("CALENDAR_ACTION_PENDING");
+f:RegisterEvent("CHAT_MSG_SYSTEM")
 
 local isInitialLogin = false;
 local isPropogatingUpdate = false;
@@ -1729,32 +1730,35 @@ function Core:AppendTeam(teamData)
 							inviteMember:SetText("Invite Pending")
 							inviteMember:SetDisabled(true)
 
-							inviteMember:SetScript("OnEvent", function(self, event, ...)
-								if event == "PARTY_INVITE_SUCCESS" then
-									inviteMember:SetText("Joined")
-									inviteMember:SetDisabled(true)
+							local playerJoined = false
+
+							local function eventHandler(self, event, text, ...)
+								if event == "CHAT_MSG_SYSTEM" then
+									local searchString = "joins the "
+									local memberName = (member.name .. "-" .. member.realmNormalized) or member.name
+									local joinedGroupString = nil
+									local joinedGroupString2 = nil
+									joinedGroupString = string.find(text, searchString, 0, true)
+									joinedGroupString2 = string.find(text, memberName, 0, true)
+									if joinedGroupString ~= nil then
+										if joinedGroupString2 ~= nil then
+											inviteMember:SetText("Joined")
+											inviteMember:SetDisabled(true)
+											playerJoined = true
+											self:UnregisterEvent("CHAT_MSG_SYSTEM")
+										end
+									end
+								end
+							end
+
+							C_Timer.After(61, function()
+								if playerJoined == false then
+									inviteMember:SetText("Invite")
+									inviteMember:SetDisabled(false)
 								end
 							end)
 
-							-- //TODO - either remove or re-add
-							-- -- Check whether the member is already in the party or raid.
-							-- C_Timer.NewTicker(1, function(ticker)
-							-- 	if IsInGroup() then
-							-- 		local numGroup = GetNumGroupMembers()
-							-- 		local unitPrefix = IsInRaid() and "raid" or "party"
-							-- 		local memberFullName = (member.name .. "-" .. member.realmNormalized) or member.name
-							-- 		for i = 1, numGroup do
-							-- 			local unitId = unitPrefix .. i
-							-- 			local unitName = UnitName(unitId)
-							-- 			if unitName and (unitName == memberFullName or unitName == member.name) then
-							-- 				inviteMember:SetText("Joined")
-							-- 				inviteMember:SetDisabled(true)
-							-- 				ticker:Cancel()
-							-- 				break
-							-- 			end
-							-- 		end
-							-- 	end
-							-- end, 60)
+							f:SetScript("OnEvent", eventHandler)
 						end)
 
 						if GoWTeamMemberContainer then
