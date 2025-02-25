@@ -1751,6 +1751,8 @@ function Core:AppendTeam(teamData)
 								end
 							end
 
+							-- //TODO add state for the button so if the user changes filter or navigates, the button knows it's state
+
 							C_Timer.After(61, function()
 								if playerJoined == false then
 									inviteMember:SetText("Invite")
@@ -2002,8 +2004,34 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	inviteToGuildButton:SetCallback("OnClick", function()
 		Core:OpenDialogWithData("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.title, nil,
 			recruitmentApplicationInviteLink);
+		inviteToGuildButton:SetText("Invite Pending");
+		inviteToGuildButton:SetDisabled(true);
+
+		-- -- if the player joins the guild, update the button text
+		-- local function eventHandler(self, event, ...)
+		-- 	if event == "GUILD_ROSTER_UPDATE" then
+		-- 		-- isPlayerInGuild();
+		-- 	end
+		-- end
 	end);
 	buttonsGroup:AddChild(inviteToGuildButton);
+
+	local function isPlayerInGuild()
+		-- get latest guild roster info
+		C_GuildInfo.GuildRoster()
+
+		local memberName = recruitmentApplication.title
+		local isInGuild = C_GuildInfo.MemberExistsByName(memberName)
+		print(isInGuild)
+		print(recruitmentApplication.title)
+
+		if isInGuild and inviteToGuildButton then
+			inviteToGuildButton:SetText("In Guild");
+			inviteToGuildButton:SetDisabled(true);
+		end
+	end
+
+	isPlayerInGuild()
 
 	local inviteToPartyButton = GOW.GUI:Create("Button");
 	inviteToPartyButton:SetText("Invite to Party");
