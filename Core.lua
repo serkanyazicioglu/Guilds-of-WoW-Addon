@@ -1507,18 +1507,6 @@ function Core:AppendTeam(teamData)
 			C_GuildInfo.GuildRoster()
 
 			local currentPlayerName = UnitName("player")
-			if role == "Main" then
-				filteredMembers = mainRoleMembers
-			elseif role == "Alt" then
-				filteredMembers = altsRoleMembers
-			elseif role == "Backup" then
-				filteredMembers = backupRoleMembers
-			elseif role == "Trial" then
-				filteredMembers = trialRoleMembers
-			end
-
-			-- //TODO - I could probably remove the above logic, its not needed as the below logic covers it
-			-- //TODO - Fix offlinecheck not being persistent after changing roles via filter
 
 			-- if specRole is selected, filter the members based on the specRole
 			if specRole then
@@ -1567,17 +1555,20 @@ function Core:AppendTeam(teamData)
 
 			-- creates a local variable to help us render empty states
 			local totalTeamMembers = #filteredMembers
-			print("Total team members: " .. totalTeamMembers)
 
-			-- Render an empty state if no members are found.
-			if totalTeamMembers == 0 then
-				local noMembersLabel = GOW.GUI:Create("Label")
-				noMembersLabel:SetText("No members found.")
-				noMembersLabel:SetFullWidth(true)
-				if GoWTeamMemberContainer then
-					GoWTeamMemberContainer:AddChild(noMembersLabel)
+			local function checkForEmptyState()
+				-- Render an empty state if no members are found.
+				if totalTeamMembers == 0 then
+					local noMembersLabel = GOW.GUI:Create("Label")
+					noMembersLabel:SetText("No members found.")
+					noMembersLabel:SetFullWidth(true)
+					if GoWTeamMemberContainer then
+						GoWTeamMemberContainer:AddChild(noMembersLabel)
+					end
 				end
 			end
+
+			checkForEmptyState()
 
 			-- Render each filtered member.
 			if filteredMembers then
@@ -1658,15 +1649,19 @@ function Core:AppendTeam(teamData)
 					end
 
 					if not isConnected and hideOffline == true then
+						print("Hiding offline members")
 						-- reduce the totalTeamMembers count
 						if totalTeamMembers > 0 then
 							totalTeamMembers = totalTeamMembers - 1
+							print("Total team members: " .. totalTeamMembers)
+							checkForEmptyState()
 						end
 					else
 						-- Creates a container to hold the member's information and invite button.
 						local memberContainer = GOW.GUI:Create("InlineGroup")
 						memberContainer:SetLayout("Flow")
 						memberContainer:SetFullWidth(true)
+						memberContainer.frame:SetFrameLevel(2)
 
 						-- Get the class color for the member.
 						local className, classFile, classID = GetClassInfo(member.classId)
@@ -1680,6 +1675,18 @@ function Core:AppendTeam(teamData)
 
 
 						-- Create labels for the member's name, spec, guild rank and armor token.
+						local factionIcon = GOW.GUI:Create("Label")
+						if member.faction == 1 then
+							factionIcon:SetImage(652156)
+						else
+							factionIcon:SetImage(652155)
+						end
+						factionIcon:SetImageSize(30, 30)
+						factionIcon:SetWidth(30)
+						factionIcon:SetHeight(30)
+						memberContainer:AddChild(factionIcon)
+
+
 						local nameLabel = GOW.GUI:Create("Label")
 						nameLabel:SetWidth(100)
 						nameLabel:SetText(member.name)
@@ -1736,7 +1743,7 @@ function Core:AppendTeam(teamData)
 							end
 						end
 
-						inviteMember:SetWidth(200)
+						inviteMember:SetWidth(150)
 						inviteMember:SetCallback("OnClick", function()
 							C_PartyInfo.InviteUnit(member.name .. "-" .. member.realmNormalized)
 							inviteMember:SetText("Invite Pending")
@@ -1877,6 +1884,8 @@ function Core:AppendTeam(teamData)
 				roleButton:SetFullWidth(true);
 				roleButton:SetHeight(40);
 				roleButton:SetText(role)
+				local roleButtonTexture = roleButton.frame:CreateTexture(nil, "BACKGROUND")
+				roleButtonTexture:SetAllPoints()
 
 				-- set the callback for the button to render the team members for the selected role
 				roleButton:SetCallback("OnClick", function()
@@ -1887,13 +1896,9 @@ function Core:AppendTeam(teamData)
 					HideOfflineMembersButton:SetValue(false)
 
 					if isOfflineChecked then
-						print("Hide Offline Members is checked")
-						print(currentFilterValue)
 						HideOfflineMembersButton:SetValue(isOfflineChecked)
 						Core:RenderFilteredTeamMembers(role, true, currentFilterValue);
 					else
-						print("Hide Offline Members is not checked")
-						print(currentFilterValue)
 						HideOfflineMembersButton:SetValue(isOfflineChecked)
 						Core:RenderFilteredTeamMembers(role, false, currentFilterValue);
 					end
@@ -1906,6 +1911,7 @@ function Core:AppendTeam(teamData)
 				if teamRoleContainer then
 					teamRoleContainer:AddChild(roleButton);
 				end
+
 				if roleButton and role == "Main" then
 					C_Timer.After(0, function() roleButton:Fire("OnClick") end)
 				end
