@@ -1726,9 +1726,10 @@ function Core:AppendTeam(teamData)
 
 						inviteMember:SetWidth(150)
 
-						local playerJoinState = nil
+
 
 						inviteMember:SetCallback("OnClick", function()
+							local playerJoinState = nil
 							C_PartyInfo.InviteUnit(member.name .. "-" .. member.realmNormalized)
 							playerJoinState = "Pending"
 							inviteMember:SetText("Invite Pending")
@@ -1762,16 +1763,6 @@ function Core:AppendTeam(teamData)
 
 							f:SetScript("OnEvent", eventHandler)
 						end)
-
-						if playerJoinState == "Joined" then
-							inviteMember:SetText("Joined")
-							inviteMember:SetDisabled(true)
-						else
-							if playerJoinState == "Pending" then
-								inviteMember:SetText("Invite Pending")
-								inviteMember:SetDisabled(true)
-							end
-						end
 
 						if GoWTeamMemberContainer then
 							GoWTeamMemberContainer:AddChild(memberContainer)
