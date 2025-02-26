@@ -792,17 +792,17 @@ function Core:CreateRecruitmentApplications()
 
 		local hasAnyData = false;
 
+		local guildRoster = GOW.DB.profile.guilds[Core:GetGuildKey()];
+
 		if (isInGuild and ns.RECRUITMENT_APPLICATIONS.totalApplications > 0) then
 			for i = 1, ns.RECRUITMENT_APPLICATIONS.totalApplications do
 				local recruitmentApplication = ns.RECRUITMENT_APPLICATIONS.recruitmentApplications[i]
 
 				if (guildName == recruitmentApplication.guild and realmName == recruitmentApplication.guildRealmNormalized and regionId == recruitmentApplication.guildRegionId) then
 					hasAnyData = true;
-					Core:AppendRecruitmentList(recruitmentApplication);
+					Core:AppendRecruitmentList(guildRoster, recruitmentApplication);
 				end
 			end
-
-			--containerScrollFrame:DoLayout()
 		end
 
 		if (not hasAnyData) then
@@ -1185,7 +1185,7 @@ function Core:AppendTeam(teamData)
 
 	-- add button to view team details
 	local viewTeamButton = GOW.GUI:Create("Button");
-	viewTeamButton:SetText("View");
+	viewTeamButton:SetText("View Roster");
 	viewTeamButton:SetRelativeWidth(0.5);
 	viewTeamButton:SetCallback("OnClick", function()
 		-- //SECTION Team Details (TD) - Tables and Variables
@@ -1413,7 +1413,6 @@ function Core:AppendTeam(teamData)
 		-- //SECTION TD - Render Team Members
 		-- //STUB (Fn) RenderFilteredTeamMembers
 		function Core:RenderFilteredTeamMembers(teamGroup, hideOffline, specRole)
-			-- Get the latest information from the guild roster.
 			C_GuildInfo.GuildRoster();
 
 			local currentPlayerName = UnitName("player");
@@ -1556,11 +1555,9 @@ function Core:AppendTeam(teamData)
 
 						-- Get the class color for the member.
 						local className, classFile, classID = GetClassInfo(member.classId);
-						local classColor = nil;
+						local classColor = { r = 1, g = 1, b = 1 };
 						if classFile then
 							classColor = C_ClassColor.GetClassColor(classFile);
-						else
-							classColor = { r = 1, g = 1, b = 1 };
 						end;
 						local classColorRGB = { r = classColor.r, g = classColor.g, b = classColor.b };
 
@@ -1599,6 +1596,7 @@ function Core:AppendTeam(teamData)
 						memberContainer:AddChild(guildRankLabel);
 
 						local inviteMember = GOW.GUI:Create("Button");
+						inviteMember:SetWidth(150);
 
 						-- Check whether the member is already in the party or raid.
 						C_Timer.After(0, function()
@@ -1631,12 +1629,9 @@ function Core:AppendTeam(teamData)
 							end;
 						end;
 
-						inviteMember:SetWidth(150);
-
 						inviteMember:SetCallback("OnClick", function()
 							local playerJoinState = "Pending";
 							C_PartyInfo.InviteUnit(member.name .. "-" .. member.realmNormalized);
-							playerJoinState = "Pending";
 							inviteMember:SetText("Invite Pending");
 							inviteMember:SetDisabled(true);
 
@@ -1791,7 +1786,7 @@ end
 
 -- //!SECTION
 
-function Core:AppendRecruitmentList(recruitmentApplication)
+function Core:AppendRecruitmentList(guildRoster, recruitmentApplication)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
 	itemGroup:SetTitle(recruitmentApplication.name);
 	itemGroup:SetFullWidth(true);
@@ -1869,24 +1864,19 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	local inviteToGuildButton = GOW.GUI:Create("Button");
 	inviteToGuildButton:SetText("Invite to Guild");
 	inviteToGuildButton:SetWidth(140);
-	inviteToGuildButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.name, nil, recruitmentApplicationInviteLink);
-		inviteToGuildButton:SetText("Invite Pending");
+
+	if (guildRoster and guildRoster.roster[recruitmentApplicationInviteLink]) then
+		inviteToGuildButton:SetText("In Guild");
 		inviteToGuildButton:SetDisabled(true);
-	end);
-	buttonsGroup:AddChild(inviteToGuildButton);
-
-	local function isPlayerInGuild()
-		local memberName = recruitmentApplication.name
-		local isInGuild = C_GuildInfo.MemberExistsByName(memberName)
-
-		if isInGuild and inviteToGuildButton then
-			inviteToGuildButton:SetText("In Guild");
+	else
+		inviteToGuildButton:SetCallback("OnClick", function()
+			Core:OpenDialogWithData("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.name, nil, recruitmentApplicationInviteLink);
+			inviteToGuildButton:SetText("Invite Pending");
 			inviteToGuildButton:SetDisabled(true);
-		end
+		end);
 	end
 
-	isPlayerInGuild()
+	buttonsGroup:AddChild(inviteToGuildButton);
 
 	local inviteToPartyButton = GOW.GUI:Create("Button");
 	inviteToPartyButton:SetText("Invite to Party");
@@ -1896,7 +1886,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	end);
 	buttonsGroup:AddChild(inviteToPartyButton);
 
-	local friendInfo = C_FriendList.GetFriendInfo(recruitmentApplication.name);
+	local friendInfo = C_FriendList.GetFriendInfo(recruitmentApplicationInviteLink);
 
 	local addFriendButton = GOW.GUI:Create("Button");
 	addFriendButton:SetText("Add Friend");
@@ -1904,11 +1894,12 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 
 	if (friendInfo ~= nil) then
 		addFriendButton:SetDisabled(true);
+	else
+		addFriendButton:SetCallback("OnClick", function()
+			Core:OpenDialogWithData("CONFIRM_ADD_FRIEND", recruitmentApplication.name, nil, recruitmentApplicationInviteLink);
+		end);
 	end
 
-	addFriendButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("CONFIRM_ADD_FRIEND", recruitmentApplication.name, nil, recruitmentApplicationInviteLink);
-	end);
 	buttonsGroup:AddChild(addFriendButton);
 	itemGroup:AddChild(buttonsGroup);
 
