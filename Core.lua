@@ -86,8 +86,6 @@ local currentOpenDialog = nil;
 local GoWTeamTabContainer = nil;
 local GoWScrollTeamMemberContainer = nil;
 local GoWTeamMemberContainer = nil;
-local teamInfoContainer = nil;
-local teamNavContainer = nil;
 
 local workQueue = nil;
 local persistentWorkQueue = nil;
@@ -619,9 +617,6 @@ end
 function Core:ToggleWindow()
 	if (containerFrame:IsShown()) then
 		containerFrame:Hide();
-		if (GoWTeamTabContainer) then
-			GoWTeamTabContainer:Hide();
-		end
 	else
 		if (CalendarFrame) then
 			HideUIPanel(CalendarFrame);
@@ -1249,7 +1244,7 @@ function Core:AppendTeam(teamData)
 		-- //!SECTION
 
 		-- //SECTION - TD - Layout Creation
-		GoWTeamTabContainer = GOW.GUI:Create("Frame");
+		GoWTeamTabContainer = GOW.GUI:Create("Window");
 		GoWTeamTabContainer:SetTitle(teamData.name);
 		GoWTeamTabContainer:SetWidth(1000);
 		GoWTeamTabContainer:SetHeight(550);
@@ -1257,43 +1252,37 @@ function Core:AppendTeam(teamData)
 		GoWTeamTabContainer.frame:SetPoint("CENTER", UIParent, "CENTER", 40, -40);
 		GoWTeamTabContainer.frame:SetFrameStrata("HIGH");
 		GoWTeamTabContainer:SetLayout("Flow");
-		GoWTeamTabContainer.frame:SetAlpha(1);
-		GoWTeamTabContainer.frame:SetBackdrop({
-			bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-			tile = true,
-			tileSize = 16,
-			edgeSize = 16,
-			insets = { left = 4, right = 4, top = 4, bottom = 4 },
-		});
-		GoWTeamTabContainer.frame:SetBackdropColor(0, 0, 0, 1);
+		GoWTeamTabContainer.closebutton:SetPoint("TOPRIGHT", -2, -2);
 
+		_G[FRAME_NAME] = GoWTeamTabContainer.frame;
+		containerFrame.frame:SetAlpha(.5);
+		containerTabs.frame:Hide();
+		
 		GoWTeamTabContainer:SetCallback("OnClose", function()
 			GoWTeamTabContainer:ReleaseChildren();
 			GoWTeamTabContainer:Release();
 			GoWTeamTabContainer = nil;
+
+			containerFrame.frame:SetAlpha(1);
+			containerTabs.frame:Show();
+			_G[FRAME_NAME] = containerFrame.frame;
 		end);
 
 		-- //STUB TD - Nav Container
-		teamNavContainer = GOW.GUI:Create("InlineGroup");
-		teamNavContainer:SetWidth(250);
+		local teamNavContainer = GOW.GUI:Create("InlineGroup");
+		teamNavContainer:SetWidth(200);
 		teamNavContainer:SetLayout("Flow");
 		teamNavContainer:SetFullHeight(true);
-
-		if GoWTeamTabContainer then
-			GoWTeamTabContainer:AddChild(teamNavContainer);
-		end;
+		teamNavContainer:SetPoint("TOP", GoWTeamTabContainer.frame, "TOP", 0, 0);
+		GoWTeamTabContainer:AddChild(teamNavContainer);
 
 		-- //STUB TD - Information Container
-		teamInfoContainer = GOW.GUI:Create("InlineGroup");
+		local teamInfoContainer = GOW.GUI:Create("InlineGroup");
 		teamInfoContainer:SetLayout("Flow");
-		teamInfoContainer:SetWidth(710);
+		teamInfoContainer:SetWidth(750);
 		teamInfoContainer:SetFullHeight(true);
-		teamInfoContainer:SetPoint("TOP", GoWTeamTabContainer.frame, "TOP", 0, 0);
-
-		if GoWTeamTabContainer then
-			GoWTeamTabContainer:AddChild(teamInfoContainer);
-		end;
+		teamInfoContainer:SetPoint("TOPLEFT", teamNavContainer.frame, "TOPRIGHT", 0, 0);
+		GoWTeamTabContainer:AddChild(teamInfoContainer);
 
 		-- //!SECTION
 
@@ -1328,10 +1317,7 @@ function Core:AppendTeam(teamData)
 			end);
 		end;
 		teamDescriptionLabel:SetDisabled(false);
-
-		if teamInfoContainer then
-			teamInfoContainer:AddChild(teamDescriptionLabel);
-		end;
+		teamInfoContainer:AddChild(teamDescriptionLabel);
 
 		-- // STUB Hide Offline Members Button
 		local hideOfflineMembersCheckBox = GOW.GUI:Create("CheckBox");
@@ -1355,29 +1341,20 @@ function Core:AppendTeam(teamData)
 				checkBoxValue = not checkBoxValue;
 			end;
 		end);
-
-		if teamInfoContainer then
-			teamInfoContainer:AddChild(hideOfflineMembersCheckBox);
-		end;
+		teamInfoContainer:AddChild(hideOfflineMembersCheckBox);
 
 		-- //STUB Team Member Container
 		GoWScrollTeamMemberContainer = GOW.GUI:Create("InlineGroup");
 		GoWScrollTeamMemberContainer:SetFullHeight(true);
 		GoWScrollTeamMemberContainer:SetLayout("Fill");
 		GoWScrollTeamMemberContainer:SetFullWidth(true);
-
-		if teamInfoContainer then
-			teamInfoContainer:AddChild(GoWScrollTeamMemberContainer);
-		end;
+		teamInfoContainer:AddChild(GoWScrollTeamMemberContainer);
 
 		GoWTeamMemberContainer = GOW.GUI:Create("ScrollFrame");
 		GoWTeamMemberContainer:SetFullHeight(true);
 		GoWTeamMemberContainer:SetLayout("List");
 		GoWTeamMemberContainer:SetFullWidth(true);
-
-		if GoWScrollTeamMemberContainer then
-			GoWScrollTeamMemberContainer:AddChild(GoWTeamMemberContainer);
-		end;
+		GoWScrollTeamMemberContainer:AddChild(GoWTeamMemberContainer);
 
 		-- // STUB Role Filter
 		local roleFilter = GOW.GUI:Create("Dropdown");
@@ -1385,6 +1362,7 @@ function Core:AppendTeam(teamData)
 		roleFilter:SetList(rolesForFilter, { "All", "Tank", "Healer", "DPS" });
 		roleFilter:SetValue("All");
 		roleFilter:SetWidth(150);
+		roleFilter.label:SetFontObject(GameFontNormal);
 		roleFilter:SetCallback("OnValueChanged", function(key)
 			local selectedRole = key:GetValue();
 
@@ -1413,14 +1391,9 @@ function Core:AppendTeam(teamData)
 			C_Timer.After(0, function() roleFilter:Fire("OnValueChanged") end);
 		end;
 
-		if teamInfoContainer then
-			teamInfoContainer:AddChild(roleFilter, GoWScrollTeamMemberContainer);
-		end;
-
-		if GoWTeamMemberContainer then
-			roleFilter:ClearAllPoints();
-			roleFilter:SetPoint("BOTTOMRIGHT", GoWTeamMemberContainer.frame, "TOPRIGHT", 7, 12);
-		end;
+		teamInfoContainer:AddChild(roleFilter, GoWScrollTeamMemberContainer);
+		roleFilter:ClearAllPoints();
+		roleFilter:SetPoint("BOTTOMRIGHT", GoWTeamMemberContainer.frame, "TOPRIGHT", 7, 12);
 
 		-- //SECTION TD - Render Team Members
 		-- //STUB (Fn) RenderFilteredTeamMembers
@@ -1483,6 +1456,7 @@ function Core:AppendTeam(teamData)
 					local noMembersLabel = GOW.GUI:Create("Label");
 					noMembersLabel:SetText("No members found.");
 					noMembersLabel:SetFullWidth(true);
+					noMembersLabel:SetFontObject(GameFontNormal);
 					if GoWTeamMemberContainer then
 						GoWTeamMemberContainer:AddChild(noMembersLabel);
 					end;
@@ -1560,7 +1534,7 @@ function Core:AppendTeam(teamData)
 					else
 						-- //STUB TD - Member Container
 						-- Creates a container to hold the member's information and invite button.
-						local memberContainer = GOW.GUI:Create("InlineGroup");
+						local memberContainer = GOW.GUI:Create("SimpleGroup");
 						memberContainer:SetLayout("Flow");
 						memberContainer:SetFullWidth(true);
 						memberContainer.frame:SetFrameLevel(2);
@@ -1586,25 +1560,29 @@ function Core:AppendTeam(teamData)
 						memberContainer:AddChild(factionIcon);
 
 						local nameLabel = GOW.GUI:Create("Label");
-						nameLabel:SetWidth(100);
+						nameLabel:SetWidth(130);
 						nameLabel:SetText(member.name);
+						nameLabel:SetFontObject(GameFontNormal);
 						nameLabel:SetColor(classColorRGB.r, classColorRGB.g, classColorRGB.b);
 						memberContainer:AddChild(nameLabel);
 
 						local specLabel = GOW.GUI:Create("Label");
-						specLabel:SetWidth(100);
+						specLabel:SetWidth(110);
 						specLabel:SetText(member.spec);
+						specLabel:SetFontObject(GameFontNormal);
 						memberContainer:AddChild(specLabel);
 
 						local tokenLabel = GOW.GUI:Create("Label");
-						tokenLabel:SetWidth(100);
+						tokenLabel:SetWidth(110);
 						tokenLabel:SetText(member.armorToken);
 						tokenLabel:SetColor(0.64, 0.21, 0.93);
+						tokenLabel:SetFontObject(GameFontNormal);
 						memberContainer:AddChild(tokenLabel);
 
 						local guildRankLabel = GOW.GUI:Create("Label");
-						guildRankLabel:SetWidth(100);
+						guildRankLabel:SetWidth(160);
 						guildRankLabel:SetText(guildRankName);
+						guildRankLabel:SetFontObject(GameFontNormal);
 						memberContainer:AddChild(guildRankLabel);
 
 						local inviteMember = GOW.GUI:Create("Button");
