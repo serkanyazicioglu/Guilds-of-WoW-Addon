@@ -75,6 +75,7 @@ f:RegisterEvent("CALENDAR_UPDATE_INVITE_LIST");
 f:RegisterEvent("CALENDAR_OPEN_EVENT");
 f:RegisterEvent("CALENDAR_CLOSE_EVENT");
 f:RegisterEvent("CALENDAR_ACTION_PENDING");
+f:RegisterEvent("CHAT_MSG_SYSTEM");
 
 local isInitialLogin = false;
 local isPropogatingUpdate = false;
@@ -82,6 +83,11 @@ local containerFrame = nil;
 local containerTabs = nil;
 local containerScrollFrame = nil;
 local currentOpenDialog = nil;
+local GoWTeamTabContainer = nil;
+local GoWScrollTeamMemberContainer = nil;
+local GoWTeamMemberContainer = nil;
+local teamInfoContainer = nil;
+local teamNavContainer = nil;
 
 local workQueue = nil;
 local persistentWorkQueue = nil;
@@ -157,6 +163,8 @@ function GOW:OnInitialize()
 	containerFrame = GOW.GUI:Create("Frame");
 	containerFrame:SetLayout("Fill");
 	containerFrame:SetHeight(550);
+	containerFrame:SetWidth(1000);
+	containerFrame:EnableResize(false);
 	containerFrame.frame:SetFrameStrata("MEDIUM");
 	containerFrame:SetTitle("Guilds of WoW");
 	containerFrame:SetStatusText("Type /gow for quick access");
@@ -403,8 +411,7 @@ function GOW:OnInitialize()
 	};
 
 	StaticPopupDialogs["INVITE_TO_PARTY_INVALID_CALENDAR"] = {
-		text                   =
-		"Only 'Player Event' attendances can be invited via addon. For 'Guild Events' you can create the event and use that event's 'Invite Members' functionality.",
+		text                   = "Only 'Player Event' attendances can be invited via addon. For 'Guild Events' you can create the event and use that event's 'Invite Members' functionality.",
 		button1                = OKAY,
 		OnHide                 = function()
 			Core:DialogClosed();
@@ -457,7 +464,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		Core:SetRosterInfo();
 	elseif event == "CALENDAR_ACTION_PENDING" then
-		if (tostring(arg1) == "false")  then
+		if (tostring(arg1) == "false") then
 			Core:Debug("CALENDAR_ACTION_PENDING: " .. tostring(arg1));
 			Core:RefreshUpcomingEventsList();
 		end
@@ -607,6 +614,7 @@ end
 function Core:ToggleWindow()
 	if (containerFrame:IsShown()) then
 		containerFrame:Hide();
+		GoWTeamTabContainer:Hide();
 	else
 		if (CalendarFrame) then
 			HideUIPanel(CalendarFrame);
@@ -688,8 +696,7 @@ function Core:CreateUpcomingEvents()
 
 		if (not hasAnyData) then
 			Core:AppendMessage(
-				"This guild either doesn't have any upcoming events that you are a member of, or you are not an event manager!\r\n\r\nGuild: " ..
-				guildName .. " / " .. realmName, true);
+				"This guild either doesn't have any upcoming events that you are a member of, or you are not an event manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
 		end
 	end
 
@@ -702,9 +709,10 @@ function Core:CreateTeams()
 	end
 
 	if (ns.TEAMS == nil) then
-		containerScrollFrame:ReleaseChildren();
-		Core:AppendMessage("Team data is not found! Please make sure your sync app is installed and working properly!",
-			true);
+		if containerScrollFrame then
+			containerScrollFrame:ReleaseChildren();
+			Core:AppendMessage("Team data is not found! Please make sure your sync app is installed and working properly!", true);
+		end
 	else
 		local isInGuild = IsInGuild();
 
@@ -720,7 +728,9 @@ function Core:CreateTeams()
 			return;
 		end
 
-		containerScrollFrame:ReleaseChildren();
+		if containerScrollFrame then
+			containerScrollFrame:ReleaseChildren();
+		end
 
 		if (realmName == nil) then
 			realmName = GetNormalizedRealmName();
@@ -739,14 +749,10 @@ function Core:CreateTeams()
 					Core:AppendTeam(team);
 				end
 			end
-
-			--containerScrollFrame:DoLayout();
 		end
 
 		if (not hasAnyData) then
-			Core:AppendMessage(
-				"This guild doesn't have any team or you are not a roster manager!\r\n\r\nGuild: " ..
-				guildName .. " / " .. realmName, true);
+			Core:AppendMessage("This guild doesn't have any team or you are not a roster manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
 		end
 	end
 
@@ -760,9 +766,7 @@ function Core:CreateRecruitmentApplications()
 
 	if (ns.RECRUITMENT_APPLICATIONS == nil) then
 		containerScrollFrame:ReleaseChildren();
-		Core:AppendMessage(
-			"Recruitment applications data is not found! Please make sure your sync app is installed and working properly!",
-			true);
+		Core:AppendMessage("Recruitment applications data is not found! Please make sure your sync app is installed and working properly!", true);
 	else
 		local isInGuild = IsInGuild();
 
@@ -802,9 +806,7 @@ function Core:CreateRecruitmentApplications()
 		end
 
 		if (not hasAnyData) then
-			Core:AppendMessage(
-				"This guild doesn't have any guild recruitment application or you are not a recruitment manager!\r\n\r\nGuild: " ..
-				guildName .. " / " .. realmName, true);
+			Core:AppendMessage("This guild doesn't have any guild recruitment application or you are not a recruitment manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
 		end
 	end
 
@@ -910,7 +912,7 @@ function Core:AppendCalendarList(event)
 	if not Core:IsInvitedToEvent(event) then
 		return false;
 	end
-	
+
 	local itemGroup = GOW.GUI:Create("InlineGroup");
 	itemGroup:SetTitle(event.title);
 	itemGroup:SetFullWidth(true);
@@ -1031,9 +1033,7 @@ function Core:AppendCalendarList(event)
 
 			tooltip:AddHeader('|cffffcc00About Event Attendances');
 			local line = tooltip:AddLine();
-			tooltip:SetCell(line, 1,
-				"When no filter is selected in-game addon will create 'Guild Event' and all guildies will be able to sign up. This selection is suitable for large meetings. Site attendance data will not migrate to in-game with this selection but will migrate from game to GoW.\r\n\r\nWhen filtration is enabled or audience is set to team event, addon will create 'Player Event' and will only invite eligible characters. Attendance synchronization will work bidirectional. Player events cannot invite more than 100 members so you should narrow the audience by item level or change audience to team event.",
-				"LEFT", 1, nil, 0, 0, 300, 50);
+			tooltip:SetCell(line, 1, "When no filter is selected in-game addon will create 'Guild Event' and all guildies will be able to sign up. This selection is suitable for large meetings. Site attendance data will not migrate to in-game with this selection but will migrate from game to GoW.\r\n\r\nWhen filtration is enabled or audience is set to team event, addon will create 'Player Event' and will only invite eligible characters. Attendance synchronization will work bidirectional. Player events cannot invite more than 100 members so you should narrow the audience by item level or change audience to team event.", "LEFT", 1, nil, 0, 0, 300, 50);
 			tooltip:SmartAnchorTo(self.frame);
 			tooltip:Show();
 		end);
@@ -1066,9 +1066,7 @@ function Core:AppendCalendarList(event)
 				GOW.tooltip = tooltip;
 
 				local line = tooltip:AddLine();
-				tooltip:SetCell(line, 1,
-					"You can create an in-game calendar event to integrate Guilds of WoW attendance data with in-game calendar. This synchronization will work bidirectional.",
-					"LEFT", 1, nil, 0, 0, 300, 50);
+				tooltip:SetCell(line, 1, "You can create an in-game calendar event to integrate Guilds of WoW attendance data with in-game calendar. This synchronization will work bidirectional.", "LEFT", 1, nil, 0, 0, 300, 50);
 				tooltip:SmartAnchorTo(self.frame);
 				tooltip:Show();
 			end);
@@ -1100,8 +1098,7 @@ function Core:AppendCalendarList(event)
 				GOW.tooltip = tooltip;
 
 				local line = tooltip:AddLine();
-				tooltip:SetCell(line, 1, "You can invite attendees directly into your party or raid.", "LEFT", 1, nil, 0,
-					0, 300, 50);
+				tooltip:SetCell(line, 1, "You can invite attendees directly into your party or raid.", "LEFT", 1, nil, 0, 0, 300, 50);
 				tooltip:SmartAnchorTo(self.frame);
 				tooltip:Show();
 			end);
@@ -1135,8 +1132,7 @@ function Core:AppendCalendarList(event)
 
 			local line = tooltip:AddLine();
 			tooltip:SetCell(line, 1,
-				"If you've already created an in-game event related to this record, you can append this key to the end of the in-game event title for GoW synchronization.",
-				"LEFT", 1, nil, 0, 0, 300, 50);
+				"If you've already created an in-game event related to this record, you can append this key to the end of the in-game event title for GoW synchronization.", "LEFT", 1, nil, 0, 0, 300, 50);
 			tooltip:SmartAnchorTo(self.frame);
 			tooltip:Show();
 		end);
@@ -1150,35 +1146,24 @@ function Core:AppendCalendarList(event)
 
 	itemGroup:AddChild(buttonsGroup);
 
-	containerScrollFrame:AddChild(itemGroup);
+	if containerScrollFrame then
+		containerScrollFrame:AddChild(itemGroup);
+	end
 	return true;
 end
 
+-- //SECTION - AppendTeams
 function Core:AppendTeam(teamData)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
-	itemGroup:SetTitle(teamData.title);
-	itemGroup:SetFullWidth(true);
+	itemGroup:SetWidth(300);
 
-	if (teamData.description ~= nil and teamData.description ~= "") then
-		local teamDescriptionLabel = GOW.GUI:Create("SFX-Info");
-		teamDescriptionLabel:SetLabel("Description");
-		teamDescriptionLabel:SetDisabled(false);
-		teamDescriptionLabel:SetText(teamData.description);
-		teamDescriptionLabel:SetCallback("OnEnter", function(self)
-			local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT");
-			GOW.tooltip = tooltip;
+	if (teamData.name ~= nil and teamData.name ~= "") then
+		local teamNameLabel = GOW.GUI:Create("SFX-Info");
+		teamNameLabel:SetLabel("Name");
+		teamNameLabel:SetDisabled(false);
+		teamNameLabel:SetText(teamData.name);
 
-			tooltip:AddHeader('|cffffcc00Team Description');
-			local line = tooltip:AddLine();
-			tooltip:SetCell(line, 1, teamData.description, "LEFT", 1, nil, 0, 0, 300, 50);
-			tooltip:SmartAnchorTo(self.frame);
-			tooltip:Show();
-		end);
-		teamDescriptionLabel:SetCallback("OnLeave", function()
-			LibQTip:Release(GOW.tooltip);
-			GOW.tooltip = nil;
-		end);
-		itemGroup:AddChild(teamDescriptionLabel);
+		itemGroup:AddChild(teamNameLabel);
 	end
 
 	local membersLabel = GOW.GUI:Create("SFX-Info");
@@ -1192,28 +1177,623 @@ function Core:AppendTeam(teamData)
 
 	local inviteToPartyButton = GOW.GUI:Create("Button");
 	inviteToPartyButton:SetText("Invite Team");
-	inviteToPartyButton:SetWidth(200);
+	inviteToPartyButton:SetRelativeWidth(0.5);
 	inviteToPartyButton:SetCallback("OnClick", function()
 		Core:InviteAllTeamMembersToPartyCheck(teamData);
 	end);
 	buttonsGroup:AddChild(inviteToPartyButton);
 
-	local copyButton = GOW.GUI:Create("Button");
-	copyButton:SetText("Copy Link");
-	copyButton:SetWidth(100);
-	copyButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("COPY_TEXT", nil, nil, teamData.webUrl);
+	-- add button to view team details
+	local viewTeamButton = GOW.GUI:Create("Button");
+	viewTeamButton:SetText("View");
+	viewTeamButton:SetRelativeWidth(0.5);
+	viewTeamButton:SetCallback("OnClick", function()
+		-- //SECTION Team Details (TD) - Tables and Variables
+		local teamNavItems = {}; -- holds the different team groups (Main, Alt, Backup, Trial) and used to render the nav buttons
+		local teamMembers = teamData.members or {};
+
+		-- holds information about the Main group members and roles
+		local mainGroupMembers = {};
+		local mainGroupTanks = {};
+		local mainGroupHealers = {};
+		local mainGroupDPS = {};
+
+		-- holds information about the Alt group members and roles
+		local altGroupMembers = {};
+		local altGroupTanks = {};
+		local altGroupHealers = {};
+		local altGroupDPS = {};
+
+		-- holds information about the Backup group members and roles
+		local backupGroupMembers = {};
+		local backupGroupTanks = {};
+		local backupGroupHealers = {};
+		local backupGroupDPS = {};
+
+		-- holds information about the Trial group members and roles
+		local trialGroupMembers = {};
+		local trialGroupTanks = {};
+		local trialGroupHealers = {};
+		local trialGroupDPS = {};
+
+		local filteredMembers = {}; -- holds the filtered members based on the navigation selected
+		local totalMembers = 0; -- holds the total number of members in the team
+
+		-- these are used to trigger a table.insert function that will be used to populate teamNavItems
+		local mainGroupFound = false;
+		local altGroupFound = false;
+		local backupGroupFound = false;
+		local trialGroupFound = false;
+
+		-- these are used to populate the "Filter by Role" dropdown
+		local rolesForFilter = {
+			["All"] = "All",
+			["Tank"] = "Tank",
+			["Healer"] = "Healer",
+			["DPS"] = "DPS",
+		}
+
+		local currentFilterValue = "All"; -- holds the current value of the filter dropdown
+		local isOfflineChecked = false; -- holds the value of the hide offline members checkbox
+		-- //!SECTION
+
+		-- //SECTION - TD - Layout Creation
+		GoWTeamTabContainer = GOW.GUI:Create("Frame");
+		GoWTeamTabContainer:SetTitle(teamData.name);
+		GoWTeamTabContainer:SetWidth(1000);
+		GoWTeamTabContainer:SetHeight(550);
+		GoWTeamTabContainer:EnableResize(false);
+		GoWTeamTabContainer.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
+		GoWTeamTabContainer.frame:SetFrameStrata("HIGH");
+		GoWTeamTabContainer:SetLayout("Flow");
+		GoWTeamTabContainer.frame:SetAlpha(1);
+		GoWTeamTabContainer.frame:SetBackdrop({
+			bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+			tile = true,
+			tileSize = 16,
+			edgeSize = 16,
+			insets = { left = 4, right = 4, top = 4, bottom = 4 },
+		});
+		GoWTeamTabContainer.frame:SetBackdropColor(0, 0, 0, 1);
+
+		GoWTeamTabContainer:SetCallback("OnClose", function()
+			GoWTeamTabContainer:ReleaseChildren();
+			GoWTeamTabContainer:Release();
+		end);
+
+		-- //STUB TD - Nav Container
+		teamNavContainer = GOW.GUI:Create("InlineGroup");
+		teamNavContainer:SetWidth(250);
+		teamNavContainer:SetLayout("Flow");
+		teamNavContainer:SetFullHeight(true);
+
+		if GoWTeamTabContainer then
+			GoWTeamTabContainer:AddChild(teamNavContainer);
+		end;
+
+		-- //STUB TD - Information Container
+		teamInfoContainer = GOW.GUI:Create("InlineGroup");
+		teamInfoContainer:SetLayout("Flow");
+		teamInfoContainer:SetWidth(710);
+		teamInfoContainer:SetFullHeight(true);
+		teamInfoContainer:SetPoint("TOP", GoWTeamTabContainer.frame, "TOP", 0, 0);
+
+		if GoWTeamTabContainer then
+			GoWTeamTabContainer:AddChild(teamInfoContainer);
+		end;
+
+		-- //!SECTION
+
+		-- //SECTION - TD - Summary
+		-- //STUB Team URL
+		local teamURL = GOW.GUI:Create("SFX-Info-URL");
+		teamURL:SetLabel("Team Link");
+		teamURL:SetText(teamData.webUrl);
+		teamURL:SetDisabled(false);
+		teamInfoContainer:AddChild(teamURL);
+
+		-- //STUB Team Description
+		local teamDescriptionLabel = GOW.GUI:Create("SFX-Info");
+		teamDescriptionLabel:SetLabel("Description");
+		if teamData.description == "" then
+			teamDescriptionLabel:SetText("No description provided.");
+		else
+			teamDescriptionLabel:SetText(teamData.description);
+			teamDescriptionLabel:SetCallback("OnEnter", function(self)
+				local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT");
+				GOW.tooltip = tooltip;
+
+				tooltip:AddHeader('|cffffcc00Team Description');
+				local line = tooltip:AddLine();
+				tooltip:SetCell(line, 1, teamData.description, "LEFT", 1, nil, 0, 0, 300, 50);
+				tooltip:SmartAnchorTo(self.frame);
+				tooltip:Show();
+			end);
+			teamDescriptionLabel:SetCallback("OnLeave", function()
+				LibQTip:Release(GOW.tooltip);
+				GOW.tooltip = nil;
+			end);
+		end;
+		teamDescriptionLabel:SetDisabled(false);
+
+		if teamInfoContainer then
+			teamInfoContainer:AddChild(teamDescriptionLabel);
+		end;
+
+		-- // STUB Hide Offline Members Button
+		local hideOfflineMembersCheckBox = GOW.GUI:Create("CheckBox");
+		hideOfflineMembersCheckBox:SetLabel("Hide Offline Members");
+		hideOfflineMembersCheckBox:SetValue(isOfflineChecked);
+		hideOfflineMembersCheckBox:SetType("checkbox");
+		hideOfflineMembersCheckBox:SetDisabled(false);
+		hideOfflineMembersCheckBox:SetCallback("OnValueChanged", function()
+			if GoWScrollTeamMemberContainer then
+				if GoWTeamMemberContainer then
+					GoWTeamMemberContainer:ReleaseChildren();
+				end;
+				local teamGroup = GoWScrollTeamMemberContainer:GetUserData("teamGroup"); -- used to get the current teamGroup selected from the navigation buttons
+				local filterValue = currentFilterValue;
+				local checkBoxValue = hideOfflineMembersCheckBox:GetValue();
+
+				-- args: teamGroup, hideOffline, specRole
+				Core:RenderFilteredTeamMembers(teamGroup, checkBoxValue, filterValue);
+
+				isOfflineChecked = checkBoxValue;
+				checkBoxValue = not checkBoxValue;
+			end;
+		end);
+
+		if teamInfoContainer then
+			teamInfoContainer:AddChild(hideOfflineMembersCheckBox);
+		end;
+
+		-- //STUB Team Member Container
+		GoWScrollTeamMemberContainer = GOW.GUI:Create("InlineGroup");
+		GoWScrollTeamMemberContainer:SetFullHeight(true);
+		GoWScrollTeamMemberContainer:SetLayout("Fill");
+		GoWScrollTeamMemberContainer:SetFullWidth(true);
+
+		if teamInfoContainer then
+			teamInfoContainer:AddChild(GoWScrollTeamMemberContainer);
+		end;
+
+		GoWTeamMemberContainer = GOW.GUI:Create("ScrollFrame");
+		GoWTeamMemberContainer:SetFullHeight(true);
+		GoWTeamMemberContainer:SetLayout("List");
+		GoWTeamMemberContainer:SetFullWidth(true);
+
+		if GoWScrollTeamMemberContainer then
+			GoWScrollTeamMemberContainer:AddChild(GoWTeamMemberContainer);
+		end;
+
+		-- // STUB Role Filter
+		local roleFilter = GOW.GUI:Create("Dropdown");
+		roleFilter:SetLabel("  Filter by Role");
+		roleFilter:SetList(rolesForFilter, { "All", "Tank", "Healer", "DPS" });
+		roleFilter:SetValue("All");
+		roleFilter:SetWidth(150);
+		roleFilter:SetCallback("OnValueChanged", function(key)
+			local selectedRole = key:GetValue();
+
+			-- clear the team member container before rendering the filtered members
+			if GoWTeamMemberContainer then
+				GoWTeamMemberContainer:ReleaseChildren();
+			end;
+
+			local teamGroup = nil;
+			if GoWScrollTeamMemberContainer then
+				-- get the current role selected from the navigation buttons
+				teamGroup = GoWScrollTeamMemberContainer:GetUserData("teamGroup");
+			end;
+
+			if selectedRole then
+				-- render the team members based on the role selected and whether or not the hide offline members checkbox is checked
+				Core:RenderFilteredTeamMembers(teamGroup, isOfflineChecked, selectedRole);
+
+				-- set the current filter value to the selected role
+				currentFilterValue = selectedRole;
+			end;
+		end);
+
+		-- ensures that the OnValueChanged callback is fired when the dropdown is created
+		if roleFilter then
+			C_Timer.After(0, function() roleFilter:Fire("OnValueChanged") end);
+		end;
+
+		if teamInfoContainer then
+			teamInfoContainer:AddChild(roleFilter, GoWScrollTeamMemberContainer);
+		end;
+
+		if GoWTeamMemberContainer then
+			roleFilter:ClearAllPoints();
+			roleFilter:SetPoint("BOTTOMRIGHT", GoWTeamMemberContainer.frame, "TOPRIGHT", 7, 12);
+		end;
+
+		-- //SECTION TD - Render Team Members
+		-- //STUB (Fn) RenderFilteredTeamMembers
+		function Core:RenderFilteredTeamMembers(teamGroup, hideOffline, specRole)
+			-- Get the latest information from the guild roster.
+			C_GuildInfo.GuildRoster();
+
+			local currentPlayerName = UnitName("player");
+
+			-- if specRole is selected, filter the members based on the specRole
+			if specRole then
+				if specRole == "All" then
+					if teamGroup == "Main" then
+						filteredMembers = mainGroupMembers;
+					elseif teamGroup == "Alt" then
+						filteredMembers = altGroupMembers;
+					elseif teamGroup == "Backup" then
+						filteredMembers = backupGroupMembers;
+					elseif teamGroup == "Trial" then
+						filteredMembers = trialGroupMembers;
+					end;
+				elseif specRole == "Tank" then
+					if teamGroup == "Main" then
+						filteredMembers = mainGroupTanks;
+					elseif teamGroup == "Alt" then
+						filteredMembers = altGroupTanks;
+					elseif teamGroup == "Backup" then
+						filteredMembers = backupGroupTanks;
+					elseif teamGroup == "Trial" then
+						filteredMembers = trialGroupTanks;
+					end;
+				elseif specRole == "Healer" then
+					if teamGroup == "Main" then
+						filteredMembers = mainGroupHealers;
+					elseif teamGroup == "Alt" then
+						filteredMembers = altGroupHealers;
+					elseif teamGroup == "Backup" then
+						filteredMembers = backupGroupHealers;
+					elseif teamGroup == "Trial" then
+						filteredMembers = trialGroupHealers;
+					end;
+				elseif specRole == "DPS" then
+					if teamGroup == "Main" then
+						filteredMembers = mainGroupDPS;
+					elseif teamGroup == "Alt" then
+						filteredMembers = altGroupDPS;
+					elseif teamGroup == "Backup" then
+						filteredMembers = backupGroupDPS;
+					elseif teamGroup == "Trial" then
+						filteredMembers = trialGroupDPS;
+					end;
+				end;
+			end;
+
+			-- a local variable to help us render empty states
+			local totalTeamMembers = #filteredMembers;
+
+			local function checkForEmptyState()
+				-- Render an empty state if no members are found.
+				if totalTeamMembers == 0 then
+					local noMembersLabel = GOW.GUI:Create("Label");
+					noMembersLabel:SetText("No members found.");
+					noMembersLabel:SetFullWidth(true);
+					if GoWTeamMemberContainer then
+						GoWTeamMemberContainer:AddChild(noMembersLabel);
+					end;
+				end;
+			end;
+
+			checkForEmptyState();
+
+			-- Render each filtered member.
+			if filteredMembers then
+				-- Sort the members by online status.
+				table.sort(filteredMembers, function(a, b)
+					local function isOnline(member)
+						local num = GetNumGuildMembers();
+						for i = 1, num do
+							local name, _, _, _, _, _, _, _, online = GetGuildRosterInfo(i);
+							local baseName = name and name:match("^(.-)%-") or name;
+							if baseName == member.name then
+								return online;
+							end;
+						end;
+						return false;
+					end;
+					return isOnline(a) and not isOnline(b);
+				end);
+
+				-- attempt to find the member in the guild roster
+				for _, member in ipairs(filteredMembers) do
+					local isConnected = nil;
+					local numGuildMembers = GetNumGuildMembers();
+					local guildRankName = nil;
+					local isInGuildOrCommunity = false;
+
+					for i = 1, numGuildMembers do
+						local name, rankName, _, _, _, _, _, _, online = GetGuildRosterInfo(i);
+						-- In guild roster names may include realm (e.g. "Player-Realm"), so compare only the base names
+						local baseName = name and name:match("^(.-)%-") or name;
+						if baseName == (member.name .. "-" .. member.realmNormalized) or baseName == member.name then
+							isConnected = online;
+							guildRankName = rankName;
+							isInGuildOrCommunity = true;
+						end;
+					end;
+
+					-- If not found in guild, check communities if available
+					if not isConnected and C_Club and C_Club.GetSubscribedCommunities then
+						local clubs = C_Club.GetSubscribedCommunities();
+						if clubs then
+							for _, club in ipairs(clubs) do
+								local clubMembers = C_Club.GetClubMembers(club.clubId);
+								if clubMembers then
+									for _, clubMember in ipairs(clubMembers) do
+										if clubMember.name == member.name then
+											isConnected = clubMember.isOnline;
+											guildRankName = "Non-Guildie";
+											isInGuildOrCommunity = true;
+										end;
+									end;
+								end;
+								if isConnected then break end;
+							end;
+						end;
+					end;
+
+					if not isInGuildOrCommunity then
+						guildRankName = "Non-Guildie";
+					end;
+
+					if not isConnected and hideOffline == true then
+						-- reduce the totalTeamMembers count
+						if totalTeamMembers > 0 then
+							totalTeamMembers = totalTeamMembers - 1;
+							checkForEmptyState();
+						end;
+					else
+						-- //STUB TD - Member Container
+						-- Creates a container to hold the member's information and invite button.
+						local memberContainer = GOW.GUI:Create("InlineGroup");
+						memberContainer:SetLayout("Flow");
+						memberContainer:SetFullWidth(true);
+						memberContainer.frame:SetFrameLevel(2);
+
+						-- Get the class color for the member.
+						local className, classFile, classID = GetClassInfo(member.classId);
+						local classColor = nil;
+						if classFile then
+							classColor = C_ClassColor.GetClassColor(classFile);
+						else
+							classColor = { r = 1, g = 1, b = 1 };
+						end;
+						local classColorRGB = { r = classColor.r, g = classColor.g, b = classColor.b };
+
+						-- Create labels for the member's name, spec, guild rank and armor token.
+						local factionIcon = GOW.GUI:Create("Label");
+						if member.faction == 1 then
+							factionIcon:SetImage(652156);
+						else
+							factionIcon:SetImage(652155);
+						end;
+						factionIcon:SetImageSize(30, 30);
+						factionIcon:SetWidth(30);
+						factionIcon:SetHeight(30);
+						memberContainer:AddChild(factionIcon);
+
+						local nameLabel = GOW.GUI:Create("Label");
+						nameLabel:SetWidth(100);
+						nameLabel:SetText(member.name);
+						nameLabel:SetColor(classColorRGB.r, classColorRGB.g, classColorRGB.b);
+						memberContainer:AddChild(nameLabel);
+
+						local specLabel = GOW.GUI:Create("Label");
+						specLabel:SetWidth(100);
+						specLabel:SetText(member.spec);
+						memberContainer:AddChild(specLabel);
+
+						local tokenLabel = GOW.GUI:Create("Label");
+						tokenLabel:SetWidth(100);
+						tokenLabel:SetText(member.armorToken);
+						tokenLabel:SetColor(0.64, 0.21, 0.93);
+						memberContainer:AddChild(tokenLabel);
+
+						local guildRankLabel = GOW.GUI:Create("Label");
+						guildRankLabel:SetWidth(100);
+						guildRankLabel:SetText(guildRankName);
+						memberContainer:AddChild(guildRankLabel);
+
+						local inviteMember = GOW.GUI:Create("Button");
+
+						-- Check whether the member is already in the party or raid.
+						C_Timer.After(0, function()
+							if IsInGroup() then
+								local numGroup = GetNumGroupMembers();
+								local unitPrefix = IsInRaid() and "raid" or "party";
+								-- Ensure realmNormalized is defined, fallback to member.name if not.
+								local memberFullName = (member.name .. "-" .. member.realmNormalized) or member.name;
+								for i = 1, numGroup do
+									local unitId = unitPrefix .. i;
+									local unitName = UnitName(unitId);
+									if unitName and (unitName == memberFullName or unitName == member.name) then
+										inviteMember:SetText("Joined");
+										inviteMember:SetDisabled(true);
+										break
+									end;
+								end;
+							end;
+						end);
+
+						if isConnected and member.name ~= currentPlayerName then
+							inviteMember:SetText("Invite");
+							inviteMember:SetDisabled(false);
+						else
+							inviteMember:SetDisabled(true);
+							if member.name == currentPlayerName then
+								inviteMember:SetText("You");
+							else
+								inviteMember:SetText("Offline");
+							end;
+						end;
+
+						inviteMember:SetWidth(150);
+
+						inviteMember:SetCallback("OnClick", function()
+							local playerJoinState = "Pending";
+							C_PartyInfo.InviteUnit(member.name .. "-" .. member.realmNormalized);
+							playerJoinState = "Pending";
+							inviteMember:SetText("Invite Pending");
+							inviteMember:SetDisabled(true);
+
+							local function eventHandler(self, event, text, ...)
+								if event == "CHAT_MSG_SYSTEM" then
+									local searchString = "joins the ";
+									local memberName = (member.name .. "-" .. member.realmNormalized) or member.name;
+									local joinedGroupString = string.find(text, searchString, 0, true);
+									local joinedGroupString2 = string.find(text, memberName, 0, true);
+									if joinedGroupString ~= nil and joinedGroupString2 ~= nil then
+										inviteMember:SetText("Joined");
+										inviteMember:SetDisabled(true);
+										playerJoinState = "Joined";
+									end;
+								end;
+							end;
+
+							C_Timer.After(61, function()
+								if playerJoinState == "Pending" then
+									inviteMember:SetText("Invite");
+									inviteMember:SetDisabled(false);
+								end;
+							end);
+
+							f:SetScript("OnEvent", eventHandler);
+						end);
+
+						if GoWTeamMemberContainer then
+							GoWTeamMemberContainer:AddChild(memberContainer);
+						end;
+
+						if memberContainer then
+							memberContainer:AddChild(inviteMember);
+						end;
+					end;
+				end;
+				return filteredMembers, totalMembers;
+			end;
+		end;
+
+		-- //!SECTION
+
+		-- check if the team has the main, alts, backup, and trial groups and add them to the correct tables
+		if teamMembers then
+			for _, member in pairs(teamMembers) do
+				local teamRole = member.teamRole;
+
+				if teamRole == "Main" then
+					mainGroupFound = true;
+					table.insert(mainGroupMembers, member);
+					if member.specRoleId == 1 then
+						table.insert(mainGroupTanks, member);
+					elseif member.specRoleId == 2 then
+						table.insert(mainGroupHealers, member);
+					elseif member.specRoleId == 3 then
+						table.insert(mainGroupDPS, member);
+					end;
+				elseif teamRole == "Alt" then
+					altGroupFound = true;
+					table.insert(altGroupMembers, member);
+					if member.specRoleId == 1 then
+						table.insert(altGroupTanks, member);
+					elseif member.specRoleId == 2 then
+						table.insert(altGroupHealers, member);
+					elseif member.specRoleId == 3 then
+						table.insert(altGroupDPS, member);
+					end;
+				elseif teamRole == "Backup" then
+					backupGroupFound = true;
+					table.insert(backupGroupMembers, member);
+					if member.specRoleId == 1 then
+						table.insert(backupGroupTanks, member);
+					elseif member.specRoleId == 2 then
+						table.insert(backupGroupHealers, member);
+					elseif member.specRoleId == 3 then
+						table.insert(backupGroupDPS, member);
+					end;
+				elseif teamRole == "Trial" then
+					trialGroupFound = true;
+					table.insert(trialGroupMembers, member);
+					if member.specRoleId == 1 then
+						table.insert(trialGroupTanks, member);
+					elseif member.specRoleId == 2 then
+						table.insert(trialGroupHealers, member);
+					elseif member.specRoleId == 3 then
+						table.insert(trialGroupDPS, member);
+					end;
+				end;
+			end;
+		end;
+
+		-- add the roles that are found in the team to the teamNavItems table
+		if mainGroupFound then
+			table.insert(teamNavItems, "Main");
+		end;
+
+		if altGroupFound then
+			table.insert(teamNavItems, "Alt");
+		end;
+
+		if backupGroupFound then
+			table.insert(teamNavItems, "Backup");
+		end;
+
+		if trialGroupFound then
+			table.insert(teamNavItems, "Trial");
+		end;
+
+		-- //STUB Render Nav Buttons
+		-- create a list of buttons for the different team roles present in the teamNavItems
+		if teamNavItems then
+			for _, teamGroup in ipairs(teamNavItems) do
+				local teamGroupNavBtn = GOW.GUI:Create("Button");
+				teamGroupNavBtn:SetFullWidth(true);
+				teamGroupNavBtn:SetHeight(40);
+				teamGroupNavBtn:SetText(teamGroup);
+				local teamGroupNavBtnTexture = teamGroupNavBtn.frame:CreateTexture(nil, "BACKGROUND");
+				teamGroupNavBtnTexture:SetAllPoints();
+
+				-- set the callback for the button to render the team members for the selected teamGroup
+				teamGroupNavBtn:SetCallback("OnClick", function()
+					if GoWTeamMemberContainer then
+						GoWTeamMemberContainer:ReleaseChildren();
+					end;
+
+					hideOfflineMembersCheckBox:SetValue(isOfflineChecked);
+					Core:RenderFilteredTeamMembers(teamGroup, isOfflineChecked, currentFilterValue);
+
+					GoWScrollTeamMemberContainer:SetTitle(teamGroup .. " Members");
+					GoWScrollTeamMemberContainer:SetUserData("teamGroup", teamGroup);
+				end);
+
+				if teamNavContainer then
+					teamNavContainer:AddChild(teamGroupNavBtn);
+				end;
+
+				if teamGroupNavBtn and teamGroup == "Main" then
+					C_Timer.After(0, function() teamGroupNavBtn:Fire("OnClick") end);
+				end;
+			end;
+		end;
 	end);
-	buttonsGroup:AddChild(copyButton);
 
+	if containerScrollFrame then
+		containerScrollFrame:AddChild(itemGroup);
+	end;
+	-- //!SECTION
+
+	buttonsGroup:AddChild(viewTeamButton);
 	itemGroup:AddChild(buttonsGroup);
-
-	containerScrollFrame:AddChild(itemGroup);
 end
+
+-- //!SECTION
 
 function Core:AppendRecruitmentList(recruitmentApplication)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
-	itemGroup:SetTitle(recruitmentApplication.title);
+	itemGroup:SetTitle(recruitmentApplication.name);
 	itemGroup:SetFullWidth(true);
 
 	local messageLabel = GOW.GUI:Create("SFX-Info");
@@ -1238,7 +1818,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 
 	local classLabel = GOW.GUI:Create("SFX-Info");
 	classLabel:SetLabel("Class");
-	classLabel:SetText(recruitmentApplication.classTitle);
+	classLabel:SetText(recruitmentApplication.class);
 	itemGroup:AddChild(classLabel);
 
 	local dateLabel = GOW.GUI:Create("SFX-Info");
@@ -1284,17 +1864,29 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	buttonsGroup:SetLayout("Flow");
 	buttonsGroup:SetFullWidth(true);
 
-	local recruitmentApplicationInviteLink = recruitmentApplication.title ..
-		"-" .. recruitmentApplication.realmNormalized;
+	local recruitmentApplicationInviteLink = recruitmentApplication.name .. "-" .. recruitmentApplication.realmNormalized;
 
 	local inviteToGuildButton = GOW.GUI:Create("Button");
 	inviteToGuildButton:SetText("Invite to Guild");
 	inviteToGuildButton:SetWidth(140);
 	inviteToGuildButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.title, nil,
-			recruitmentApplicationInviteLink);
+		Core:OpenDialogWithData("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.name, nil, recruitmentApplicationInviteLink);
+		inviteToGuildButton:SetText("Invite Pending");
+		inviteToGuildButton:SetDisabled(true);
 	end);
 	buttonsGroup:AddChild(inviteToGuildButton);
+
+	local function isPlayerInGuild()
+		local memberName = recruitmentApplication.name
+		local isInGuild = C_GuildInfo.MemberExistsByName(memberName)
+
+		if isInGuild and inviteToGuildButton then
+			inviteToGuildButton:SetText("In Guild");
+			inviteToGuildButton:SetDisabled(true);
+		end
+	end
+
+	isPlayerInGuild()
 
 	local inviteToPartyButton = GOW.GUI:Create("Button");
 	inviteToPartyButton:SetText("Invite to Party");
@@ -1304,7 +1896,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	end);
 	buttonsGroup:AddChild(inviteToPartyButton);
 
-	local friendInfo = C_FriendList.GetFriendInfo(recruitmentApplication.title);
+	local friendInfo = C_FriendList.GetFriendInfo(recruitmentApplication.name);
 
 	local addFriendButton = GOW.GUI:Create("Button");
 	addFriendButton:SetText("Add Friend");
@@ -1315,8 +1907,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	end
 
 	addFriendButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("CONFIRM_ADD_FRIEND", recruitmentApplication.title, nil,
-			recruitmentApplicationInviteLink);
+		Core:OpenDialogWithData("CONFIRM_ADD_FRIEND", recruitmentApplication.name, nil, recruitmentApplicationInviteLink);
 	end);
 	buttonsGroup:AddChild(addFriendButton);
 	itemGroup:AddChild(buttonsGroup);
@@ -1329,8 +1920,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	whisperButton:SetText("Whisper");
 	whisperButton:SetWidth(140);
 	whisperButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("WHISPER_PLAYER", nil, nil,
-			recruitmentApplicationInviteLink);
+		Core:OpenDialogWithData("WHISPER_PLAYER", nil, nil, recruitmentApplicationInviteLink);
 	end);
 	buttonsGroup2:AddChild(whisperButton);
 
@@ -1344,7 +1934,9 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 
 	itemGroup:AddChild(buttonsGroup2);
 
-	containerScrollFrame:AddChild(itemGroup);
+	if containerScrollFrame then
+		containerScrollFrame:AddChild(itemGroup);
+	end
 end
 
 function Core:OpenDialog(dialogName)
@@ -1371,8 +1963,7 @@ end
 
 function Core:CreateCalendarEvent(event)
 	if (event.calendarType == GOW.consts.PLAYER_EVENT and event.totalMembers >= 100) then
-		Core:PrintErrorMessage(
-			"You cannot create events with more than 100 members! To proceed, narrow your audience by using filters, binding a team, or disabling filters entirely to create a guild event.");
+		Core:PrintErrorMessage("You cannot create events with more than 100 members! To proceed, narrow your audience by using filters, binding a team, or disabling filters entirely to create a guild event.");
 		return;
 	end
 
@@ -1380,7 +1971,7 @@ function Core:CreateCalendarEvent(event)
 		Core:PrintErrorMessage("Addon is busy right now! Please wait for a while and try again...");
 		return;
 	end
-	
+
 	if (event.calendarType == GOW.consts.GUILD_EVENT) then
 		Core:OpenDialogWithData("CONFIRM_GUILD_EVENT_CREATION", nil, nil, event);
 	else
@@ -1563,8 +2154,7 @@ function Core:CheckEventInvites()
 
 					if (processedEvents:count() > 0) then
 						GOW.DB.profile.guilds[Core:GetGuildKey()].eventsRefreshTime = GetServerTime();
-						Core:PrintSuccessMessage("Event invites have been completed. Number of events processed: " ..
-							tostring(processedEvents:count()));
+						Core:PrintSuccessMessage("Event invites have been completed. Number of events processed: " .. tostring(processedEvents:count()));
 					end
 
 					if (containerFrame:IsShown()) then
@@ -1576,7 +2166,6 @@ function Core:CheckEventInvites()
 						end
 					end
 				end
-				
 			end
 		else
 			Core:Debug("Event is open!");
@@ -1670,8 +2259,7 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 			end
 
 			if (not isMemberInvited) then
-				Core:Debug("Inviting: " ..
-					inviteName .. "-" .. currentInviteMember.level .. "-" .. currentInviteMember.classId);
+				Core:Debug("Inviting: " .. inviteName .. "-" .. currentInviteMember.level .. "-" .. currentInviteMember.classId);
 				workQueue:addTask(function() C_Calendar.EventInvite(inviteName) end, nil, GOW.consts.INVITE_INTERVAL);
 
 				invitedCount = invitedCount + 1;
@@ -1680,11 +2268,10 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 
 		if (invitedCount > 0) then
 			Core:Debug("CreateEventInvites Ended: " .. upcomingEvent.title .. ". Invited: " .. tostring(invitedCount));
-			workQueue:addTask(
-				function()
-					Core:Debug("Event invites completed: " .. upcomingEvent.titleWithKey);
-					Core:SetAttendance(upcomingEvent, closeAfterEnd);
-				end, nil, 10);
+			workQueue:addTask(function()
+				Core:Debug("Event invites completed: " .. upcomingEvent.titleWithKey);
+				Core:SetAttendance(upcomingEvent, closeAfterEnd);
+			end, nil, 10);
 		else
 			Core:SetAttendance(upcomingEvent, closeAfterEnd);
 		end
@@ -1713,15 +2300,7 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 					local responseTime = C_Calendar.EventGetInviteResponseTime(a);
 					local responeTimeFormatted = nil;
 					if (responseTime) then
-						responeTimeFormatted = responseTime.year ..
-							"-" ..
-							string.lpad(tostring(responseTime.month), 2, '0') ..
-							"-" ..
-							string.lpad(tostring(responseTime.monthDay), 2, '0') ..
-							"T" ..
-							string.lpad(tostring(responseTime.hour), 2, '0') ..
-							":" ..
-							string.lpad(tostring(responseTime.minute), 2, '0');
+						responeTimeFormatted = responseTime.year .. "-" .. string.lpad(tostring(responseTime.month), 2, '0') .. "-" .. string.lpad(tostring(responseTime.monthDay), 2, '0') .. "T" .. string.lpad(tostring(responseTime.hour), 2, '0') .. ":" .. string.lpad(tostring(responseTime.minute), 2, '0');
 					end
 
 					currentEventAttendances[attendanceIndex] = {
@@ -1767,10 +2346,8 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 		GOW.DB.profile.guilds[guildKey].events[eventId].attendances = currentEventAttendances;
 
 		if (attendanceChangedCount > 0) then
-			Core:Debug("SetAttendance Ended: " ..
-				upcomingEvent.title .. ". SetAttendance: " .. tostring(attendanceChangedCount));
-			workQueue:addTask(function() Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd) end, nil,
-				GOW.consts.INVITE_INTERVAL);
+			Core:Debug("SetAttendance Ended: " .. upcomingEvent.title .. ". SetAttendance: " .. tostring(attendanceChangedCount));
+			workQueue:addTask(function() Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd) end, nil, GOW.consts.INVITE_INTERVAL);
 		else
 			Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd);
 		end
@@ -1790,9 +2367,7 @@ function Core:SetAttendanceValues(upcomingEvent, inviteInfo, inviteIndex)
 				if (string.find(inviteInfo.name, "-")) then
 					isFound = inviteInfo.name == currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized;
 				else
-					isFound = inviteInfo.name == currentInviteMember.name and
-						inviteInfo.level == currentInviteMember.level and
-						inviteInfo.classID == currentInviteMember.classId;
+					isFound = inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId;
 				end
 
 				if (isFound) then
@@ -1801,25 +2376,15 @@ function Core:SetAttendanceValues(upcomingEvent, inviteInfo, inviteIndex)
 					if (currentInviteMember.isManager) then
 						if (inviteInfo.modStatus ~= "CREATOR" and inviteInfo.modStatus ~= "MODERATOR") then
 							isInvitationChanged = true;
-							Core:Debug("Setting member as moderator: " ..
-								upcomingEvent.title .. ". Title: " .. inviteInfo.name);
-							workQueue:addTask(function() C_Calendar.EventSetModerator(inviteIndex) end, nil,
-								GOW.consts.INVITE_INTERVAL);
+							Core:Debug("Setting member as moderator: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name);
+							workQueue:addTask(function() C_Calendar.EventSetModerator(inviteIndex) end, nil, GOW.consts.INVITE_INTERVAL);
 						end
 					end
 
 					if (currentInviteMember.forceUpdate or (currentInviteMember.attendance > 1 and inviteInfo.inviteStatus == 0)) then
 						isInvitationChanged = true;
-						Core:Debug("Setting member attendance: " ..
-							upcomingEvent.title ..
-							". Title: " ..
-							inviteInfo.name ..
-							". GoWAttendance: " ..
-							tostring(currentInviteMember.attendance) ..
-							". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus));
-						workQueue:addTask(
-							function() C_Calendar.EventSetInviteStatus(inviteIndex, currentInviteMember.attendance - 1) end,
-							nil, GOW.consts.INVITE_INTERVAL);
+						Core:Debug("Setting member attendance: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name .. ". GoWAttendance: " .. tostring(currentInviteMember.attendance) .. ". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus));
+						workQueue:addTask(function() C_Calendar.EventSetInviteStatus(inviteIndex, currentInviteMember.attendance - 1) end, nil, GOW.consts.INVITE_INTERVAL);
 					end
 
 					return isInvitationChanged;
@@ -2020,8 +2585,7 @@ function Core:SetRosterInfo()
 			local anyKeystoneFound = false;
 
 			for i = 1, numTotalMembers do
-				local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, isSoREligible, standingID, guid =
-					GetGuildRosterInfo(i);
+				local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, isSoREligible, standingID, guid = GetGuildRosterInfo(i);
 				if (name) then
 					GOW.DB.profile.guilds[guildKey].roster[name] = {
 						guid = guid,
@@ -2162,4 +2726,40 @@ end
 function Core:GetColoredString(color, msg)
 	local colorString = "|cff";
 	return colorString .. color .. msg .. "|r";
+end
+
+function Core:PrintTable(t)
+	for key, value in pairs(t) do
+		print(key, value)
+	end
+end
+
+function Core:PrintTableContents(tbl)
+	if type(tbl) ~= "table" then
+		print("Not a table!")
+		return
+	end
+
+	-- Use pairs to support both array-like and key-value tables.
+	for key, value in pairs(tbl) do
+		local keyStr = tostring(key)
+
+		if type(value) == "table" then
+			print("Key " .. keyStr .. " -> table:")
+			-- Recursively print nested tables with indentation.
+			Core:PrintTableContents(value)
+		else
+			print("Key " .. keyStr .. ": " .. tostring(value))
+		end
+	end
+end
+
+-- helper function to check if a table contains a value
+function Core:Contains(table, element)
+	for _, value in pairs(table) do
+		if value == element then
+			return true
+		end
+	end
+	return false
 end

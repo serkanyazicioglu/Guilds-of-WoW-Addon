@@ -3,7 +3,3 @@
 	 <GameTooltip name="GeneralTooltip" inherits="GameTooltipTemplate">
 	</GameTooltip>	
 </Ui>
-
-
-
-
