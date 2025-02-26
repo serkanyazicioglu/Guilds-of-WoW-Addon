@@ -1644,8 +1644,6 @@ function Core:AppendTeam(teamData)
 								if event == "CHAT_MSG_SYSTEM" then
 									local searchString = "joins the ";
 									local memberName = (member.name .. "-" .. member.realmNormalized) or member.name;
-									local joinedGroupString = nil;
-									local joinedGroupString2 = nil;
 									joinedGroupString = string.find(text, searchString, 0, true);
 									joinedGroupString2 = string.find(text, memberName, 0, true);
 									if joinedGroupString ~= nil and joinedGroupString2 ~= nil then
