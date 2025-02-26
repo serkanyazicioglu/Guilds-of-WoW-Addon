@@ -1725,12 +1725,15 @@ function Core:AppendTeam(teamData)
 						end
 
 						inviteMember:SetWidth(150)
+
+						local playerJoinState = nil
+
 						inviteMember:SetCallback("OnClick", function()
 							C_PartyInfo.InviteUnit(member.name .. "-" .. member.realmNormalized)
+							playerJoinState = "Pending"
 							inviteMember:SetText("Invite Pending")
 							inviteMember:SetDisabled(true)
 
-							local playerJoined = false
 
 							local function eventHandler(self, event, text, ...)
 								if event == "CHAT_MSG_SYSTEM" then
@@ -1744,17 +1747,14 @@ function Core:AppendTeam(teamData)
 										if joinedGroupString2 ~= nil then
 											inviteMember:SetText("Joined")
 											inviteMember:SetDisabled(true)
-											playerJoined = true
-											self:UnregisterEvent("CHAT_MSG_SYSTEM")
+											playerJoinState = "Joined"
 										end
 									end
 								end
 							end
 
-							-- //TODO add state for the button so if the user changes filter or navigates, the button knows it's state
-
 							C_Timer.After(61, function()
-								if playerJoined == false then
+								if playerJoinState == "Pending" or nil then
 									inviteMember:SetText("Invite")
 									inviteMember:SetDisabled(false)
 								end
@@ -1762,6 +1762,16 @@ function Core:AppendTeam(teamData)
 
 							f:SetScript("OnEvent", eventHandler)
 						end)
+
+						if playerJoinState == "Joined" then
+							inviteMember:SetText("Joined")
+							inviteMember:SetDisabled(true)
+						else
+							if playerJoinState == "Pending" then
+								inviteMember:SetText("Invite Pending")
+								inviteMember:SetDisabled(true)
+							end
+						end
 
 						if GoWTeamMemberContainer then
 							GoWTeamMemberContainer:AddChild(memberContainer)
@@ -1778,7 +1788,7 @@ function Core:AppendTeam(teamData)
 
 		-- //!SECTION
 
-		-- check if the team has the main, alts, backup, and trial roles and add them to the correct tables
+		-- check if the team has the main, alts, backup, and trial groups and add them to the correct tables
 		if teamMembers then
 			for _, member in pairs(teamMembers) do
 				local teamRole = member.teamRole
@@ -2920,6 +2930,7 @@ function Core:PrintTableContents(tbl)
 	end
 end
 
+-- helper function to check if a table contains a value
 function Core:Contains(table, element)
 	for _, value in pairs(table) do
 		if value == element then
