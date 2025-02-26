@@ -2006,13 +2006,6 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 			recruitmentApplicationInviteLink);
 		inviteToGuildButton:SetText("Invite Pending");
 		inviteToGuildButton:SetDisabled(true);
-
-		-- -- if the player joins the guild, update the button text
-		-- local function eventHandler(self, event, ...)
-		-- 	if event == "GUILD_ROSTER_UPDATE" then
-		-- 		-- isPlayerInGuild();
-		-- 	end
-		-- end
 	end);
 	buttonsGroup:AddChild(inviteToGuildButton);
 
@@ -2022,8 +2015,6 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 
 		local memberName = recruitmentApplication.title
 		local isInGuild = C_GuildInfo.MemberExistsByName(memberName)
-		print(isInGuild)
-		print(recruitmentApplication.title)
 
 		if isInGuild and inviteToGuildButton then
 			inviteToGuildButton:SetText("In Guild");
