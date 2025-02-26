@@ -1225,51 +1225,6 @@ function Core:AppendTeam(teamData)
 		local backupGroupFound = false
 		local trialGroupFound = false
 
-
-		-- the following tables are used to hold the different tank, healer, and dps specs
-		local tankSpecs = {
-			"Blood",
-			"Vengeance",
-			"Guardian",
-			"Brewmaster",
-			"Protection",
-		}
-
-		local healerSpecs = {
-			"Restoration",
-			"Mistweaver",
-			"Holy",
-			"Discipline",
-			"Preservation",
-		}
-
-		local dpsSpecs = {
-			"Balance",
-			"Feral",
-			"Havoc",
-			"Unholy",
-			"Beast Mastery",
-			"Marksmanship",
-			"Survival",
-			"Arcane",
-			"Fire",
-			"Frost",
-			"Windwalker",
-			"Retribution",
-			"Shadow",
-			"Assassination",
-			"Outlaw",
-			"Subtlety",
-			"Elemental",
-			"Enhancement",
-			"Affliction",
-			"Demonology",
-			"Destruction",
-			"Arms",
-			"Fury",
-			"Devastation",
-		}
-
 		-- these are used to populate the "Filter by Role" dropdown
 		local rolesForFilter = {
 			["All"] = "All",
@@ -1759,16 +1714,17 @@ function Core:AppendTeam(teamData)
 		if teamMembers then
 			for _, member in pairs(teamMembers) do
 				local teamRole = member.teamRole
+
 				if teamRole == "Main" then
 					mainGroupFound = true
 					table.insert(mainGroupMembers, member)
-					if Core:Contains(tankSpecs, member.spec) then
+					if member.specRoleId == 1 then
 						table.insert(mainGroupTanks, member)
 					else
-						if Core:Contains(healerSpecs, member.spec) then
+						if member.specRoleId == 2 then
 							table.insert(mainGroupHealers, member)
 						else
-							if Core:Contains(dpsSpecs, member.spec) then
+							if member.specRoleId == 3 then
 								table.insert(mainGroupDPS, member)
 							end
 						end
@@ -1777,13 +1733,13 @@ function Core:AppendTeam(teamData)
 					if teamRole == "Alt" then
 						altGroupFound = true
 						table.insert(altGroupMembers, member)
-						if Core:Contains(tankSpecs, member.spec) then
+						if member.specRoleId == 1 then
 							table.insert(altGroupTanks, member)
 						else
-							if Core:Contains(healerSpecs, member.spec) then
+							if member.specRoleId == 2 then
 								table.insert(altGroupHealers, member)
 							else
-								if Core:Contains(dpsSpecs, member.spec) then
+								if member.specRoleId == 3 then
 									table.insert(altGroupDPS, member)
 								end
 							end
@@ -1792,13 +1748,13 @@ function Core:AppendTeam(teamData)
 						if teamRole == "Backup" then
 							backupGroupFound = true
 							table.insert(backupGroupMembers, member)
-							if Core:Contains(tankSpecs, member.spec) then
+							if member.specRoleId == 1 then
 								table.insert(backupGroupTanks, member)
 							else
-								if Core:Contains(healerSpecs, member.spec) then
+								if member.specRoleId == 2 then
 									table.insert(backupGroupHealers, member)
 								else
-									if Core:Contains(dpsSpecs, member.spec) then
+									if member.specRoleId == 3 then
 										table.insert(backupGroupDPS, member)
 									end
 								end
@@ -1807,13 +1763,13 @@ function Core:AppendTeam(teamData)
 							if teamRole == "Trial" then
 								trialGroupFound = true
 								table.insert(trialGroupMembers, member)
-								if Core:Contains(tankSpecs, member.spec) then
+								if member.specRoleId == 1 then
 									table.insert(trialGroupTanks, member)
 								else
-									if Core:Contains(healerSpecs, member.spec) then
+									if member.specRoleId == 2 then
 										table.insert(trialGroupHealers, member)
 									else
-										if Core:Contains(dpsSpecs, member.spec) then
+										if member.specRoleId == 3 then
 											table.insert(trialGroupDPS, member)
 										end
 									end
