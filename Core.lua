@@ -614,7 +614,9 @@ end
 function Core:ToggleWindow()
 	if (containerFrame:IsShown()) then
 		containerFrame:Hide();
-		GoWTeamTabContainer:Hide();
+		if (GoWTeamTabContainer) then
+			GoWTeamTabContainer:Hide();
+		end
 	else
 		if (CalendarFrame) then
 			HideUIPanel(CalendarFrame);
@@ -1243,7 +1245,7 @@ function Core:AppendTeam(teamData)
 		GoWTeamTabContainer:SetWidth(1000);
 		GoWTeamTabContainer:SetHeight(550);
 		GoWTeamTabContainer:EnableResize(false);
-		GoWTeamTabContainer.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
+		GoWTeamTabContainer.frame:SetPoint("CENTER", UIParent, "CENTER", 20, -20);
 		GoWTeamTabContainer.frame:SetFrameStrata("HIGH");
 		GoWTeamTabContainer:SetLayout("Flow");
 		GoWTeamTabContainer.frame:SetAlpha(1);
