@@ -1235,7 +1235,6 @@ function Core:AppendTeam(teamData)
 
 		local currentFilterValue = "All" -- holds the current value of the filter dropdown
 		local isOfflineChecked = false -- holds the value of the hide offline members checkbox
-
 		-- //!SECTION
 
 		-- //SECTION - TD - Layout Creation
@@ -1288,12 +1287,11 @@ function Core:AppendTeam(teamData)
 
 		-- //SECTION - TD - Summary
 		-- //STUB Team URL
-		local teamURL = GOW.GUI:Create("SFX-Info-URL")
-		teamURL:SetLabel("Team Link")
-		teamURL:SetText(teamData.webUrl)
-		teamURL:SetDisabled(false)
-		teamInfoContainer:AddChild(teamURL)
-
+		local teamURL = GOW.GUI:Create("SFX-Info-URL");
+		teamURL:SetLabel("Team Link");
+		teamURL:SetText(teamData.webUrl);
+		teamURL:SetDisabled(false);
+		teamInfoContainer:AddChild(teamURL);
 
 		-- //STUB Team Description
 		local teamDescriptionLabel = GOW.GUI:Create("SFX-Info");
@@ -1302,7 +1300,6 @@ function Core:AppendTeam(teamData)
 			teamDescriptionLabel:SetText("No description provided.")
 		else
 			teamDescriptionLabel:SetText(teamData.description);
-
 			teamDescriptionLabel:SetCallback("OnEnter", function(self)
 				local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT");
 				GOW.tooltip = tooltip;
@@ -1394,11 +1391,8 @@ function Core:AppendTeam(teamData)
 
 			if selectedRole then
 				-- render the team members based on the role selected and whether or not the hide offline members checkbox is checked
-				if isOfflineChecked then
-					Core:RenderFilteredTeamMembers(teamGroup, true, selectedRole)
-				else
-					Core:RenderFilteredTeamMembers(teamGroup, false, selectedRole)
-				end
+				Core:RenderFilteredTeamMembers(teamGroup, isOfflineChecked, selectedRole)
+
 				-- set the current filter value to the selected role
 				currentFilterValue = selectedRole
 			end
@@ -1408,7 +1402,6 @@ function Core:AppendTeam(teamData)
 		if roleFilter then
 			C_Timer.After(0, function() roleFilter:Fire("OnValueChanged") end)
 		end
-
 
 		if teamInfoContainer then
 			teamInfoContainer:AddChild(roleFilter, GoWScrollTeamMemberContainer)
@@ -1429,17 +1422,17 @@ function Core:AppendTeam(teamData)
 
 			-- if specRole is selected, filter the members based on the specRole
 			if specRole then
-				if specRole == "All" and teamGroup == "Main" then
-					filteredMembers = mainGroupMembers
-				elseif specRole == "All" and teamGroup == "Alt" then
-					filteredMembers = altGroupMembers
-				elseif specRole == "All" and teamGroup == "Backup" then
-					filteredMembers = backupGroupMembers
-				elseif specRole == "All" and teamGroup == "Trial" then
-					filteredMembers = trialGroupMembers
-				end
-
-				if specRole == "Tank" then
+				if specRole == "All" then
+					if teamGroup == "Main" then
+						filteredMembers = mainGroupMembers
+					elseif teamGroup == "Alt" then
+						filteredMembers = altGroupMembers
+					elseif teamGroup == "Backup" then
+						filteredMembers = backupGroupMembers
+					elseif teamGroup == "Trial" then
+						filteredMembers = trialGroupMembers
+					end
+				elseif specRole == "Tank" then
 					if teamGroup == "Main" then
 						filteredMembers = mainGroupTanks
 					elseif teamGroup == "Alt" then
@@ -1509,7 +1502,7 @@ function Core:AppendTeam(teamData)
 
 				-- attempt to find the member in the guild roster
 				for _, member in ipairs(filteredMembers) do
-					local isConnected = false
+					local isConnected = nil
 					local numGuildMembers = GetNumGuildMembers()
 					local guildRankName = nil
 					local isInGuildOrCommunity = false
@@ -1518,16 +1511,10 @@ function Core:AppendTeam(teamData)
 						local name, rankName, _, _, _, _, _, _, online = GetGuildRosterInfo(i)
 						-- In guild roster names may include realm (e.g. "Player-Realm"), so compare only the base names
 						local baseName = name and name:match("^(.-)%-") or name
-						if baseName == (member.name .. "-" .. member.realmNormalized) or baseName == member.name and online then
-							isConnected = true
+						if baseName == (member.name .. "-" .. member.realmNormalized) or baseName == member.name then
+							isConnected = online
 							guildRankName = rankName
 							isInGuildOrCommunity = true
-						else
-							if baseName == (member.name .. "-" .. member.realmNormalized) or baseName == member.name and not online then
-								isConnected = false
-								guildRankName = rankName
-								isInGuildOrCommunity = true
-							end
 						end
 					end
 
@@ -1539,16 +1526,10 @@ function Core:AppendTeam(teamData)
 								local clubMembers = C_Club.GetClubMembers(club.clubId)
 								if clubMembers then
 									for _, clubMember in ipairs(clubMembers) do
-										if clubMember.name == member.name and clubMember.isOnline then
-											isConnected = true
+										if clubMember.name == member.name then
+											isConnected = clubMember.isOnline
 											guildRankName = "Non-Guildie"
 											isInGuildOrCommunity = true
-										else
-											if clubMember.name == member.name and not clubMember.isOnline then
-												isConnected = false
-												guildRankName = "Non-Guildie"
-												isInGuildOrCommunity = true
-											end
 										end
 									end
 								end
@@ -1585,7 +1566,6 @@ function Core:AppendTeam(teamData)
 						end
 						local classColorRGB = { r = classColor.r, g = classColor.g, b = classColor.b }
 
-
 						-- Create labels for the member's name, spec, guild rank and armor token.
 						local factionIcon = GOW.GUI:Create("Label")
 						if member.faction == 1 then
@@ -1597,7 +1577,6 @@ function Core:AppendTeam(teamData)
 						factionIcon:SetWidth(30)
 						factionIcon:SetHeight(30)
 						memberContainer:AddChild(factionIcon)
-
 
 						local nameLabel = GOW.GUI:Create("Label")
 						nameLabel:SetWidth(100)
@@ -1657,15 +1636,12 @@ function Core:AppendTeam(teamData)
 
 						inviteMember:SetWidth(150)
 
-
-
 						inviteMember:SetCallback("OnClick", function()
-							local playerJoinState = nil
+							local playerJoinState = "Pending"
 							C_PartyInfo.InviteUnit(member.name .. "-" .. member.realmNormalized)
 							playerJoinState = "Pending"
 							inviteMember:SetText("Invite Pending")
 							inviteMember:SetDisabled(true)
-
 
 							local function eventHandler(self, event, text, ...)
 								if event == "CHAT_MSG_SYSTEM" then
@@ -1686,7 +1662,7 @@ function Core:AppendTeam(teamData)
 							end
 
 							C_Timer.After(61, function()
-								if playerJoinState == "Pending" or nil then
+								if playerJoinState == "Pending" then
 									inviteMember:SetText("Invite")
 									inviteMember:SetDisabled(false)
 								end
@@ -1720,14 +1696,10 @@ function Core:AppendTeam(teamData)
 					table.insert(mainGroupMembers, member)
 					if member.specRoleId == 1 then
 						table.insert(mainGroupTanks, member)
-					else
-						if member.specRoleId == 2 then
-							table.insert(mainGroupHealers, member)
-						else
-							if member.specRoleId == 3 then
-								table.insert(mainGroupDPS, member)
-							end
-						end
+					elseif member.specRoleId == 2 then
+						table.insert(mainGroupHealers, member)
+					elseif member.specRoleId == 3 then
+						table.insert(mainGroupDPS, member)
 					end
 				else
 					if teamRole == "Alt" then
@@ -1735,14 +1707,10 @@ function Core:AppendTeam(teamData)
 						table.insert(altGroupMembers, member)
 						if member.specRoleId == 1 then
 							table.insert(altGroupTanks, member)
-						else
-							if member.specRoleId == 2 then
-								table.insert(altGroupHealers, member)
-							else
-								if member.specRoleId == 3 then
-									table.insert(altGroupDPS, member)
-								end
-							end
+						elseif member.specRoleId == 2 then
+							table.insert(altGroupHealers, member)
+						elseif member.specRoleId == 3 then
+							table.insert(altGroupDPS, member)
 						end
 					else
 						if teamRole == "Backup" then
@@ -1750,14 +1718,10 @@ function Core:AppendTeam(teamData)
 							table.insert(backupGroupMembers, member)
 							if member.specRoleId == 1 then
 								table.insert(backupGroupTanks, member)
-							else
-								if member.specRoleId == 2 then
-									table.insert(backupGroupHealers, member)
-								else
-									if member.specRoleId == 3 then
-										table.insert(backupGroupDPS, member)
-									end
-								end
+							elseif member.specRoleId == 2 then
+								table.insert(backupGroupHealers, member)
+							elseif member.specRoleId == 3 then
+								table.insert(backupGroupDPS, member)
 							end
 						else
 							if teamRole == "Trial" then
@@ -1765,14 +1729,10 @@ function Core:AppendTeam(teamData)
 								table.insert(trialGroupMembers, member)
 								if member.specRoleId == 1 then
 									table.insert(trialGroupTanks, member)
-								else
-									if member.specRoleId == 2 then
-										table.insert(trialGroupHealers, member)
-									else
-										if member.specRoleId == 3 then
-											table.insert(trialGroupDPS, member)
-										end
-									end
+								elseif member.specRoleId == 2 then
+									table.insert(trialGroupHealers, member)
+								elseif member.specRoleId == 3 then
+									table.insert(trialGroupDPS, member)
 								end
 							end
 						end
@@ -1817,18 +1777,12 @@ function Core:AppendTeam(teamData)
 
 					HideOfflineMembersButton:SetValue(false)
 
-					if isOfflineChecked then
-						HideOfflineMembersButton:SetValue(isOfflineChecked)
-						Core:RenderFilteredTeamMembers(teamGroup, true, currentFilterValue);
-					else
-						HideOfflineMembersButton:SetValue(isOfflineChecked)
-						Core:RenderFilteredTeamMembers(teamGroup, false, currentFilterValue);
-					end
+					HideOfflineMembersButton:SetValue(isOfflineChecked)
+					Core:RenderFilteredTeamMembers(teamGroup, isOfflineChecked, currentFilterValue);
 
 					GoWScrollTeamMemberContainer:SetTitle(teamGroup .. " Members")
 					GoWScrollTeamMemberContainer:SetUserData("teamGroup", teamGroup)
 				end);
-
 
 				if teamNavContainer then
 					teamNavContainer:AddChild(teamGroupNavBtn);
@@ -1844,7 +1798,6 @@ function Core:AppendTeam(teamData)
 	if containerScrollFrame then
 		containerScrollFrame:AddChild(itemGroup);
 	end
-
 	-- //!SECTION
 
 	buttonsGroup:AddChild(viewTeamButton);
@@ -1857,8 +1810,6 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
 	itemGroup:SetTitle(recruitmentApplication.name);
 	itemGroup:SetFullWidth(true);
-
-
 
 	local messageLabel = GOW.GUI:Create("SFX-Info");
 	messageLabel:SetLabel("Message");
@@ -1941,9 +1892,6 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	buttonsGroup:AddChild(inviteToGuildButton);
 
 	local function isPlayerInGuild()
-		-- get latest guild roster info
-		C_GuildInfo.GuildRoster()
-
 		local memberName = recruitmentApplication.name
 		local isInGuild = C_GuildInfo.MemberExistsByName(memberName)
 
@@ -2336,7 +2284,8 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 		if (invitedCount > 0) then
 			Core:Debug("CreateEventInvites Ended: " .. upcomingEvent.title .. ". Invited: " .. tostring(invitedCount));
 			workQueue:addTask(function()
-				Core:Debug("Event invites completed: " .. upcomingEvent.titleWithKey); Core:SetAttendance(upcomingEvent, closeAfterEnd);
+				Core:Debug("Event invites completed: " .. upcomingEvent.titleWithKey);
+				Core:SetAttendance(upcomingEvent, closeAfterEnd);
 			end, nil, 10);
 		else
 			Core:SetAttendance(upcomingEvent, closeAfterEnd);
@@ -2739,8 +2688,7 @@ function Core:InitializeEventInvites()
 			if (GOW.DB.profile.guilds[guildKey].eventsRefreshTime and ns.UPCOMING_EVENTS.exportTime and ns.UPCOMING_EVENTS.exportTime < GOW.DB.profile.guilds[guildKey].eventsRefreshTime) then
 				isEventProcessCompleted = true;
 
-				Core:PrintMessage(
-					"The most recently imported data has already been processed, the RSVP synchronization will be skipped...");
+				Core:PrintMessage("The most recently imported data has already been processed, the RSVP synchronization will be skipped...");
 			else
 				Core:Debug("Event attendance initial process started!");
 
