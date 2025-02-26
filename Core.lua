@@ -1937,6 +1937,8 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	itemGroup:SetTitle(recruitmentApplication.name);
 	itemGroup:SetFullWidth(true);
 
+
+
 	local messageLabel = GOW.GUI:Create("SFX-Info");
 	messageLabel:SetLabel("Message");
 	messageLabel:SetDisabled(false);
@@ -1959,7 +1961,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 
 	local classLabel = GOW.GUI:Create("SFX-Info");
 	classLabel:SetLabel("Class");
-	classLabel:SetText(recruitmentApplication.classTitle);
+	classLabel:SetText(recruitmentApplication.class);
 	itemGroup:AddChild(classLabel);
 
 	local dateLabel = GOW.GUI:Create("SFX-Info");
@@ -2082,7 +2084,9 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 
 	itemGroup:AddChild(buttonsGroup2);
 
-	containerScrollFrame:AddChild(itemGroup);
+	if containerScrollFrame then
+		containerScrollFrame:AddChild(itemGroup);
+	end
 end
 
 function Core:OpenDialog(dialogName)
