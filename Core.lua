@@ -1934,7 +1934,7 @@ end
 
 function Core:AppendRecruitmentList(recruitmentApplication)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
-	itemGroup:SetTitle(recruitmentApplication.title);
+	itemGroup:SetTitle(recruitmentApplication.name);
 	itemGroup:SetFullWidth(true);
 
 	local messageLabel = GOW.GUI:Create("SFX-Info");
@@ -2005,14 +2005,14 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	buttonsGroup:SetLayout("Flow");
 	buttonsGroup:SetFullWidth(true);
 
-	local recruitmentApplicationInviteLink = recruitmentApplication.title ..
+	local recruitmentApplicationInviteLink = recruitmentApplication.name ..
 		"-" .. recruitmentApplication.realmNormalized;
 
 	local inviteToGuildButton = GOW.GUI:Create("Button");
 	inviteToGuildButton:SetText("Invite to Guild");
 	inviteToGuildButton:SetWidth(140);
 	inviteToGuildButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.title, nil,
+		Core:OpenDialogWithData("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.name, nil,
 			recruitmentApplicationInviteLink);
 		inviteToGuildButton:SetText("Invite Pending");
 		inviteToGuildButton:SetDisabled(true);
@@ -2023,7 +2023,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 		-- get latest guild roster info
 		C_GuildInfo.GuildRoster()
 
-		local memberName = recruitmentApplication.title
+		local memberName = recruitmentApplication.name
 		local isInGuild = C_GuildInfo.MemberExistsByName(memberName)
 
 		if isInGuild and inviteToGuildButton then
@@ -2042,7 +2042,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	end);
 	buttonsGroup:AddChild(inviteToPartyButton);
 
-	local friendInfo = C_FriendList.GetFriendInfo(recruitmentApplication.title);
+	local friendInfo = C_FriendList.GetFriendInfo(recruitmentApplication.name);
 
 	local addFriendButton = GOW.GUI:Create("Button");
 	addFriendButton:SetText("Add Friend");
@@ -2053,7 +2053,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	end
 
 	addFriendButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("CONFIRM_ADD_FRIEND", recruitmentApplication.title, nil,
+		Core:OpenDialogWithData("CONFIRM_ADD_FRIEND", recruitmentApplication.name, nil,
 			recruitmentApplicationInviteLink);
 	end);
 	buttonsGroup:AddChild(addFriendButton);
