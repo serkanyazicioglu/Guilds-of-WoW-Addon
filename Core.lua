@@ -411,8 +411,7 @@ function GOW:OnInitialize()
 	};
 
 	StaticPopupDialogs["INVITE_TO_PARTY_INVALID_CALENDAR"] = {
-		text                   =
-		"Only 'Player Event' attendances can be invited via addon. For 'Guild Events' you can create the event and use that event's 'Invite Members' functionality.",
+		text                   = "Only 'Player Event' attendances can be invited via addon. For 'Guild Events' you can create the event and use that event's 'Invite Members' functionality.",
 		button1                = OKAY,
 		OnHide                 = function()
 			Core:DialogClosed();
@@ -628,14 +627,7 @@ function Core:ToggleWindow()
 end
 
 function Core:RefreshUpcomingEventsList()
-	Core:Debug("RefreshUpcomingEventsList: containerFrame:IsShown(): " ..
-		tostring(containerFrame:IsShown()) ..
-		". isPropogatingUpdate: " ..
-		tostring(isPropogatingUpdate) ..
-		". selectedTab: " ..
-		selectedTab ..
-		". isEventProcessCompleted: " ..
-		tostring(isEventProcessCompleted) .. ". isNewEventBeingCreated: " .. tostring(isNewEventBeingCreated));
+	Core:Debug("RefreshUpcomingEventsList: containerFrame:IsShown(): " .. tostring(containerFrame:IsShown()) .. ". isPropogatingUpdate: " .. tostring(isPropogatingUpdate) .. ". selectedTab: " .. selectedTab .. ". isEventProcessCompleted: " .. tostring(isEventProcessCompleted) .. ". isNewEventBeingCreated: " .. tostring(isNewEventBeingCreated));
 	if (containerFrame:IsShown() and isPropogatingUpdate == false and selectedTab == "events" and isEventProcessCompleted and not isNewEventBeingCreated) then
 		Core:Debug("Adding to work queue: CreateUpcomingEvents");
 		persistentWorkQueue:addTask(function()
@@ -704,8 +696,7 @@ function Core:CreateUpcomingEvents()
 
 		if (not hasAnyData) then
 			Core:AppendMessage(
-				"This guild either doesn't have any upcoming events that you are a member of, or you are not an event manager!\r\n\r\nGuild: " ..
-				guildName .. " / " .. realmName, true);
+				"This guild either doesn't have any upcoming events that you are a member of, or you are not an event manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
 		end
 	end
 
@@ -720,9 +711,7 @@ function Core:CreateTeams()
 	if (ns.TEAMS == nil) then
 		if containerScrollFrame then
 			containerScrollFrame:ReleaseChildren();
-			Core:AppendMessage(
-				"Team data is not found! Please make sure your sync app is installed and working properly!",
-				true);
+			Core:AppendMessage("Team data is not found! Please make sure your sync app is installed and working properly!", true);
 		end
 	else
 		local isInGuild = IsInGuild();
@@ -763,9 +752,7 @@ function Core:CreateTeams()
 		end
 
 		if (not hasAnyData) then
-			Core:AppendMessage(
-				"This guild doesn't have any team or you are not a roster manager!\r\n\r\nGuild: " ..
-				guildName .. " / " .. realmName, true);
+			Core:AppendMessage("This guild doesn't have any team or you are not a roster manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
 		end
 	end
 
@@ -779,9 +766,7 @@ function Core:CreateRecruitmentApplications()
 
 	if (ns.RECRUITMENT_APPLICATIONS == nil) then
 		containerScrollFrame:ReleaseChildren();
-		Core:AppendMessage(
-			"Recruitment applications data is not found! Please make sure your sync app is installed and working properly!",
-			true);
+		Core:AppendMessage("Recruitment applications data is not found! Please make sure your sync app is installed and working properly!", true);
 	else
 		local isInGuild = IsInGuild();
 
@@ -821,9 +806,7 @@ function Core:CreateRecruitmentApplications()
 		end
 
 		if (not hasAnyData) then
-			Core:AppendMessage(
-				"This guild doesn't have any guild recruitment application or you are not a recruitment manager!\r\n\r\nGuild: " ..
-				guildName .. " / " .. realmName, true);
+			Core:AppendMessage("This guild doesn't have any guild recruitment application or you are not a recruitment manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
 		end
 	end
 
@@ -840,8 +823,7 @@ function Core:ResetCalendar()
 	local serverYear = tonumber(date("%Y", serverTime));
 
 	if (calendarMonth ~= serverMonth or calendarYear ~= serverYear) then
-		Core:Debug("Resetting calendar to current date. Current: " ..
-			calendarMonth .. "/" .. calendarYear .. " - Server: " .. serverMonth .. "/" .. serverYear);
+		Core:Debug("Resetting calendar to current date. Current: " .. calendarMonth .. "/" .. calendarYear .. " - Server: " .. serverMonth .. "/" .. serverYear);
 		C_Calendar.SetAbsMonth(serverMonth, serverYear);
 	end
 end
@@ -1051,9 +1033,7 @@ function Core:AppendCalendarList(event)
 
 			tooltip:AddHeader('|cffffcc00About Event Attendances');
 			local line = tooltip:AddLine();
-			tooltip:SetCell(line, 1,
-				"When no filter is selected in-game addon will create 'Guild Event' and all guildies will be able to sign up. This selection is suitable for large meetings. Site attendance data will not migrate to in-game with this selection but will migrate from game to GoW.\r\n\r\nWhen filtration is enabled or audience is set to team event, addon will create 'Player Event' and will only invite eligible characters. Attendance synchronization will work bidirectional. Player events cannot invite more than 100 members so you should narrow the audience by item level or change audience to team event.",
-				"LEFT", 1, nil, 0, 0, 300, 50);
+			tooltip:SetCell(line, 1, "When no filter is selected in-game addon will create 'Guild Event' and all guildies will be able to sign up. This selection is suitable for large meetings. Site attendance data will not migrate to in-game with this selection but will migrate from game to GoW.\r\n\r\nWhen filtration is enabled or audience is set to team event, addon will create 'Player Event' and will only invite eligible characters. Attendance synchronization will work bidirectional. Player events cannot invite more than 100 members so you should narrow the audience by item level or change audience to team event.", "LEFT", 1, nil, 0, 0, 300, 50);
 			tooltip:SmartAnchorTo(self.frame);
 			tooltip:Show();
 		end);
@@ -1086,9 +1066,7 @@ function Core:AppendCalendarList(event)
 				GOW.tooltip = tooltip;
 
 				local line = tooltip:AddLine();
-				tooltip:SetCell(line, 1,
-					"You can create an in-game calendar event to integrate Guilds of WoW attendance data with in-game calendar. This synchronization will work bidirectional.",
-					"LEFT", 1, nil, 0, 0, 300, 50);
+				tooltip:SetCell(line, 1, "You can create an in-game calendar event to integrate Guilds of WoW attendance data with in-game calendar. This synchronization will work bidirectional.", "LEFT", 1, nil, 0, 0, 300, 50);
 				tooltip:SmartAnchorTo(self.frame);
 				tooltip:Show();
 			end);
@@ -1120,8 +1098,7 @@ function Core:AppendCalendarList(event)
 				GOW.tooltip = tooltip;
 
 				local line = tooltip:AddLine();
-				tooltip:SetCell(line, 1, "You can invite attendees directly into your party or raid.", "LEFT", 1, nil, 0,
-					0, 300, 50);
+				tooltip:SetCell(line, 1, "You can invite attendees directly into your party or raid.", "LEFT", 1, nil, 0, 0, 300, 50);
 				tooltip:SmartAnchorTo(self.frame);
 				tooltip:Show();
 			end);
@@ -1155,8 +1132,7 @@ function Core:AppendCalendarList(event)
 
 			local line = tooltip:AddLine();
 			tooltip:SetCell(line, 1,
-				"If you've already created an in-game event related to this record, you can append this key to the end of the in-game event title for GoW synchronization.",
-				"LEFT", 1, nil, 0, 0, 300, 50);
+				"If you've already created an in-game event related to this record, you can append this key to the end of the in-game event title for GoW synchronization.", "LEFT", 1, nil, 0, 0, 300, 50);
 			tooltip:SmartAnchorTo(self.frame);
 			tooltip:Show();
 		end);
@@ -1297,9 +1273,9 @@ function Core:AppendTeam(teamData)
 		-- these are used to populate the "Filter by Role" dropdown
 		local rolesForFilter = {
 			["All"] = "All",
-			["Tanks"] = "Tanks",
+			["Tank"] = "Tank",
+			["Healer"] = "Healer",
 			["DPS"] = "DPS",
-			["Healers"] = "Healers",
 		}
 
 		local currentFilterValue = "All" -- holds the current value of the filter dropdown
@@ -1444,7 +1420,7 @@ function Core:AppendTeam(teamData)
 		-- // STUB Role Filter
 		local roleFilter = GOW.GUI:Create("Dropdown")
 		roleFilter:SetLabel("  Filter by Role")
-		roleFilter:SetList(rolesForFilter)
+		roleFilter:SetList(rolesForFilter, { "All", "Tank", "Healer", "DPS" })
 		roleFilter:SetValue("All")
 		roleFilter:SetWidth(150)
 		roleFilter:SetCallback("OnValueChanged", function(key)
@@ -1508,7 +1484,7 @@ function Core:AppendTeam(teamData)
 					filteredMembers = trialGroupMembers
 				end
 
-				if specRole == "Tanks" then
+				if specRole == "Tank" then
 					if teamGroup == "Main" then
 						filteredMembers = mainGroupTanks
 					elseif teamGroup == "Alt" then
@@ -1518,7 +1494,7 @@ function Core:AppendTeam(teamData)
 					elseif teamGroup == "Trial" then
 						filteredMembers = trialGroupTanks
 					end
-				elseif specRole == "Healers" then
+				elseif specRole == "Healer" then
 					if teamGroup == "Main" then
 						filteredMembers = mainGroupHealers
 					elseif teamGroup == "Alt" then
@@ -1915,8 +1891,6 @@ function Core:AppendTeam(teamData)
 
 	-- //!SECTION
 
-
-
 	buttonsGroup:AddChild(viewTeamButton);
 	itemGroup:AddChild(buttonsGroup);
 end
@@ -1998,15 +1972,13 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	buttonsGroup:SetLayout("Flow");
 	buttonsGroup:SetFullWidth(true);
 
-	local recruitmentApplicationInviteLink = recruitmentApplication.name ..
-		"-" .. recruitmentApplication.realmNormalized;
+	local recruitmentApplicationInviteLink = recruitmentApplication.name .. "-" .. recruitmentApplication.realmNormalized;
 
 	local inviteToGuildButton = GOW.GUI:Create("Button");
 	inviteToGuildButton:SetText("Invite to Guild");
 	inviteToGuildButton:SetWidth(140);
 	inviteToGuildButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.name, nil,
-			recruitmentApplicationInviteLink);
+		Core:OpenDialogWithData("CONFIRM_INVITE_TO_GUILD", recruitmentApplication.name, nil, recruitmentApplicationInviteLink);
 		inviteToGuildButton:SetText("Invite Pending");
 		inviteToGuildButton:SetDisabled(true);
 	end);
@@ -2046,8 +2018,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	end
 
 	addFriendButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("CONFIRM_ADD_FRIEND", recruitmentApplication.name, nil,
-			recruitmentApplicationInviteLink);
+		Core:OpenDialogWithData("CONFIRM_ADD_FRIEND", recruitmentApplication.name, nil, recruitmentApplicationInviteLink);
 	end);
 	buttonsGroup:AddChild(addFriendButton);
 	itemGroup:AddChild(buttonsGroup);
@@ -2060,8 +2031,7 @@ function Core:AppendRecruitmentList(recruitmentApplication)
 	whisperButton:SetText("Whisper");
 	whisperButton:SetWidth(140);
 	whisperButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("WHISPER_PLAYER", nil, nil,
-			recruitmentApplicationInviteLink);
+		Core:OpenDialogWithData("WHISPER_PLAYER", nil, nil, recruitmentApplicationInviteLink);
 	end);
 	buttonsGroup2:AddChild(whisperButton);
 
@@ -2104,8 +2074,7 @@ end
 
 function Core:CreateCalendarEvent(event)
 	if (event.calendarType == GOW.consts.PLAYER_EVENT and event.totalMembers >= 100) then
-		Core:PrintErrorMessage(
-			"You cannot create events with more than 100 members! To proceed, narrow your audience by using filters, binding a team, or disabling filters entirely to create a guild event.");
+		Core:PrintErrorMessage("You cannot create events with more than 100 members! To proceed, narrow your audience by using filters, binding a team, or disabling filters entirely to create a guild event.");
 		return;
 	end
 
@@ -2252,8 +2221,7 @@ function Core:CheckEventInvites()
 						if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
 							local eventIndex, offsetMonths, dayEvent = Core:searchForEvent(upcomingEvent);
 
-							Core:Debug("Event search result: " ..
-								upcomingEvent.titleWithKey .. ". Result: " .. eventIndex);
+							Core:Debug("Event search result: " .. upcomingEvent.titleWithKey .. ". Result: " .. eventIndex);
 
 							if (eventIndex == -2) then
 								Core:Debug("Aborting invites: CheckEventInvites.");
@@ -2264,8 +2232,7 @@ function Core:CheckEventInvites()
 									hasAnyUninvitedEvent = true;
 								end
 							elseif (eventIndex > 0) then
-								Core:Debug(dayEvent.title ..
-									" creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex);
+								Core:Debug(dayEvent.title .. " creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex);
 
 								if (dayEvent.calendarType == "PLAYER" or dayEvent.calendarType == "GUILD_EVENT") then
 									if (dayEvent.modStatus == "CREATOR" or dayEvent.modStatus == "MODERATOR") then
@@ -2298,8 +2265,7 @@ function Core:CheckEventInvites()
 
 					if (processedEvents:count() > 0) then
 						GOW.DB.profile.guilds[Core:GetGuildKey()].eventsRefreshTime = GetServerTime();
-						Core:PrintSuccessMessage("Event invites have been completed. Number of events processed: " ..
-							tostring(processedEvents:count()));
+						Core:PrintSuccessMessage("Event invites have been completed. Number of events processed: " .. tostring(processedEvents:count()));
 					end
 
 					if (containerFrame:IsShown()) then
@@ -2404,8 +2370,7 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 			end
 
 			if (not isMemberInvited) then
-				Core:Debug("Inviting: " ..
-					inviteName .. "-" .. currentInviteMember.level .. "-" .. currentInviteMember.classId);
+				Core:Debug("Inviting: " .. inviteName .. "-" .. currentInviteMember.level .. "-" .. currentInviteMember.classId);
 				workQueue:addTask(function() C_Calendar.EventInvite(inviteName) end, nil, GOW.consts.INVITE_INTERVAL);
 
 				invitedCount = invitedCount + 1;
@@ -2414,11 +2379,9 @@ function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 
 		if (invitedCount > 0) then
 			Core:Debug("CreateEventInvites Ended: " .. upcomingEvent.title .. ". Invited: " .. tostring(invitedCount));
-			workQueue:addTask(
-				function()
-					Core:Debug("Event invites completed: " .. upcomingEvent.titleWithKey);
-					Core:SetAttendance(upcomingEvent, closeAfterEnd);
-				end, nil, 10);
+			workQueue:addTask(function()
+				Core:Debug("Event invites completed: " .. upcomingEvent.titleWithKey); Core:SetAttendance(upcomingEvent, closeAfterEnd);
+			end, nil, 10);
 		else
 			Core:SetAttendance(upcomingEvent, closeAfterEnd);
 		end
@@ -2447,15 +2410,7 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 					local responseTime = C_Calendar.EventGetInviteResponseTime(a);
 					local responeTimeFormatted = nil;
 					if (responseTime) then
-						responeTimeFormatted = responseTime.year ..
-							"-" ..
-							string.lpad(tostring(responseTime.month), 2, '0') ..
-							"-" ..
-							string.lpad(tostring(responseTime.monthDay), 2, '0') ..
-							"T" ..
-							string.lpad(tostring(responseTime.hour), 2, '0') ..
-							":" ..
-							string.lpad(tostring(responseTime.minute), 2, '0');
+						responeTimeFormatted = responseTime.year .. "-" .. string.lpad(tostring(responseTime.month), 2, '0') .. "-" .. string.lpad(tostring(responseTime.monthDay), 2, '0') .. "T" .. string.lpad(tostring(responseTime.hour), 2, '0') .. ":" .. string.lpad(tostring(responseTime.minute), 2, '0');
 					end
 
 					currentEventAttendances[attendanceIndex] = {
@@ -2501,10 +2456,8 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 		GOW.DB.profile.guilds[guildKey].events[eventId].attendances = currentEventAttendances;
 
 		if (attendanceChangedCount > 0) then
-			Core:Debug("SetAttendance Ended: " ..
-				upcomingEvent.title .. ". SetAttendance: " .. tostring(attendanceChangedCount));
-			workQueue:addTask(function() Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd) end, nil,
-				GOW.consts.INVITE_INTERVAL);
+			Core:Debug("SetAttendance Ended: " .. upcomingEvent.title .. ". SetAttendance: " .. tostring(attendanceChangedCount));
+			workQueue:addTask(function() Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd) end, nil, GOW.consts.INVITE_INTERVAL);
 		else
 			Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd);
 		end
@@ -2524,9 +2477,7 @@ function Core:SetAttendanceValues(upcomingEvent, inviteInfo, inviteIndex)
 				if (string.find(inviteInfo.name, "-")) then
 					isFound = inviteInfo.name == currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized;
 				else
-					isFound = inviteInfo.name == currentInviteMember.name and
-						inviteInfo.level == currentInviteMember.level and
-						inviteInfo.classID == currentInviteMember.classId;
+					isFound = inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId;
 				end
 
 				if (isFound) then
@@ -2535,25 +2486,15 @@ function Core:SetAttendanceValues(upcomingEvent, inviteInfo, inviteIndex)
 					if (currentInviteMember.isManager) then
 						if (inviteInfo.modStatus ~= "CREATOR" and inviteInfo.modStatus ~= "MODERATOR") then
 							isInvitationChanged = true;
-							Core:Debug("Setting member as moderator: " ..
-								upcomingEvent.title .. ". Title: " .. inviteInfo.name);
-							workQueue:addTask(function() C_Calendar.EventSetModerator(inviteIndex) end, nil,
-								GOW.consts.INVITE_INTERVAL);
+							Core:Debug("Setting member as moderator: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name);
+							workQueue:addTask(function() C_Calendar.EventSetModerator(inviteIndex) end, nil, GOW.consts.INVITE_INTERVAL);
 						end
 					end
 
 					if (currentInviteMember.forceUpdate or (currentInviteMember.attendance > 1 and inviteInfo.inviteStatus == 0)) then
 						isInvitationChanged = true;
-						Core:Debug("Setting member attendance: " ..
-							upcomingEvent.title ..
-							". Title: " ..
-							inviteInfo.name ..
-							". GoWAttendance: " ..
-							tostring(currentInviteMember.attendance) ..
-							". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus));
-						workQueue:addTask(
-							function() C_Calendar.EventSetInviteStatus(inviteIndex, currentInviteMember.attendance - 1) end,
-							nil, GOW.consts.INVITE_INTERVAL);
+						Core:Debug("Setting member attendance: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name .. ". GoWAttendance: " .. tostring(currentInviteMember.attendance) .. ". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus));
+						workQueue:addTask(function() C_Calendar.EventSetInviteStatus(inviteIndex, currentInviteMember.attendance - 1) end, nil, GOW.consts.INVITE_INTERVAL);
 					end
 
 					return isInvitationChanged;
@@ -2754,8 +2695,7 @@ function Core:SetRosterInfo()
 			local anyKeystoneFound = false;
 
 			for i = 1, numTotalMembers do
-				local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, isSoREligible, standingID, guid =
-					GetGuildRosterInfo(i);
+				local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, isSoREligible, standingID, guid = GetGuildRosterInfo(i);
 				if (name) then
 					GOW.DB.profile.guilds[guildKey].roster[name] = {
 						guid = guid,
