@@ -1195,6 +1195,10 @@ function Core:AppendTeam(teamData)
 	viewTeamButton:SetText("View Roster");
 	viewTeamButton:SetRelativeWidth(0.5);
 	viewTeamButton:SetCallback("OnClick", function()
+		if GoWTeamTabContainer ~= nil then
+			return;
+		end;
+
 		-- //SECTION Team Details (TD) - Tables and Variables
 		local teamNavItems = {}; -- holds the different team groups (Main, Alt, Backup, Trial) and used to render the nav buttons
 		local teamMembers = teamData.members or {};
@@ -1267,6 +1271,7 @@ function Core:AppendTeam(teamData)
 		GoWTeamTabContainer:SetCallback("OnClose", function()
 			GoWTeamTabContainer:ReleaseChildren();
 			GoWTeamTabContainer:Release();
+			GoWTeamTabContainer = nil;
 		end);
 
 		-- //STUB TD - Nav Container
