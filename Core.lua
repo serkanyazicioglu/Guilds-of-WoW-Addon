@@ -170,9 +170,14 @@ function GOW:OnInitialize()
 	containerFrame:SetStatusText("Type /gow for quick access");
 	containerFrame:SetCallback("OnClose", function(widget)
 		containerFrame:Hide();
+
 		if (currentOpenDialog) then
 			StaticPopup_Hide(currentOpenDialog);
 			currentOpenDialog = nil;
+		end
+
+		if (GoWTeamTabContainer) then
+			GoWTeamTabContainer:Hide();
 		end
 	end);
 	containerFrame:Hide();
@@ -1245,7 +1250,7 @@ function Core:AppendTeam(teamData)
 		GoWTeamTabContainer:SetWidth(1000);
 		GoWTeamTabContainer:SetHeight(550);
 		GoWTeamTabContainer:EnableResize(false);
-		GoWTeamTabContainer.frame:SetPoint("CENTER", UIParent, "CENTER", 20, -20);
+		GoWTeamTabContainer.frame:SetPoint("CENTER", UIParent, "CENTER", 40, -40);
 		GoWTeamTabContainer.frame:SetFrameStrata("HIGH");
 		GoWTeamTabContainer:SetLayout("Flow");
 		GoWTeamTabContainer.frame:SetAlpha(1);
