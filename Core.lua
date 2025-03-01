@@ -270,7 +270,7 @@ function GOW:OnInitialize()
 		button2 = CANCEL,
 		OnAccept = function(self, data)
 			C_GuildInfo.Invite(data);
-			Core:PrintSuccessMessage("Invitation sent to " .. data ". Ensure that the user hasn't blocked guild invites.");
+			Core:PrintMessage("Invitation sent to " .. data .. ". Ensure that the user hasn't blocked guild invites.");
 			Core:DialogClosed();
 		end,
 		OnCancel = function()
