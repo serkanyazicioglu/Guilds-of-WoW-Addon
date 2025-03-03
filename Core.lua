@@ -919,6 +919,10 @@ function Core:AppendCalendarList(event)
 	itemGroup:SetTitle(event.title);
 	itemGroup:SetFullWidth(true);
 
+	local listGap = GOW.GUI:Create("SimpleGroup");
+	listGap:SetFullWidth(true);
+	listGap:SetHeight(10);
+
 	if (event.description ~= nil and event.description ~= "") then
 		local descriptionLabel = GOW.GUI:Create("SFX-Info");
 		descriptionLabel:SetLabel("Description");
@@ -1151,21 +1155,27 @@ function Core:AppendCalendarList(event)
 	if containerScrollFrame then
 		containerScrollFrame:AddChild(itemGroup);
 	end
+	containerScrollFrame:AddChild(listGap);
 	return true;
 end
 
 -- //SECTION - AppendTeams
 function Core:AppendTeam(teamData)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
-	itemGroup:SetWidth(300);
-
+	itemGroup:SetFullWidth(true);
 	if (teamData.name ~= nil and teamData.name ~= "") then
-		local teamNameLabel = GOW.GUI:Create("SFX-Info");
-		teamNameLabel:SetLabel("Name");
-		teamNameLabel:SetDisabled(false);
-		teamNameLabel:SetText(teamData.name);
+		itemGroup:SetTitle(teamData.name);
+	end
 
-		itemGroup:AddChild(teamNameLabel);
+	local listGap = GOW.GUI:Create("SimpleGroup");
+	listGap:SetFullWidth(true);
+	listGap:SetHeight(10);
+
+	if (teamData.description ~= nil and teamData.description ~= "") then
+		local descriptionLabel = GOW.GUI:Create("SFX-Info");
+		descriptionLabel:SetLabel("Description");
+		descriptionLabel:SetText(teamData.description);
+		itemGroup:AddChild(descriptionLabel);
 	end
 
 	local membersLabel = GOW.GUI:Create("SFX-Info");
@@ -1179,7 +1189,7 @@ function Core:AppendTeam(teamData)
 
 	local inviteToPartyButton = GOW.GUI:Create("Button");
 	inviteToPartyButton:SetText("Invite Team");
-	inviteToPartyButton:SetRelativeWidth(0.5);
+	inviteToPartyButton:SetWidth(200);
 	inviteToPartyButton:SetCallback("OnClick", function()
 		Core:InviteAllTeamMembersToPartyCheck(teamData);
 	end);
@@ -1188,7 +1198,7 @@ function Core:AppendTeam(teamData)
 	-- add button to view team details
 	local viewTeamButton = GOW.GUI:Create("Button");
 	viewTeamButton:SetText("View Roster");
-	viewTeamButton:SetRelativeWidth(0.5);
+	viewTeamButton:SetWidth(200);
 	viewTeamButton:SetCallback("OnClick", function()
 		if GoWTeamTabContainer ~= nil then
 			return;
@@ -1257,7 +1267,7 @@ function Core:AppendTeam(teamData)
 		_G[FRAME_NAME] = GoWTeamTabContainer.frame;
 		containerFrame.frame:SetAlpha(.5);
 		containerTabs.frame:Hide();
-		
+
 		GoWTeamTabContainer:SetCallback("OnClose", function()
 			GoWTeamTabContainer:ReleaseChildren();
 			GoWTeamTabContainer:Release();
@@ -1767,6 +1777,7 @@ function Core:AppendTeam(teamData)
 
 	if containerScrollFrame then
 		containerScrollFrame:AddChild(itemGroup);
+		containerScrollFrame:AddChild(listGap);
 	end;
 	-- //!SECTION
 
@@ -1780,6 +1791,10 @@ function Core:AppendRecruitmentList(guildRoster, recruitmentApplication)
 	local itemGroup = GOW.GUI:Create("InlineGroup");
 	itemGroup:SetTitle(recruitmentApplication.name);
 	itemGroup:SetFullWidth(true);
+
+	local listGap = GOW.GUI:Create("SimpleGroup");
+	listGap:SetFullWidth(true);
+	listGap:SetHeight(10);
 
 	local messageLabel = GOW.GUI:Create("SFX-Info");
 	messageLabel:SetLabel("Message");
@@ -1917,6 +1932,7 @@ function Core:AppendRecruitmentList(guildRoster, recruitmentApplication)
 
 	if containerScrollFrame then
 		containerScrollFrame:AddChild(itemGroup);
+		containerFrame:AddChild(listGap);
 	end
 end
 
