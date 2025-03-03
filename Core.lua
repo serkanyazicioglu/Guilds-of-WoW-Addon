@@ -1175,6 +1175,21 @@ function Core:AppendTeam(teamData)
 		local descriptionLabel = GOW.GUI:Create("SFX-Info");
 		descriptionLabel:SetLabel("Description");
 		descriptionLabel:SetText(teamData.description);
+		descriptionLabel:SetDisabled(false);
+		descriptionLabel:SetCallback("OnEnter", function(self)
+			local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT");
+			GOW.tooltip = tooltip;
+
+			tooltip:AddHeader('|cffffcc00Team Description');
+			local line = tooltip:AddLine();
+			tooltip:SetCell(line, 1, teamData.description, "LEFT", 1, nil, 0, 0, 300, 50);
+			tooltip:SmartAnchorTo(self.frame);
+			tooltip:Show();
+		end);
+		descriptionLabel:SetCallback("OnLeave", function()
+			LibQTip:Release(GOW.tooltip);
+			GOW.tooltip = nil;
+		end);
 		itemGroup:AddChild(descriptionLabel);
 	end
 
