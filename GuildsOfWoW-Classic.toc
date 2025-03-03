@@ -9,6 +9,7 @@
 embed.xml
 
 Core.lua
+GoWTeams.lua
 Class.lua
 List.lua
 Options.lua

@@ -48,7 +48,7 @@ local optionsTable = {
 AceConfig:RegisterOptionsTable(addonName, optionsTable, nil);
 AceConfigDialog:AddToBlizOptions(addonName, "Guilds of WoW");
 local GetAddOnMetadataFunc = GetAddOnMetadata or C_AddOns.GetAddOnMetadata;
-local OpenSettingsFunc =  InterfaceOptionsFrame_OpenToCategory or Settings.OpenToCategory;
+local OpenSettingsFunc = InterfaceOptionsFrame_OpenToCategory or Settings.OpenToCategory;
 
 function GOW:OpenSettings()
     local title = GetAddOnMetadataFunc(addonName, "Title");
