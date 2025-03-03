@@ -1267,7 +1267,6 @@ function Core:AppendTeam(teamData)
 		_G[FRAME_NAME] = GoWTeamTabContainer.frame;
 		containerFrame.frame:SetAlpha(.5);
 		containerTabs.frame:Hide();
-
 		GoWTeamTabContainer:SetCallback("OnClose", function()
 			GoWTeamTabContainer:ReleaseChildren();
 			GoWTeamTabContainer:Release();
