@@ -1953,7 +1953,7 @@ function Core:AppendRecruitmentList(guildRoster, recruitmentApplication)
 
 	if containerScrollFrame then
 		containerScrollFrame:AddChild(itemGroup);
-		containerFrame:AddChild(listGap);
+		containerScrollFrame:AddChild(listGap);
 	end
 end
 
