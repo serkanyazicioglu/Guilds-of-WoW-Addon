@@ -76,6 +76,7 @@ f:RegisterEvent("CALENDAR_OPEN_EVENT");
 f:RegisterEvent("CALENDAR_CLOSE_EVENT");
 f:RegisterEvent("CALENDAR_ACTION_PENDING");
 f:RegisterEvent("CHAT_MSG_SYSTEM");
+f:RegisterEvent("PLAYER_REGEN_DISABLED");
 
 local isInitialLogin = false;
 local isPropogatingUpdate = false;
@@ -444,6 +445,12 @@ end
 
 f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	Core:Debug(event);
+
+	if event == "PLAYER_REGEN_DISABLED" then
+		if containerFrame and containerFrame:IsShown() then
+			containerFrame:Hide()
+		end
+	end
 
 	if event == "PLAYER_ENTERING_WORLD" then
 		isInitialLogin = arg1;
