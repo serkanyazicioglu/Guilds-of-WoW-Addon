@@ -1085,7 +1085,7 @@ function Core:AppendCalendarList(event)
 
 		if (event.eventEndDate >= C_DateAndTime.GetServerTimeLocal()) then
 			local inviteButton = GOW.GUI:Create("Button");
-			inviteButton:SetWidth(140);
+			inviteButton:SetWidth(150);
 			inviteButton:SetText("Invite Attendees");
 			inviteButton:SetCallback("OnClick", function()
 				if (event.calendarType == GOW.consts.PLAYER_EVENT) then
@@ -1118,7 +1118,7 @@ function Core:AppendCalendarList(event)
 
 	local copyLinkButton = GOW.GUI:Create("Button");
 	copyLinkButton:SetText("Copy Link");
-	copyLinkButton:SetWidth(100);
+	copyLinkButton:SetWidth(150);
 	copyLinkButton:SetCallback("OnClick", function()
 		Core:OpenDialogWithData("COPY_TEXT", nil, nil, event.webUrl);
 	end);
@@ -1127,7 +1127,7 @@ function Core:AppendCalendarList(event)
 	if (canAddEvent and eventIndex < 0) then
 		local copyKeyButton = GOW.GUI:Create("Button");
 		copyKeyButton:SetText("Copy Key");
-		copyKeyButton:SetWidth(100);
+		copyKeyButton:SetWidth(150);
 		copyKeyButton:SetCallback("OnClick", function()
 			Core:OpenDialogWithData("COPY_TEXT", nil, nil, event.eventKey);
 		end);
