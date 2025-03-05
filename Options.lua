@@ -39,6 +39,17 @@ local optionsTable = {
                     set = function(info, value)
                         GOW.DB.profile.warnNewEvents = value;
                     end,
+                },
+                hideOnCombat = {
+                    type = "toggle",
+                    order = 3,
+                    name = "Hide in combat.",
+                    desc = "Hide the Guilds of WoW window when entering combat.",
+                    width = "full",
+                    get = function(info) return GOW.DB.profile.hideOnCombat end,
+                    set = function(info, value)
+                        GOW.DB.profile.hideOnCombat = value;
+                    end,
                 }
             }
         }
