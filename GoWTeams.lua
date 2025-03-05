@@ -63,15 +63,6 @@ function GoWTeams:AppendTeam(teamData)
     buttonsGroup:SetLayout("Flow");
     buttonsGroup:SetFullWidth(true);
 
-    local inviteToPartyButton = self.GUI:Create("Button");
-    inviteToPartyButton:SetText("Invite Team");
-    inviteToPartyButton:SetWidth(200);
-    inviteToPartyButton:SetCallback("OnClick", function()
-        self.CORE:InviteAllTeamMembersToPartyCheck(teamData);
-    end);
-    buttonsGroup:AddChild(inviteToPartyButton);
-
-    -- add button to view team details
     local viewTeamButton = self.GUI:Create("Button");
     viewTeamButton:SetText("View Roster");
     viewTeamButton:SetWidth(200);
@@ -649,6 +640,15 @@ function GoWTeams:AppendTeam(teamData)
             end;
         end;
     end);
+    buttonsGroup:AddChild(viewTeamButton);
+
+    local inviteToPartyButton = self.GUI:Create("Button");
+    inviteToPartyButton:SetText("Invite Team");
+    inviteToPartyButton:SetWidth(200);
+    inviteToPartyButton:SetCallback("OnClick", function()
+        self.CORE:InviteAllTeamMembersToPartyCheck(teamData);
+    end);
+    buttonsGroup:AddChild(inviteToPartyButton);
 
     if self.UI.containerScrollFrame then
         self.UI.containerScrollFrame:AddChild(itemGroup);
@@ -656,7 +656,6 @@ function GoWTeams:AppendTeam(teamData)
     end;
     -- //!SECTION
 
-    buttonsGroup:AddChild(viewTeamButton);
     itemGroup:AddChild(buttonsGroup);
 end
 
