@@ -453,19 +453,17 @@ function GoWTeams:AppendTeam(teamData)
                         roleAndIconGroup:SetHeight(30);
                         roleAndIconGroup:SetLayout("Flow");
 
-                        local roleIcon = self.GUI:Create("Icon");
-                        roleIcon:SetImageSize(16, 16);
-                        roleIcon:SetWidth(16);
-                        roleIcon:SetHeight(30);
-                        roleIcon:SetImage("Interface/LFGFrame/UI-LFG-ICON-PORTRAITROLES");
-                        roleIcon.image:SetPoint("TOP", roleIcon.frame, "TOP", -3, -6);
-
                         local coords = roleTexCoords[member.specRoleId];
                         if coords then
+                            local roleIcon = self.GUI:Create("Icon");
+                            roleIcon:SetImageSize(16, 16);
+                            roleIcon:SetWidth(16);
+                            roleIcon:SetHeight(30);
+                            roleIcon:SetImage("Interface/LFGFrame/UI-LFG-ICON-PORTRAITROLES");
+                            roleIcon.image:SetPoint("TOP", roleIcon.frame, "TOP", -3, -6);
                             roleIcon.image:SetTexCoord(unpack(coords));
+                            roleAndIconGroup:AddChild(roleIcon);
                         end;
-
-                        roleAndIconGroup:AddChild(roleIcon);
 
                         local specLabel = self.GUI:Create("Label");
                         specLabel:SetWidth(110);
