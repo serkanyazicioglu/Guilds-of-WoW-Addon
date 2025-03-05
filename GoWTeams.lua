@@ -20,6 +20,12 @@ function GoWTeams:new(core, ui, gui)
     return self
 end
 
+local roleTexCoords = {
+    [1] = { 0, 0.296875, 0.296875, 0.61 },      -- Tank
+    [2] = { 0.296875, 0.59375, 0, 0.296875 },   -- Healer
+    [3] = { 0.296875, 0.59375, 0.296875, 0.63 } -- DPS
+};
+
 -- //SECTION - AppendTeams
 function GoWTeams:AppendTeam(teamData)
     local itemGroup = self.GUI:Create("InlineGroup");
@@ -453,12 +459,6 @@ function GoWTeams:AppendTeam(teamData)
                         roleIcon:SetHeight(30);
                         roleIcon:SetImage("Interface/LFGFrame/UI-LFG-ICON-PORTRAITROLES");
                         roleIcon.image:SetPoint("TOP", roleIcon.frame, "TOP", -3, -6);
-
-                        local roleTexCoords = {
-                            [1] = { 0, 0.296875, 0.296875, 0.61 },      -- Tank
-                            [2] = { 0.296875, 0.59375, 0, 0.296875 },   -- Healer
-                            [3] = { 0.296875, 0.59375, 0.296875, 0.63 } -- DPS
-                        };
 
                         local coords = roleTexCoords[member.specRoleId];
                         if coords then
