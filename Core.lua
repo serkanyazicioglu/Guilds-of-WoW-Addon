@@ -454,12 +454,10 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	Core:Debug(event);
 
 	if event == "PLAYER_REGEN_DISABLED" then
-		if GOW.DB.profile.hideInCombat == true then
-			if containerFrame and containerFrame:IsShown() then
-				containerFrame:Hide();
-				if _G.GoWTeamTabContainer then
-					_G.GoWTeamTabContainer:Hide();
-				end
+		if GOW.DB.profile.hideInCombat == true and containerFrame and containerFrame:IsShown() then
+			containerFrame:Hide();
+			if _G.GoWTeamTabContainer then
+				_G.GoWTeamTabContainer:Hide();
 			end
 		else
 			return
