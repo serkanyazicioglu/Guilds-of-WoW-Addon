@@ -16,7 +16,7 @@ GOW.defaults = {
 		version = 1,
 		minimap = { hide = false },
 		warnNewEvents = true,
-		hideOnCombat = true,
+		hideInCombat = true,
 	}
 }
 
@@ -454,7 +454,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	Core:Debug(event);
 
 	if event == "PLAYER_REGEN_DISABLED" then
-		if GOW.DB.profile.hideOnCombat == true then
+		if GOW.DB.profile.hideInCombat == true then
 			if containerFrame and containerFrame:IsShown() then
 				containerFrame:Hide();
 				if _G.GoWTeamTabContainer then
