@@ -40,7 +40,7 @@ local optionsTable = {
                         GOW.DB.profile.warnNewEvents = value;
                     end,
                 },
-                hideInCombat = {
+                HideInCombat = {
                     type = "toggle",
                     order = 3,
                     name = "Hide in combat.",

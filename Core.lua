@@ -453,17 +453,6 @@ end
 f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	Core:Debug(event);
 
-	if event == "PLAYER_REGEN_DISABLED" then
-		if GOW.DB.profile.hideInCombat == true and containerFrame and containerFrame:IsShown() then
-			containerFrame:Hide();
-			if _G.GoWTeamTabContainer then
-				_G.GoWTeamTabContainer:Hide();
-			end
-		else
-			return
-		end
-	end
-
 	if event == "PLAYER_ENTERING_WORLD" then
 		isInitialLogin = arg1;
 
@@ -613,6 +602,13 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		end
 	elseif event == "FRIENDLIST_UPDATE" then
 		Core:CreateRecruitmentApplications();
+	elseif event == "PLAYER_REGEN_DISABLED" then
+		if GOW.DB.profile.hideInCombat and containerFrame and containerFrame:IsShown() then
+			containerFrame:Hide();
+			if _G.GoWTeamTabContainer then
+				_G.GoWTeamTabContainer:Hide();
+			end
+		end
 	end
 end)
 
