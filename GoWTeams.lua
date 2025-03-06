@@ -20,6 +20,11 @@ function GoWTeams:new(core, ui, gui)
     return self
 end
 
+local roleNames = {
+    [1] = "Tank",
+    [2] = "Healer",
+    [3] = "DPS"
+};
 local roleTexCoords = {
     [1] = { 0, 0.296875, 0.296875, 0.61 },      -- Tank
     [2] = { 0.296875, 0.59375, 0, 0.296875 },   -- Healer
@@ -462,6 +467,18 @@ function GoWTeams:AppendTeam(teamData)
                             roleIcon:SetImage("Interface/LFGFrame/UI-LFG-ICON-PORTRAITROLES");
                             roleIcon.image:SetPoint("TOP", roleIcon.frame, "TOP", -3, -6);
                             roleIcon.image:SetTexCoord(unpack(coords));
+                            roleIcon:SetCallback("OnEnter", function(self)
+                                local tooltip = LibQTip:Acquire("RoleIconTooltip", 1, "LEFT");
+                                GOW.tooltip = tooltip;
+                                
+                                tooltip:AddHeader('|cffffcc00' .. roleNames[member.specRoleId]);
+                                tooltip:SmartAnchorTo(self.frame);
+                                tooltip:Show();
+                            end);
+                            roleIcon:SetCallback("OnLeave", function()
+                                LibQTip:Release(GOW.tooltip);
+                                GOW.tooltip = nil;
+                            end);
                             roleAndIconGroup:AddChild(roleIcon);
                         end;
 
