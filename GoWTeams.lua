@@ -26,6 +26,23 @@ local roles = {
     [3] = { name = "DPS", iconTexCoords = { 0.296875, 0.59375, 0.296875, 0.63 } }
 };
 
+-- these are used to populate the "Filter by Role" dropdown
+local rolesForFilter = {
+    ["All"] = "All",
+    ["Tank"] = "Tank",
+    ["Healer"] = "Healer",
+    ["DPS"] = "DPS",
+};
+
+-- these are used to populate the sort dropdown
+local valuesForDropdown = {
+    ["Name"] = "Name",
+    ["Class"] = "Class",
+    ["Spec"] = "Spec",
+    ["Armor Token"] = "Armor Token",
+    ["Online Status"] = "Online Status",
+};
+
 -- //SECTION - AppendTeams
 function GoWTeams:AppendTeam(teamData)
     local itemGroup = self.GUI:Create("InlineGroup");
@@ -113,23 +130,6 @@ function GoWTeams:AppendTeam(teamData)
         local altGroupFound = false;
         local backupGroupFound = false;
         local trialGroupFound = false;
-
-        -- these are used to populate the "Filter by Role" dropdown
-        local rolesForFilter = {
-            ["All"] = "All",
-            ["Tank"] = "Tank",
-            ["Healer"] = "Healer",
-            ["DPS"] = "DPS",
-        };
-
-        -- these are used to populate the sort dropdown
-        local valuesForDropdown = {
-            ["Name"] = "Name",
-            ["Class"] = "Class",
-            ["Spec"] = "Spec",
-            ["Armor Token"] = "Armor Token",
-            ["Online Status"] = "Online Status",
-        };
 
         local currentFilterValue = "All"; -- holds the current value of the filter dropdown
         local currentSortValue = "None";  -- holds the current value of the sort dropdown
