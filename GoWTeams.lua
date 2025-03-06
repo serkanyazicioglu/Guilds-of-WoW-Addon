@@ -91,9 +91,6 @@ function GoWTeams:AppendTeam(teamData)
     viewTeamButton:SetWidth(200);
     viewTeamButton:SetCallback("OnClick", function()
         self.CORE:DestroyTeamContainer();
-        if GoWTeamTabContainer ~= nil then
-            return;
-        end;
 
         -- //SECTION Team Details (TD) - Tables and Variables
         local teamNavItems = {}; -- holds the different team groups (Main, Alt, Backup, Trial) and used to render the nav buttons
@@ -248,7 +245,7 @@ function GoWTeams:AppendTeam(teamData)
 
         -- // STUB Role Filter
         local roleFilter = self.GUI:Create("Dropdown");
-        roleFilter:SetLabel("  Filter by Role");
+        roleFilter:SetLabel("Filter by Role");
         roleFilter:SetList(rolesForFilter, { "All", "Tank", "Healer", "DPS" });
         roleFilter:SetValue("All");
         roleFilter:SetWidth(150);
@@ -573,7 +570,6 @@ function GoWTeams:AppendTeam(teamData)
                             if IsInGroup() then
                                 local numGroup = GetNumGroupMembers();
                                 local unitPrefix = IsInRaid() and "raid" or "party";
-                                -- Ensure realmNormalized is defined, fallback to member.name if not.
                                 local memberFullName = (member.name .. "-" .. member.realmNormalized) or member.name;
                                 for i = 1, numGroup do
                                     local unitId = unitPrefix .. i;
@@ -693,7 +689,6 @@ function GoWTeams:AppendTeam(teamData)
             end;
         end;
 
-        -- add the roles that are found in the team to the teamNavItems table
         if mainGroupFound then
             table.insert(teamNavItems, "Main");
         end;
@@ -711,7 +706,6 @@ function GoWTeams:AppendTeam(teamData)
         end;
 
         -- //STUB Render Nav Buttons
-        -- create a list of buttons for the different team roles present in the teamNavItems
         if teamNavItems then
             for _, teamGroup in ipairs(teamNavItems) do
                 local teamGroupNavBtn = self.GUI:Create("Button");
@@ -721,7 +715,6 @@ function GoWTeams:AppendTeam(teamData)
                 local teamGroupNavBtnTexture = teamGroupNavBtn.frame:CreateTexture(nil, "BACKGROUND");
                 teamGroupNavBtnTexture:SetAllPoints();
 
-                -- set the callback for the button to render the team members for the selected teamGroup
                 teamGroupNavBtn:SetCallback("OnClick", function()
                     if GoWTeamMemberContainer then
                         GoWTeamMemberContainer:ReleaseChildren();
@@ -748,7 +741,7 @@ function GoWTeams:AppendTeam(teamData)
 
     local inviteToPartyButton = self.GUI:Create("Button");
     inviteToPartyButton:SetText("Invite Team");
-    inviteToPartyButton:SetWidth(200);
+    inviteToPartyButton:SetWidth(120);
     inviteToPartyButton:SetCallback("OnClick", function()
         self.CORE:DestroyTeamContainer();
         self.CORE:InviteAllTeamMembersToPartyCheck(teamData);
@@ -767,23 +760,23 @@ end
 -- //!SECTION
 
 function GoWTeams:GoWHexToRGB(hex)
-    hex = hex:gsub("#", "") -- remove the hash if present
+    hex = hex:gsub("#", "");
     if #hex == 6 then
-        local r = tonumber("0x" .. hex:sub(1, 2)) / 255
-        local g = tonumber("0x" .. hex:sub(3, 4)) / 255
-        local b = tonumber("0x" .. hex:sub(5, 6)) / 255
-        return r, g, b
+        local r = tonumber("0x" .. hex:sub(1, 2)) / 255;
+        local g = tonumber("0x" .. hex:sub(3, 4)) / 255;
+        local b = tonumber("0x" .. hex:sub(5, 6)) / 255;
+        return r, g, b;
     else
-        error("Invalid hex color: " .. tostring(hex))
+        error("Invalid hex color: " .. tostring(hex));
     end
 end
 
 function GoWTeams:SetBackdrop()
-    local frame = GoWTeamTabContainer.frame
+    local frame = GoWTeamTabContainer.frame;
 
     -- Apply BackdropTemplateMixin to allow SetBackdrop()
     if not frame.SetBackdrop then
-        Mixin(frame, BackdropTemplateMixin)
+        Mixin(frame, BackdropTemplateMixin);
     end
 
     frame:SetBackdrop({
@@ -793,8 +786,8 @@ function GoWTeams:SetBackdrop()
         tileSize = 32,
         edgeSize = 32,
         insets = { left = 8, right = 8, top = 8, bottom = 8 }
-    })
+    });
 
-    frame:SetBackdropColor(0, 0, 0, 1)
-    frame:SetBackdropBorderColor(1, 1, 1, 1)
+    frame:SetBackdropColor(0, 0, 0, 1);
+    frame:SetBackdropBorderColor(1, 1, 1, 1);
 end

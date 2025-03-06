@@ -175,9 +175,7 @@ function GOW:OnInitialize()
 			currentOpenDialog = nil;
 		end
 
-		if (GoWTeamTabContainer) then
-			GoWTeamTabContainer:Hide();
-		end
+		Core:DestroyTeamContainer();
 	end);
 	containerFrame:Hide();
 
@@ -605,9 +603,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	elseif event == "PLAYER_REGEN_DISABLED" then
 		if GOW.DB.profile.hideInCombat and containerFrame and containerFrame:IsShown() then
 			containerFrame:Hide();
-			if _G.GoWTeamTabContainer then
-				_G.GoWTeamTabContainer:Hide();
-			end
+			Core:DestroyTeamContainer();
 		end
 	end
 end)
@@ -1847,16 +1843,6 @@ function Core:InviteAllToParty(event)
 	Core:Debug("inviteIndex: " .. inviteIndex);
 
 	if (inviteIndex > 1) then
-		-- if (inviteIndex > 5) then
-		-- 	local allowed = C_PartyInfo.AllowedToDoPartyConversion(true);
-
-		-- 	--if (allowed) then
-		-- 		C_PartyInfo.ConvertToRaid();
-		-- 	-- else
-		-- 	-- 	Core:Debug("ConvertToRaid not allowed");
-		-- 	-- end
-		-- end
-
 		for a = 1, inviteIndex - 1 do
 			local inviteName = invitingMembers[a];
 			if (inviteName ~= me) then
@@ -1894,16 +1880,6 @@ function Core:InviteAllTeamMembersToParty(teamData)
 	Core:Debug("inviteIndex: " .. inviteIndex);
 
 	if (inviteIndex > 1) then
-		-- if (inviteIndex > 5) then
-		-- 	local allowed = C_PartyInfo.AllowedToDoPartyConversion(true);
-
-		-- 	--if (allowed) then
-		-- 		C_PartyInfo.ConvertToRaid();
-		-- 	-- else
-		-- 	-- 	Core:Debug("ConvertToRaid not allowed");
-		-- 	-- end
-		-- end
-
 		for a = 1, inviteIndex - 1 do
 			local inviteName = invitingMembers[a];
 			if (inviteName ~= me) then
@@ -2115,7 +2091,7 @@ end
 
 function Core:PrintTable(t)
 	for key, value in pairs(t) do
-		print(key, value)
+		print(key, value);
 	end
 end
 
