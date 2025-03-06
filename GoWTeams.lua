@@ -730,7 +730,7 @@ function GoWTeams:AppendTeam(teamData)
                     end;
 
                     hideOfflineMembersCheckBox:SetValue(isOfflineChecked);
-                    RenderFilteredTeamMembers(teamGroup, isOfflineChecked, currentFilterValue);
+                    RenderFilteredTeamMembers(teamGroup, isOfflineChecked, currentFilterValue, currentSortValue);
 
                     GoWScrollTeamMemberContainer:SetTitle(teamGroup .. " Members");
                     GoWScrollTeamMemberContainer:SetUserData("teamGroup", teamGroup);
