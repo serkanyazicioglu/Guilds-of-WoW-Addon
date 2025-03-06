@@ -614,6 +614,7 @@ end)
 
 function Core:ToggleTabs(tabKey)
 	selectedTab = tabKey;
+	Core:DestroyTeamContainer();
 	Core:RefreshApplication();
 end
 
@@ -2146,4 +2147,10 @@ function Core:Contains(table, element)
 		end
 	end
 	return false
+end
+
+function Core:DestroyTeamContainer()
+	if _G.GoWTeamTabContainer then
+		_G.GoWTeamTabContainer:Hide();
+	end
 end

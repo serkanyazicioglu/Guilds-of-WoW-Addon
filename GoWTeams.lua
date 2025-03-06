@@ -90,6 +90,7 @@ function GoWTeams:AppendTeam(teamData)
     viewTeamButton:SetText("View Roster");
     viewTeamButton:SetWidth(200);
     viewTeamButton:SetCallback("OnClick", function()
+        self.CORE:DestroyTeamContainer();
         if GoWTeamTabContainer ~= nil then
             return;
         end;
@@ -146,17 +147,14 @@ function GoWTeams:AppendTeam(teamData)
         GoWTeamTabContainer.frame:SetFrameStrata("HIGH");
         GoWTeamTabContainer:SetLayout("Flow");
         GoWTeamTabContainer.closebutton:SetPoint("TOPRIGHT", -2, -2);
+        self:SetBackdrop();
 
         _G[FRAME_NAME] = GoWTeamTabContainer.frame;
-        self.UI.containerFrame.frame:SetAlpha(.5);
-        self.UI.containerTabs.frame:Hide();
         GoWTeamTabContainer:SetCallback("OnClose", function()
             GoWTeamTabContainer:ReleaseChildren();
             GoWTeamTabContainer:Release();
             GoWTeamTabContainer = nil;
 
-            self.UI.containerFrame.frame:SetAlpha(1);
-            self.UI.containerTabs.frame:Show();
             _G[FRAME_NAME] = self.UI.containerFrame.frame;
         end);
 
@@ -556,7 +554,7 @@ function GoWTeams:AppendTeam(teamData)
                         local tokenLabel = self.GUI:Create("Label");
                         tokenLabel:SetWidth(90);
                         tokenLabel:SetText(member.armorToken);
-                        local tokenColorR, tokenColorG, tokenColorB = GoWHexToRGB(member.armorTokenColor);
+                        local tokenColorR, tokenColorG, tokenColorB = self:GoWHexToRGB(member.armorTokenColor);
                         tokenLabel:SetColor(tokenColorR, tokenColorG, tokenColorB);
                         tokenLabel:SetFontObject(GameFontNormal);
                         memberContainer:AddChild(tokenLabel);
@@ -752,6 +750,7 @@ function GoWTeams:AppendTeam(teamData)
     inviteToPartyButton:SetText("Invite Team");
     inviteToPartyButton:SetWidth(200);
     inviteToPartyButton:SetCallback("OnClick", function()
+        self.CORE:DestroyTeamContainer();
         self.CORE:InviteAllTeamMembersToPartyCheck(teamData);
     end);
     buttonsGroup:AddChild(inviteToPartyButton);
@@ -767,7 +766,7 @@ end
 
 -- //!SECTION
 
-function GoWHexToRGB(hex)
+function GoWTeams:GoWHexToRGB(hex)
     hex = hex:gsub("#", "") -- remove the hash if present
     if #hex == 6 then
         local r = tonumber("0x" .. hex:sub(1, 2)) / 255
@@ -777,4 +776,25 @@ function GoWHexToRGB(hex)
     else
         error("Invalid hex color: " .. tostring(hex))
     end
+end
+
+function GoWTeams:SetBackdrop()
+    local frame = GoWTeamTabContainer.frame
+
+    -- Apply BackdropTemplateMixin to allow SetBackdrop()
+    if not frame.SetBackdrop then
+        Mixin(frame, BackdropTemplateMixin)
+    end
+
+    frame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true,
+        tileSize = 32,
+        edgeSize = 32,
+        insets = { left = 8, right = 8, top = 8, bottom = 8 }
+    })
+
+    frame:SetBackdropColor(0, 0, 0, 1)
+    frame:SetBackdropBorderColor(1, 1, 1, 1)
 end
