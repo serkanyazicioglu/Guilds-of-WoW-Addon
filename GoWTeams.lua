@@ -20,6 +20,12 @@ function GoWTeams:new(core, ui, gui)
     return self
 end
 
+local roleTexCoords = {
+    [1] = { 0, 0.296875, 0.296875, 0.61 },      -- Tank
+    [2] = { 0.296875, 0.59375, 0, 0.296875 },   -- Healer
+    [3] = { 0.296875, 0.59375, 0.296875, 0.63 } -- DPS
+};
+
 -- //SECTION - AppendTeams
 function GoWTeams:AppendTeam(teamData)
     local itemGroup = self.GUI:Create("InlineGroup");
@@ -436,27 +442,46 @@ function GoWTeams:AppendTeam(teamData)
                         memberContainer:AddChild(factionIcon);
 
                         local nameLabel = self.GUI:Create("Label");
-                        nameLabel:SetWidth(130);
+                        nameLabel:SetWidth(170);
                         nameLabel:SetText(member.name);
                         nameLabel:SetFontObject(GameFontNormal);
                         nameLabel:SetColor(classColorRGB.r, classColorRGB.g, classColorRGB.b);
                         memberContainer:AddChild(nameLabel);
 
+                        local roleAndIconGroup = self.GUI:Create("SimpleGroup");
+                        roleAndIconGroup:SetWidth(130);
+                        roleAndIconGroup:SetHeight(30);
+                        roleAndIconGroup:SetLayout("Flow");
+
+                        local coords = roleTexCoords[member.specRoleId];
+                        if coords then
+                            local roleIcon = self.GUI:Create("Icon");
+                            roleIcon:SetImageSize(16, 16);
+                            roleIcon:SetWidth(16);
+                            roleIcon:SetHeight(30);
+                            roleIcon:SetImage("Interface/LFGFrame/UI-LFG-ICON-PORTRAITROLES");
+                            roleIcon.image:SetPoint("TOP", roleIcon.frame, "TOP", -3, -6);
+                            roleIcon.image:SetTexCoord(unpack(coords));
+                            roleAndIconGroup:AddChild(roleIcon);
+                        end;
+
                         local specLabel = self.GUI:Create("Label");
                         specLabel:SetWidth(110);
                         specLabel:SetText(member.spec);
                         specLabel:SetFontObject(GameFontNormal);
-                        memberContainer:AddChild(specLabel);
+                        roleAndIconGroup:AddChild(specLabel);
+
+                        memberContainer:AddChild(roleAndIconGroup);
 
                         local tokenLabel = self.GUI:Create("Label");
-                        tokenLabel:SetWidth(110);
+                        tokenLabel:SetWidth(90);
                         tokenLabel:SetText(member.armorToken);
                         tokenLabel:SetColor(0.64, 0.21, 0.93);
                         tokenLabel:SetFontObject(GameFontNormal);
                         memberContainer:AddChild(tokenLabel);
 
                         local guildRankLabel = self.GUI:Create("Label");
-                        guildRankLabel:SetWidth(160);
+                        guildRankLabel:SetWidth(110);
                         guildRankLabel:SetText(guildRankName);
                         guildRankLabel:SetFontObject(GameFontNormal);
                         memberContainer:AddChild(guildRankLabel);
