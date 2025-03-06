@@ -13,22 +13,34 @@ local GoWScrollTeamMemberContainer = nil;
 local GoWTeamMemberContainer = nil;
 
 function GoWTeams:new(core, ui, gui)
-    local self = setmetatable({}, GoWTeams)
-    self.CORE = core
-    self.UI = ui
-    self.GUI = gui
-    return self
+    local self = setmetatable({}, GoWTeams);
+    self.CORE = core;
+    self.UI = ui;
+    self.GUI = gui;
+    return self;
 end
 
-local roleNames = {
-    [1] = "Tank",
-    [2] = "Healer",
-    [3] = "DPS"
+local roles = {
+    [1] = { name = "Tank", iconTexCoords = { 0, 0.296875, 0.296875, 0.61 } },
+    [2] = { name = "Healer", iconTexCoords = { 0.296875, 0.59375, 0, 0.296875 } },
+    [3] = { name = "DPS", iconTexCoords = { 0.296875, 0.59375, 0.296875, 0.63 } }
 };
-local roleTexCoords = {
-    [1] = { 0, 0.296875, 0.296875, 0.61 },      -- Tank
-    [2] = { 0.296875, 0.59375, 0, 0.296875 },   -- Healer
-    [3] = { 0.296875, 0.59375, 0.296875, 0.63 } -- DPS
+
+-- these are used to populate the "Filter by Role" dropdown
+local rolesForFilter = {
+    ["All"] = "All",
+    ["Tank"] = "Tank",
+    ["Healer"] = "Healer",
+    ["DPS"] = "DPS",
+};
+
+-- these are used to populate the sort dropdown
+local valuesForDropdown = {
+    ["Name"] = "Name",
+    ["Class"] = "Class",
+    ["Spec"] = "Spec",
+    ["Armor Token"] = "Armor Token",
+    ["Online Status"] = "Online Status",
 };
 
 -- //SECTION - AppendTeams
@@ -119,15 +131,8 @@ function GoWTeams:AppendTeam(teamData)
         local backupGroupFound = false;
         local trialGroupFound = false;
 
-        -- these are used to populate the "Filter by Role" dropdown
-        local rolesForFilter = {
-            ["All"] = "All",
-            ["Tank"] = "Tank",
-            ["Healer"] = "Healer",
-            ["DPS"] = "DPS",
-        }
-
         local currentFilterValue = "All"; -- holds the current value of the filter dropdown
+        local currentSortValue = "None";  -- holds the current value of the sort dropdown
         local isOfflineChecked = false;   -- holds the value of the hide offline members checkbox
         -- //!SECTION
 
@@ -222,7 +227,7 @@ function GoWTeams:AppendTeam(teamData)
                 local checkBoxValue = hideOfflineMembersCheckBox:GetValue();
 
                 -- args: teamGroup, hideOffline, specRole
-                RenderFilteredTeamMembers(teamGroup, checkBoxValue, filterValue);
+                RenderFilteredTeamMembers(teamGroup, checkBoxValue, filterValue, currentSortValue);
 
                 isOfflineChecked = checkBoxValue;
                 checkBoxValue = not checkBoxValue;
@@ -266,7 +271,7 @@ function GoWTeams:AppendTeam(teamData)
 
             if selectedRole then
                 -- render the team members based on the role selected and whether or not the hide offline members checkbox is checked
-                RenderFilteredTeamMembers(teamGroup, isOfflineChecked, selectedRole);
+                RenderFilteredTeamMembers(teamGroup, isOfflineChecked, selectedRole, currentSortValue);
 
                 -- set the current filter value to the selected role
                 currentFilterValue = selectedRole;
@@ -282,9 +287,47 @@ function GoWTeams:AppendTeam(teamData)
         roleFilter:ClearAllPoints();
         roleFilter:SetPoint("BOTTOMRIGHT", GoWTeamMemberContainer.frame, "TOPRIGHT", 7, 12);
 
+        -- // STUB Sort Dropdown
+        local sortDropdown = self.GUI:Create("Dropdown");
+        sortDropdown:SetLabel("  Sort by");
+        sortDropdown:SetList(valuesForDropdown, { "Name", "Class", "Spec", "Armor Token", "Online Status" });
+        sortDropdown:SetValue("Online Status");
+        sortDropdown:SetWidth(150);
+        sortDropdown.label:SetFontObject(GameFontNormal);
+        sortDropdown:SetCallback("OnValueChanged", function(key)
+            local selectedValue = key:GetValue();
+
+            -- clear the team member container before rendering the filtered members
+            if GoWTeamMemberContainer then
+                GoWTeamMemberContainer:ReleaseChildren();
+            end;
+
+            local teamGroup = nil;
+            if GoWScrollTeamMemberContainer then
+                -- get the current role selected from the navigation buttons
+                teamGroup = GoWScrollTeamMemberContainer:GetUserData("teamGroup");
+            end;
+
+            if selectedValue then
+                -- render the team members based on the role selected, whether or not the hide offline members checkbox is checked, the current filter value, and the selected value
+                RenderFilteredTeamMembers(teamGroup, isOfflineChecked, currentFilterValue, selectedValue);
+
+                -- set the current dropdown value to the selected value
+                currentSortValue = selectedValue;
+            end;
+        end);
+
+        -- ensures that the OnValueChanged callback is fired when the dropdown is created
+        if sortDropdown then
+            C_Timer.After(0, function() sortDropdown:Fire("OnValueChanged") end);
+        end;
+        teamInfoContainer:AddChild(sortDropdown, roleFilter);
+        sortDropdown:ClearAllPoints();
+        sortDropdown:SetPoint("BOTTOMRIGHT", GoWTeamMemberContainer.frame, "TOPRIGHT", -145, 12);
+
         -- //SECTION TD - Render Team Members
         -- //STUB (Fn) RenderFilteredTeamMembers
-        function RenderFilteredTeamMembers(teamGroup, hideOffline, specRole)
+        function RenderFilteredTeamMembers(teamGroup, hideOffline, specRole, sortValue)
             C_GuildInfo.GuildRoster();
 
             local currentPlayerName = UnitName("player");
@@ -334,6 +377,42 @@ function GoWTeams:AppendTeam(teamData)
                 end;
             end;
 
+            -- if sortValue is selected, sort the members based on the sortValue
+            if sortValue then
+                if sortValue == "Name" then
+                    table.sort(filteredMembers, function(a, b)
+                        return a.name < b.name;
+                    end);
+                elseif sortValue == "Class" then
+                    table.sort(filteredMembers, function(a, b)
+                        return a.classId < b.classId;
+                    end);
+                elseif sortValue == "Spec" then
+                    table.sort(filteredMembers, function(a, b)
+                        return a.spec < b.spec;
+                    end);
+                elseif sortValue == "Armor Token" then
+                    table.sort(filteredMembers, function(a, b)
+                        return a.armorToken < b.armorToken;
+                    end);
+                elseif sortValue == "Online Status" then
+                    table.sort(filteredMembers, function(a, b)
+                        local function isOnline(member)
+                            local num = GetNumGuildMembers();
+                            for i = 1, num do
+                                local name, _, _, _, _, _, _, _, online = GetGuildRosterInfo(i);
+                                local baseName = name and name:match("^(.-)%-") or name;
+                                if baseName == member.name then
+                                    return online;
+                                end;
+                            end;
+                            return false;
+                        end;
+                        return isOnline(a) and not isOnline(b);
+                    end);
+                end;
+            end;
+
             -- a local variable to help us render empty states
             local totalTeamMembers = #filteredMembers;
 
@@ -354,22 +433,6 @@ function GoWTeams:AppendTeam(teamData)
 
             -- Render each filtered member.
             if filteredMembers then
-                -- Sort the members by online status.
-                table.sort(filteredMembers, function(a, b)
-                    local function isOnline(member)
-                        local num = GetNumGuildMembers();
-                        for i = 1, num do
-                            local name, _, _, _, _, _, _, _, online = GetGuildRosterInfo(i);
-                            local baseName = name and name:match("^(.-)%-") or name;
-                            if baseName == member.name then
-                                return online;
-                            end;
-                        end;
-                        return false;
-                    end;
-                    return isOnline(a) and not isOnline(b);
-                end);
-
                 -- attempt to find the member in the guild roster
                 for _, member in ipairs(filteredMembers) do
                     local isConnected = nil;
@@ -458,7 +521,7 @@ function GoWTeams:AppendTeam(teamData)
                         roleAndIconGroup:SetHeight(30);
                         roleAndIconGroup:SetLayout("Flow");
 
-                        local coords = roleTexCoords[member.specRoleId];
+                        local coords = roles[member.specRoleId].iconTexCoords;
                         if coords then
                             local roleIcon = self.GUI:Create("Icon");
                             roleIcon:SetImageSize(16, 16);
@@ -470,8 +533,8 @@ function GoWTeams:AppendTeam(teamData)
                             roleIcon:SetCallback("OnEnter", function(self)
                                 local tooltip = LibQTip:Acquire("RoleIconTooltip", 1, "LEFT");
                                 GOW.tooltip = tooltip;
-                                
-                                tooltip:AddHeader('|cffffcc00' .. roleNames[member.specRoleId]);
+
+                                tooltip:AddHeader('|cffffcc00' .. roles[member.specRoleId].name);
                                 tooltip:SmartAnchorTo(self.frame);
                                 tooltip:Show();
                             end);
@@ -493,7 +556,8 @@ function GoWTeams:AppendTeam(teamData)
                         local tokenLabel = self.GUI:Create("Label");
                         tokenLabel:SetWidth(90);
                         tokenLabel:SetText(member.armorToken);
-                        tokenLabel:SetColor(0.64, 0.21, 0.93);
+                        local tokenColorR, tokenColorG, tokenColorB = GoWHexToRGB(member.armorTokenColor);
+                        tokenLabel:SetColor(tokenColorR, tokenColorG, tokenColorB);
                         tokenLabel:SetFontObject(GameFontNormal);
                         memberContainer:AddChild(tokenLabel);
 
@@ -702,3 +766,15 @@ function GoWTeams:AppendTeam(teamData)
 end
 
 -- //!SECTION
+
+function GoWHexToRGB(hex)
+    hex = hex:gsub("#", "") -- remove the hash if present
+    if #hex == 6 then
+        local r = tonumber("0x" .. hex:sub(1, 2)) / 255
+        local g = tonumber("0x" .. hex:sub(3, 4)) / 255
+        local b = tonumber("0x" .. hex:sub(5, 6)) / 255
+        return r, g, b
+    else
+        error("Invalid hex color: " .. tostring(hex))
+    end
+end
