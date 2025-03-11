@@ -148,11 +148,7 @@ function GoWTeams:AppendTeam(teamData)
 
         _G[FRAME_NAME] = GoWTeamTabContainer.frame;
         GoWTeamTabContainer:SetCallback("OnClose", function()
-            GoWTeamTabContainer:ReleaseChildren();
-            GoWTeamTabContainer:Release();
-            GoWTeamTabContainer = nil;
-
-            _G[FRAME_NAME] = self.UI.containerFrame.frame;
+            self.CORE:DestroyTeamContainer();
         end);
 
         -- //STUB TD - Nav Container
