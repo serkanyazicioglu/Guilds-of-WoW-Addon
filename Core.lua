@@ -2100,5 +2100,7 @@ function Core:DestroyTeamContainer()
 		_G.GoWTeamTabContainer:ReleaseChildren();
 		_G.GoWTeamTabContainer:Release();
 		_G.GoWTeamTabContainer = nil;
+
+		_G[FRAME_NAME] = containerFrame.frame;
 	end
 end
