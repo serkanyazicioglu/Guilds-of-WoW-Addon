@@ -202,12 +202,24 @@ function GoWTeams:AppendTeam(teamData)
         teamDescriptionLabel:SetDisabled(false);
         teamInfoContainer:AddChild(teamDescriptionLabel);
 
+        local roleAndHideOfflineGroup = self.GUI:Create("SimpleGroup");
+        roleAndHideOfflineGroup:SetLayout("Flow");
+        roleAndHideOfflineGroup:SetWidth(740);
+        roleAndHideOfflineGroup:SetHeight(30);
+        teamInfoContainer:AddChild(roleAndHideOfflineGroup);
+
+        local marginGap = self.GUI:Create("SimpleGroup");
+        marginGap:SetLayout("Flow");
+        marginGap:SetHeight(40); -- adds margin
+        marginGap:SetWidth(5);
+
         -- // STUB Hide Offline Members Button
         local hideOfflineMembersCheckBox = self.GUI:Create("CheckBox");
         hideOfflineMembersCheckBox:SetLabel("Hide Offline Members");
         hideOfflineMembersCheckBox:SetValue(isOfflineChecked);
         hideOfflineMembersCheckBox:SetType("checkbox");
         hideOfflineMembersCheckBox:SetDisabled(false);
+        hideOfflineMembersCheckBox:SetHeight(18); -- helps with alignment
         hideOfflineMembersCheckBox:SetCallback("OnValueChanged", function()
             if GoWScrollTeamMemberContainer then
                 if GoWTeamMemberContainer then
@@ -224,7 +236,7 @@ function GoWTeams:AppendTeam(teamData)
                 checkBoxValue = not checkBoxValue;
             end;
         end);
-        teamInfoContainer:AddChild(hideOfflineMembersCheckBox);
+        roleAndHideOfflineGroup:AddChild(hideOfflineMembersCheckBox);
 
         -- //STUB Team Member Container
         GoWScrollTeamMemberContainer = self.GUI:Create("InlineGroup");
@@ -241,7 +253,7 @@ function GoWTeams:AppendTeam(teamData)
 
         -- // STUB Role Filter
         local roleFilter = self.GUI:Create("Dropdown");
-        roleFilter:SetLabel("Filter by Role");
+        roleFilter:SetLabel("  Filter by Role");
         roleFilter:SetList(rolesForFilter, { "All", "Tank", "Healer", "DPS" });
         roleFilter:SetValue("All");
         roleFilter:SetWidth(150);
@@ -274,9 +286,9 @@ function GoWTeams:AppendTeam(teamData)
             C_Timer.After(0, function() roleFilter:Fire("OnValueChanged") end);
         end;
 
-        teamInfoContainer:AddChild(roleFilter, GoWScrollTeamMemberContainer);
-        roleFilter:ClearAllPoints();
-        roleFilter:SetPoint("BOTTOMRIGHT", GoWTeamMemberContainer.frame, "TOPRIGHT", 7, 12);
+        roleAndHideOfflineGroup:AddChild(roleFilter, hideOfflineMembersCheckBox);
+
+        roleAndHideOfflineGroup:AddChild(marginGap, hideOfflineMembersCheckBox);
 
         -- // STUB Sort Dropdown
         local sortDropdown = self.GUI:Create("Dropdown");
@@ -314,7 +326,7 @@ function GoWTeams:AppendTeam(teamData)
         end;
         teamInfoContainer:AddChild(sortDropdown, roleFilter);
         sortDropdown:ClearAllPoints();
-        sortDropdown:SetPoint("BOTTOMRIGHT", GoWTeamMemberContainer.frame, "TOPRIGHT", -145, 12);
+        sortDropdown:SetPoint("BOTTOMRIGHT", GoWTeamMemberContainer.frame, "TOPRIGHT", 0, 12);
 
         -- //SECTION TD - Render Team Members
         -- //STUB (Fn) RenderFilteredTeamMembers
