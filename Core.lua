@@ -2097,6 +2097,8 @@ end
 
 function Core:DestroyTeamContainer()
 	if _G.GoWTeamTabContainer then
-		_G.GoWTeamTabContainer:Hide();
+		_G.GoWTeamTabContainer:ReleaseChildren();
+		_G.GoWTeamTabContainer:Release();
+		_G.GoWTeamTabContainer = nil;
 	end
 end
