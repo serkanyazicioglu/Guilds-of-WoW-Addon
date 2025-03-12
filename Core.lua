@@ -2095,38 +2095,12 @@ function Core:PrintTable(t)
 	end
 end
 
-function Core:PrintTableContents(tbl)
-	if type(tbl) ~= "table" then
-		print("Not a table!")
-		return
-	end
-
-	-- Use pairs to support both array-like and key-value tables.
-	for key, value in pairs(tbl) do
-		local keyStr = tostring(key)
-
-		if type(value) == "table" then
-			print("Key " .. keyStr .. " -> table:")
-			-- Recursively print nested tables with indentation.
-			Core:PrintTableContents(value)
-		else
-			print("Key " .. keyStr .. ": " .. tostring(value))
-		end
-	end
-end
-
--- helper function to check if a table contains a value
-function Core:Contains(table, element)
-	for _, value in pairs(table) do
-		if value == element then
-			return true
-		end
-	end
-	return false
-end
-
 function Core:DestroyTeamContainer()
 	if _G.GoWTeamTabContainer then
-		_G.GoWTeamTabContainer:Hide();
+		_G.GoWTeamTabContainer:ReleaseChildren();
+		_G.GoWTeamTabContainer:Release();
+		_G.GoWTeamTabContainer = nil;
+
+		_G[FRAME_NAME] = containerFrame.frame;
 	end
 end
