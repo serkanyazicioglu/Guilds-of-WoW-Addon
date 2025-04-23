@@ -1,9 +1,9 @@
-## Interface: 11506
+## Interface: 11507
 ## Title: Guilds of WoW
 ## Notes: Guilds of WoW guild herald for Classic Era servers
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 1.8.6
+## Version: 1.8.7
 ## SavedVariables: GoWDB
 
 embed.xml
