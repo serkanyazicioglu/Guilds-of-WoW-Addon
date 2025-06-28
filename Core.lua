@@ -121,6 +121,7 @@ function GOW:OnInitialize()
 	workQueue = self.WorkQueue.new();
 	persistentWorkQueue = self.WorkQueue.new();
 	processedEvents = GOW.List.new();
+	C_ChatInfo.RegisterAddonMessagePrefix("GuildsOfWoW");
 
 	local consoleCommandFunc = function(msg, editbox)
 		if (msg == "minimap") then
