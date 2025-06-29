@@ -1800,6 +1800,66 @@ function Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
 	end
 end
 
+function Core:BroadcastEvent(event)
+	if not event then return end
+
+	local chunkSize = 5 -- safe size based on 50–60 chars per attendee
+	local chunks = {}
+	local currentChunk = {}
+
+	for i = 1, #event.inviteMembers do
+		local m = event.inviteMembers[i]
+		if m then
+			currentChunk[#currentChunk + 1] = {
+				n = m.name,
+				r = m.realmNormalized,
+				l = m.level,
+				a = m.attendance,
+			}
+			if #currentChunk >= chunkSize or i == #event.inviteMembers then
+				chunks[#chunks + 1] = currentChunk
+				currentChunk = {}
+			end
+		end
+	end
+
+	for i, chunk in ipairs(chunks) do
+		Core:SendChunk(event, chunk, i, #chunks)
+	end
+end
+
+function Core:SendChunk(event, attendees, chunkNum, totalChunks)
+	local parts = {}
+	parts[#parts + 1] = "GOW_SYNC;v1"
+	parts[#parts + 1] = "chunk=" .. chunkNum .. "/" .. totalChunks
+	parts[#parts + 1] = "title=" .. Core:Safe(event.title or "?")
+	parts[#parts + 1] = "start=" .. Core:Safe(event.startTime or "?")
+	-- TODO - add more event details
+
+	-- Encode attendees compactly
+	local attendeeParts = {}
+	for _, m in ipairs(attendees) do
+		local line = string.format("n=%s,r=%s,c=%d,l=%d,a=%d",
+			Core:Safe(m.n), Core:Safe(m.r), m.c, m.l, m.a)
+		attendeeParts[#attendeeParts + 1] = line
+	end
+	local attendeesStr = table.concat(attendeeParts, "|")
+
+	parts[#parts + 1] = "attendees=" .. attendeesStr
+
+	local payload = table.concat(parts, ";")
+
+	if #payload <= 255 then
+		C_ChatInfo.SendAddonMessage("GuildsOfWoW", payload, "GUILD")
+	else
+		print("[GoW] Event broadcast too large, reduce chunk size (Report to Dev)")
+	end
+end
+
+function Core:Safe(str)
+	return tostring(str):gsub(";", "%%3B"):gsub("=", "%%3D")
+end
+
 function Core:InviteAllToPartyCheck(event)
 	local me = GetCurrentCharacterUniqueKey();
 
