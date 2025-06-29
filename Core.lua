@@ -611,17 +611,26 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	end
 end)
 
+local eventMessageTimer = nil;
+
 function GOW:OnEnable()
+	if eventMessageTimer then
+		self.timers:CancelTimer(eventMessageTimer);
+	end
+
 	-- Registering the communication prefix for the addon.
 	self:RegisterComm("GuildsOfWoW");
 
-	local data = Core:GetUpcomingEventsForAddonMessage();
-	if data then
-		Core:Debug("Transmitting upcoming events data to other clients.");
-		GOW:Transmit(data);
-	else
-		Core:Debug("No upcoming events data to transmit.");
-	end
+	-- Setting up a timer to periodically send the upcoming events data.
+	eventMessageTimer = self.timers:ScheduleRepeatingTimer(function()
+		if (not isPropogatingUpdate) then
+			local events = Core:GetUpcomingEventsForAddonMessage();
+			if (events and #events > 0) then
+				Core:Debug("Transmitting upcoming events data to guild members.");
+				GOW:Transmit(events);
+			end
+		end
+	end, 300); -- Send every 5 mins.
 end
 
 function Core:GetUpcomingEventsForAddonMessage()
