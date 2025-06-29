@@ -451,17 +451,6 @@ function GOW:OnInitialize()
 	};
 end
 
-function GOW:OnEnable()
-	self:RegisterComm("GuildsOfWoW");
-end
-
-function GOW:Transmit(data)
-	local serialized = LibSerialize:Serialize(data)
-	local compressed = LibDeflate:CompressDeflate(serialized)
-	local encoded = LibDeflate:EncodeForWoWAddonChannel(compressed)
-	self:SendCommMessage("GuildsOfWoW", encoded, "GUILD");
-end
-
 f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	Core:Debug(event);
 
@@ -621,6 +610,58 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		end
 	end
 end)
+
+function GOW:OnEnable()
+	-- Registering the communication prefix for the addon.
+	self:RegisterComm("GuildsOfWoW");
+
+	local data = Core:GetUpcomingEventsForAddonMessage();
+	if data then
+		Core:Debug("Transmitting upcoming events data to other clients.");
+		GOW:Transmit(data);
+	else
+		Core:Debug("No upcoming events data to transmit.");
+	end
+end
+
+function Core:GetUpcomingEventsForAddonMessage()
+	-- Check if the upcoming events data is available
+	if (ns.UPCOMING_EVENTS == nil or ns.UPCOMING_EVENTS.totalEvents == 0) then
+		return;
+	end
+
+	local events = {}
+	local guildName = GetGuildInfo("player");
+
+	-- grab the next 3 upcoming events for the guild
+	for i = 1, 3 do
+		local event = ns.UPCOMING_EVENTS.events[i];
+		if event and event.guild == guildName then
+			local eventData = {
+				title = event.title,
+				description = event.description,
+				minLevel = event.minLevel,
+				maxLevel = event.maxLevel,
+				minItemLevel = event.minItemLevel,
+				eventDate = event.eventDate,
+				eventEndDate = event.eventEndDate,
+				durationText = event.durationText,
+				webUrl = event.webUrl,
+				team = event.team,
+				isLocked = event.isLocked,
+			}
+			tinsert(events, eventData)
+		end
+	end
+	return events
+end
+
+function GOW:Transmit(data)
+	local serialized = LibSerialize:Serialize(data)
+	local compressed = LibDeflate:CompressDeflate(serialized)
+	local encoded = LibDeflate:EncodeForWoWAddonChannel(compressed)
+	self:SendCommMessage("GuildsOfWoW", encoded, "GUILD");
+end
 
 function Core:ToggleTabs(tabKey)
 	selectedTab = tabKey;
