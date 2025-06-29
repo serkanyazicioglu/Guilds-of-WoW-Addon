@@ -1,7 +1,7 @@
 local ADDON_NAME = "GuildsOfWoW";
 local FRAME_NAME = ADDON_NAME .. "MainFrame";
 _G["FRAME_NAME"] = FRAME_NAME;
-local GOW = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME);
+local GOW = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME, "AceComm-3.0");
 GuildsOfWow = GOW;
 
 GOW.consts = {
@@ -121,7 +121,8 @@ function GOW:OnInitialize()
 	workQueue = self.WorkQueue.new();
 	persistentWorkQueue = self.WorkQueue.new();
 	processedEvents = GOW.List.new();
-	C_ChatInfo.RegisterAddonMessagePrefix("GuildsOfWoW");
+	self.SERIALIZE = LibStub("LibSerialize");
+	self.DEFLATE = LibStub("LibDeflate");
 
 	local consoleCommandFunc = function(msg, editbox)
 		if (msg == "minimap") then
