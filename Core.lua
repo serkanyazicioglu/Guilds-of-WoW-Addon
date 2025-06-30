@@ -636,7 +636,7 @@ function GOW:OnEnable()
 				GOW:Transmit(events);
 			end
 		end
-	end, 30); -- Send every 5 mins.
+	end, 300); -- Send every 5 mins.
 end
 
 function GOW:OnCommReceived(prefix, message, distribution, sender)
