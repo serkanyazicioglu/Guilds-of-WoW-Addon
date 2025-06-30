@@ -105,9 +105,6 @@ local tabs = {
 	{ value = "recruitmentApps", text = "Recruitment Applications" },
 };
 
-local LibSerialize = LibStub("LibSerialize");
-local LibDeflate = LibStub("LibDeflate");
-
 local LibQTip = LibStub('LibQTip-1.0');
 
 function GOW:OnInitialize()
@@ -619,18 +616,31 @@ function GOW:OnEnable()
 	end
 
 	-- Registering the communication prefix for the addon.
-	self:RegisterComm("GuildsOfWoW");
+	self:RegisterComm("GuildsOfWoW", "OnCommReceived");
+
+	local events = Core:GetUpcomingEventsForAddonMessage();
+
+	if (not events or #events == 0) then
+		Core:Debug("No upcoming events found for transmission.");
+		return;
+	end
+
+	Core:Debug("Transmitting upcoming events data to guild members.");
+	GOW:Transmit(events);
 
 	-- Setting up a timer to periodically send the upcoming events data.
 	eventMessageTimer = self.timers:ScheduleRepeatingTimer(function()
 		if (not isPropogatingUpdate) then
-			local events = Core:GetUpcomingEventsForAddonMessage();
 			if (events and #events > 0) then
 				Core:Debug("Transmitting upcoming events data to guild members.");
 				GOW:Transmit(events);
 			end
 		end
-	end, 300); -- Send every 5 mins.
+	end, 30); -- Send every 5 mins.
+end
+
+function GOW:OnCommReceived(prefix, message, distribution, sender)
+	-- no functionality, is needed for the addon message to work
 end
 
 function Core:GetUpcomingEventsForAddonMessage()
@@ -648,16 +658,13 @@ function Core:GetUpcomingEventsForAddonMessage()
 		if event and event.guild == guildName then
 			local eventData = {
 				title = event.title,
-				description = event.description,
 				minLevel = event.minLevel,
 				maxLevel = event.maxLevel,
 				minItemLevel = event.minItemLevel,
 				eventDate = event.eventDate,
-				eventEndDate = event.eventEndDate,
 				durationText = event.durationText,
 				webUrl = event.webUrl,
 				team = event.team,
-				isLocked = event.isLocked,
 			}
 			tinsert(events, eventData)
 		end
@@ -666,10 +673,34 @@ function Core:GetUpcomingEventsForAddonMessage()
 end
 
 function GOW:Transmit(data)
-	local serialized = LibSerialize:Serialize(data)
-	local compressed = LibDeflate:CompressDeflate(serialized)
-	local encoded = LibDeflate:EncodeForWoWAddonChannel(compressed)
-	self:SendCommMessage("GuildsOfWoW", encoded, "GUILD");
+	if not data or #data == 0 then
+		Core:Debug("[Addon Message] No data to transmit.");
+		return;
+	end
+
+	for i = 1, 3 do
+		local event = data[i];
+		if event then
+			Core:Debug("Transmitting event: " .. event.title);
+
+			local serialized = Core:Serialize(event);
+			if not serialized then
+				Core:Debug("[Addon Message] Failed to serialize data for transmission.");
+				return;
+			end
+
+			self:SendCommMessage("GuildsOfWoW", serialized, "GUILD");
+		end
+	end
+end
+
+function Core:Serialize(data)
+	-- manually serialize the data
+	local serialized = "";
+	for key, value in pairs(data) do
+		serialized = serialized .. key .. "=" .. tostring(value) .. "&";
+	end
+	return serialized;
 end
 
 function Core:ToggleTabs(tabKey)
