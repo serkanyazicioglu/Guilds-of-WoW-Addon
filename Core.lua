@@ -608,11 +608,11 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	end
 end)
 
-local eventMessageTimer = nil;
+-- Removed file-level declaration of eventMessageTimer.
 
 function GOW:OnEnable()
-	if eventMessageTimer then
-		self.timers:CancelTimer(eventMessageTimer);
+	if self.eventMessageTimer then
+		self.timers:CancelTimer(self.eventMessageTimer);
 	end
 
 	-- Registering the communication prefix for the addon.
