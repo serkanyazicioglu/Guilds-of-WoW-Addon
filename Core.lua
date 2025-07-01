@@ -618,22 +618,15 @@ function GOW:OnEnable()
 	-- Registering the communication prefix for the addon.
 	self:RegisterComm("GuildsOfWoW", "OnCommReceived");
 
-	local events = Core:GetUpcomingEventsForAddonMessage();
-
-	if (not events or #events == 0) then
-		Core:Debug("No upcoming events found for transmission.");
-		return;
-	end
-
-	Core:Debug("Transmitting upcoming events data to guild members.");
-	GOW:Transmit(events);
-
 	-- Setting up a timer to periodically send the upcoming events data.
 	eventMessageTimer = self.timers:ScheduleRepeatingTimer(function()
 		if (not isPropogatingUpdate) then
+			local events = Core:GetUpcomingEventsForAddonMessage();
 			if (events and #events > 0) then
 				Core:Debug("Transmitting upcoming events data to guild members.");
 				GOW:Transmit(events);
+			else
+				Core:Debug("No upcoming events found for transmission.");
 			end
 		end
 	end, 300); -- Send every 5 mins.
