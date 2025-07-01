@@ -1,6 +1,6 @@
 local GOW = GuildsOfWow;
-local GOWComm = {};
-GOW.GOWComm = GOWComm;
+local GoWComm = {};
+GOW.GoWComm = GoWComm;
 
 local ns = select(2, ...)
 
@@ -13,13 +13,13 @@ function GOW:OnEnable()
     GOW:RegisterComm("GuildsOfWoW", "OnCommReceived");
 
     -- check events on login
-    local initialEvents = GOWComm:GetUpcomingEvents(ns.UPCOMING_EVENTS);
-    GOWComm:CheckEvents(initialEvents);
+    local initialEvents = GoWComm:GetUpcomingEvents(ns.UPCOMING_EVENTS);
+    GoWComm:CheckEvents(initialEvents);
 
     -- A timer to periodically send the upcoming events data.
     self.eventMessageTimer = self.timers:ScheduleRepeatingTimer(function()
-        local events = GOWComm:GetUpcomingEvents(ns.UPCOMING_EVENTS);
-        GOWComm:CheckEvents(events);
+        local events = GoWComm:GetUpcomingEvents(ns.UPCOMING_EVENTS);
+        GoWComm:CheckEvents(events);
     end, 300); -- Send every 5 mins.
 end
 
@@ -27,7 +27,7 @@ function GOW:OnCommReceived(prefix, message, distribution, sender)
     -- no functionality, is needed for the addon message to work
 end
 
-function GOWComm:GetUpcomingEvents(upcomingEvents)
+function GoWComm:GetUpcomingEvents(upcomingEvents)
     -- Check if the upcoming events data is available
     if (upcomingEvents == nil or upcomingEvents.totalEvents == 0) then
         return;
@@ -56,16 +56,16 @@ function GOWComm:GetUpcomingEvents(upcomingEvents)
     return events
 end
 
-function GOWComm:CheckEvents(events)
+function GoWComm:CheckEvents(events)
     if (events and #events > 0) then
         GOW.Logger:Debug("Transmitting upcoming events data to guild members.");
-        GOWComm:Transmit(events);
+        GoWComm:Transmit(events);
     else
         GOW.Logger:Debug("No upcoming events found for transmission.");
     end
 end
 
-function GOWComm:Transmit(data)
+function GoWComm:Transmit(data)
     if not data or #data == 0 then
         GOW.Logger:Debug("[Addon Message] No data to transmit.");
         return;
@@ -76,7 +76,7 @@ function GOWComm:Transmit(data)
         if event then
             GOW.Logger:Debug("Transmitting event: " .. event.title);
 
-            local serialized = GOWComm:Serialize(event);
+            local serialized = GoWComm:Serialize(event);
             if not serialized then
                 GOW.Logger:Debug("[Addon Message] Failed to serialize data for transmission.");
                 return;
@@ -87,7 +87,7 @@ function GOWComm:Transmit(data)
     end
 end
 
-function GOWComm:Serialize(data)
+function GoWComm:Serialize(data)
     -- serialize the data using table.concat
     local serializedParts = {};
     for key, value in pairs(data) do
