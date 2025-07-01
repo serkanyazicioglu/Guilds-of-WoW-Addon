@@ -64,6 +64,7 @@ end
 local ns = select(2, ...);
 
 local Core = {};
+local GOWComm = {};
 local f = CreateFrame("Frame");
 f:RegisterEvent("PLAYER_ENTERING_WORLD");
 f:RegisterEvent("FIRST_FRAME_RENDERED");
@@ -609,8 +610,6 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	end
 end)
 
--- Removed file-level declaration of eventMessageTimer.
-
 function GOW:OnEnable()
 	if self.eventMessageTimer then
 		self.timers:CancelTimer(self.eventMessageTimer);
@@ -619,13 +618,13 @@ function GOW:OnEnable()
 	-- Registering the communication prefix for the addon.
 	self:RegisterComm("GuildsOfWoW", "OnCommReceived");
 
-	-- Setting up a timer to periodically send the upcoming events data.
-	eventMessageTimer = self.timers:ScheduleRepeatingTimer(function()
+	-- A timer to periodically send the upcoming events data.
+	self.eventMessageTimer = self.timers:ScheduleRepeatingTimer(function()
 		if (not isPropogatingUpdate) then
-			local events = Core:GetUpcomingEventsForAddonMessage();
+			local events = GOWComm:GetUpcomingEventsForAddonMessage();
 			if (events and #events > 0) then
 				Core:Debug("Transmitting upcoming events data to guild members.");
-				GOW:Transmit(events);
+				GOWComm:Transmit(events);
 			else
 				Core:Debug("No upcoming events found for transmission.");
 			end
@@ -633,11 +632,11 @@ function GOW:OnEnable()
 	end, 300); -- Send every 5 mins.
 end
 
-function GOW:OnCommReceived(prefix, message, distribution, sender)
+function GOWComm:OnCommReceived(prefix, message, distribution, sender)
 	-- no functionality, is needed for the addon message to work
 end
 
-function Core:GetUpcomingEventsForAddonMessage()
+function GOWComm:GetUpcomingEventsForAddonMessage()
 	-- Check if the upcoming events data is available
 	if (ns.UPCOMING_EVENTS == nil or ns.UPCOMING_EVENTS.totalEvents == 0) then
 		return;
@@ -666,7 +665,7 @@ function Core:GetUpcomingEventsForAddonMessage()
 	return events
 end
 
-function GOW:Transmit(data)
+function GOWComm:Transmit(data)
 	if not data or #data == 0 then
 		Core:Debug("[Addon Message] No data to transmit.");
 		return;
@@ -688,7 +687,7 @@ function GOW:Transmit(data)
 	end
 end
 
-function Core:Serialize(data)
+function GOWComm:Serialize(data)
 	-- serialize the data using table.concat
 	local serializedParts = {};
 	for key, value in pairs(data) do
