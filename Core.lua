@@ -452,6 +452,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	Core:Debug(event);
 
 	if event == "PLAYER_ENTERING_WORLD" then
+		C_Calendar.OpenCalendar();
 		isInitialLogin = arg1;
 
 		Core:Debug(tostring(arg1));
