@@ -618,25 +618,24 @@ function GOW:OnEnable()
 	-- Registering the communication prefix for the addon.
 	self:RegisterComm("GuildsOfWoW", "OnCommReceived");
 
+	-- check events on login
+	local initialEvents = GOWComm:GetUpcomingEvents();
+	GOWComm:CheckEvents(initialEvents);
+
 	-- A timer to periodically send the upcoming events data.
 	self.eventMessageTimer = self.timers:ScheduleRepeatingTimer(function()
 		if (not isPropogatingUpdate) then
-			local events = GOWComm:GetUpcomingEventsForAddonMessage();
-			if (events and #events > 0) then
-				Core:Debug("Transmitting upcoming events data to guild members.");
-				GOWComm:Transmit(events);
-			else
-				Core:Debug("No upcoming events found for transmission.");
-			end
+			local events = GOWComm:GetUpcomingEvents();
+			GOWComm:CheckEvents(events);
 		end
 	end, 300); -- Send every 5 mins.
 end
 
-function GOWComm:OnCommReceived(prefix, message, distribution, sender)
+function GOW:OnCommReceived(prefix, message, distribution, sender)
 	-- no functionality, is needed for the addon message to work
 end
 
-function GOWComm:GetUpcomingEventsForAddonMessage()
+function GOWComm:GetUpcomingEvents()
 	-- Check if the upcoming events data is available
 	if (ns.UPCOMING_EVENTS == nil or ns.UPCOMING_EVENTS.totalEvents == 0) then
 		return;
@@ -665,6 +664,15 @@ function GOWComm:GetUpcomingEventsForAddonMessage()
 	return events
 end
 
+function GOWComm:CheckEvents(events)
+	if (events and #events > 0) then
+		Core:Debug("Transmitting upcoming events data to guild members.");
+		GOWComm:Transmit(events);
+	else
+		Core:Debug("No upcoming events found for transmission.");
+	end
+end
+
 function GOWComm:Transmit(data)
 	if not data or #data == 0 then
 		Core:Debug("[Addon Message] No data to transmit.");
@@ -682,7 +690,7 @@ function GOWComm:Transmit(data)
 				return;
 			end
 
-			self:SendCommMessage("GuildsOfWoW", serialized, "GUILD");
+			GOW:SendCommMessage("GuildsOfWoW", serialized, "GUILD");
 		end
 	end
 end
