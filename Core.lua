@@ -676,7 +676,7 @@ function GOWComm:Transmit(data)
 		if event then
 			Core:Debug("Transmitting event: " .. event.title);
 
-			local serialized = Core:Serialize(event);
+			local serialized = GOWComm:Serialize(event);
 			if not serialized then
 				Core:Debug("[Addon Message] Failed to serialize data for transmission.");
 				return;
