@@ -13,6 +13,7 @@ embed.xml
 
 Core.lua
 GoWTeams.lua
+GOWComm.lua
 Class.lua
 List.lua
 Options.lua
