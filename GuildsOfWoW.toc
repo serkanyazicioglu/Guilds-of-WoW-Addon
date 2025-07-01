@@ -18,3 +18,4 @@ Class.lua
 List.lua
 Options.lua
 WorkQueue.lua
+Logger.lua
