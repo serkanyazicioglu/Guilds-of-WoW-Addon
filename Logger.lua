@@ -1,5 +1,5 @@
 local GOW = GuildsOfWow;
-Logger = {};
+local Logger = {};
 GOW.Logger = Logger;
 
 function Logger:Debug(msg)
