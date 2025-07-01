@@ -688,12 +688,12 @@ function GOW:Transmit(data)
 end
 
 function Core:Serialize(data)
-	-- manually serialize the data
-	local serialized = "";
+	-- serialize the data using table.concat
+	local serializedParts = {};
 	for key, value in pairs(data) do
-		serialized = serialized .. key .. "=" .. tostring(value) .. "&";
+		table.insert(serializedParts, key .. "=" .. tostring(value));
 	end
-	return serialized;
+	return table.concat(serializedParts, "&");
 end
 
 function Core:ToggleTabs(tabKey)
