@@ -631,6 +631,7 @@ function GOW:OnEnable()
 	end, 300); -- Send every 5 mins.
 end
 
+-- test comment
 function GOW:OnCommReceived(prefix, message, distribution, sender)
 	-- no functionality, is needed for the addon message to work
 end
