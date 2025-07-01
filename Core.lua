@@ -1586,17 +1586,7 @@ function Core:CheckEventInvites()
 								workQueue:clearTasks();
 								return;
 							elseif (eventIndex == -1) then
-								-- Check if event is within the next 2 months
-								local serverTime = C_DateAndTime.GetServerTimeLocal();
-								local eventMonth = tonumber(date("%m", upcomingEvent.eventDate));
-								local currentMonth = tonumber(date("%m", serverTime));
-								local eventYear = tonumber(date("%Y", upcomingEvent.eventDate));
-								local currentYear = tonumber(date("%Y", serverTime));
-
-								local monthDiff = (eventYear - currentYear) * 12 + (eventMonth - currentMonth);
-
-								-- Only show notification if event is within next 2 months and user should be invited
-								if (monthDiff >= 0 and monthDiff <= 1 and Core:IsInvitedToEvent(upcomingEvent)) then
+								if (Core:IsInvitedToEvent(upcomingEvent)) then
 									hasAnyUninvitedEvent = true;
 								end
 							elseif (eventIndex > 0) then
