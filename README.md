@@ -43,8 +43,8 @@ https://guildsofwow.com/manage/events
 
 ### Event Messaging
 
--   **Prefix**: 'GuildsOfWoW'
--   **Channel**: 'GUILD'
+-   **Prefix**: `GuildsOfWoW`
+-   **Channel**: `GUILD`
 -   **Frequency**: Every 300 seconds (or on initial login if event data exists)
 -   **Library**: AceComm-3.0
 
