@@ -41,10 +41,10 @@ When you access events section of your guild management, at least one upcoming e
 
 ### Event Messaging
 
--   Prefix: GuildsOfWoW
--   Channel: GUILD
--   Frequency: Every 300 seconds (or on initial login if event data exists)
--   Library: AceComm-3.0
+-   **Prefix**: 'GuildsOfWoW'
+-   **Channel**: 'GUILD'
+-   **Frequency**: Every 300 seconds (or on initial login if event data exists)
+-   **Library**: AceComm-3.0
 
 ### Message Structure
 
@@ -69,7 +69,7 @@ Each message sent is a **single event** serialized as a `key=value` string with 
 
 ---
 
-## WA Trigger Setup
+### WA Trigger Setup
 
 -   **Event Type**: `Addon Message` (TSU)
 -   **Prefix**: `GuildsOfWoW`
@@ -96,7 +96,7 @@ Each message sent is a **single event** serialized as a `key=value` string with 
         return false
     end
 
-## Notes
+### Notes
 
 -   Messages are **not compressed** or encoded — they're human-readable.
 -   Each WA client independently collects events as they arrive.
