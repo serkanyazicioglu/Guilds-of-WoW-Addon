@@ -39,6 +39,8 @@ https://guildsofwow.com/manage/addon
 
 When you access events section of your guild management, at least one upcoming event should be existing. After your guild's upcoming events are generated sync client will migrate your event data to in game addon database.
 
+https://guildsofwow.com/manage/events
+
 ### Event Messaging
 
 -   **Prefix**: 'GuildsOfWoW'
@@ -102,8 +104,6 @@ Each message sent is a **single event** serialized as a `key=value` string with 
 -   Each WA client independently collects events as they arrive.
 -   If no addon user is online, **data may become stale** until another update is sent.
 -   You can extend your WA with custom options like "Show locked events" or "Max # of events to display".
-
-https://guildsofwow.com/manage/events
 
 Guilds of WoW website: https://guildsofwow.com
 
