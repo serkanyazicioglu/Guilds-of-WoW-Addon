@@ -39,7 +39,7 @@ https://guildsofwow.com/manage/addon
 
 When you access events section of your guild management, at least one upcoming event should be existing. After your guild's upcoming events are generated sync client will migrate your event data to in game addon database.
 
-### EVENT MESSAGING
+# EVENT MESSAGING
 
 Prefix: GuildsOfWoW
 Channel: GUILD
