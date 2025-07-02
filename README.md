@@ -39,14 +39,14 @@ https://guildsofwow.com/manage/addon
 
 When you access events section of your guild management, at least one upcoming event should be existing. After your guild's upcoming events are generated sync client will migrate your event data to in game addon database.
 
-# EVENT MESSAGING
+### Event Messaging
 
 Prefix: GuildsOfWoW
 Channel: GUILD
 Frequency: Every 300 seconds (or on initial login if event data exists)
 Library: AceComm-3.0
 
-## Message Structure
+### Message Structure
 
 Each message sent is a **single event** serialized as a `key=value` string with `&` delimiters.
 
