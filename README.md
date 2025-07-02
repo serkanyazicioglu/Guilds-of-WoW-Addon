@@ -41,10 +41,10 @@ When you access events section of your guild management, at least one upcoming e
 
 ### Event Messaging
 
-Prefix: GuildsOfWoW
-Channel: GUILD
-Frequency: Every 300 seconds (or on initial login if event data exists)
-Library: AceComm-3.0
+-   Prefix: GuildsOfWoW
+-   Channel: GUILD
+-   Frequency: Every 300 seconds (or on initial login if event data exists)
+-   Library: AceComm-3.0
 
 ### Message Structure
 
