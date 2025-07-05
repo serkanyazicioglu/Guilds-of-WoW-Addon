@@ -42,9 +42,10 @@ local optionsTable = {
                     end,
                 },
 		onlyShowSummary = {
-    			name = "Only show summary after event invites",
+    			name = "Only show summary for calendar updates",
     			desc = "Suppresses per-event processing messages in chat",
     			type = "toggle",
+			width = "full",
     			order = 3,
     			get = function() return GOW.DB.profile.onlyShowSummary end,
     			set = function(_, val) GOW.DB.profile.onlyShowSummary = val end,
