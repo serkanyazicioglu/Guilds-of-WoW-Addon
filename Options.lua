@@ -41,9 +41,17 @@ local optionsTable = {
                         GOW.DB.profile.warnNewEvents = value;
                     end,
                 },
+		onlyShowSummary = {
+    			name = "Only show summary after event invites",
+    			desc = "Suppresses per-event processing messages in chat",
+    			type = "toggle",
+    			order = 3,
+    			get = function() return GOW.DB.profile.onlyShowSummary end,
+    			set = function(_, val) GOW.DB.profile.onlyShowSummary = val end,
+		},
                 HideInCombat = {
                     type = "toggle",
-                    order = 3,
+                    order = 4,
                     name = "Hide in combat",
                     desc = "Hide the Guilds of WoW window when entering combat.",
                     width = "full",
