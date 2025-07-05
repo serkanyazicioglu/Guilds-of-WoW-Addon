@@ -8,8 +8,11 @@ function Logger:Debug(msg)
     end
 end
 
-function Logger:PrintMessage(msg)
-    print(Logger:GetColoredStringWithBranding("ffcc00", msg));
+function Logger:PrintMessage(msg, isSummary)
+    if GOW.DB and GOW.DB.profile and GOW.DB.profile.onlyShowSummary and not isSummary then
+        return
+    end
+    print(Logger:GetColoredStringWithBranding("ffcc00", msg))
 end
 
 function Logger:PrintSuccessMessage(msg)
