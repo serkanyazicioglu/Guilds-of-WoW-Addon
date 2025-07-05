@@ -1779,19 +1779,19 @@ function Core:SetAttendanceValues(upcomingEvent, inviteInfo, inviteIndex)
 end
 
 function Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
-	GOW.Logger:Debug("Event attendances process completed: " .. upcomingEvent.titleWithKey);
+	GOW.Logger:Debug("Event attendances process completed: " .. upcomingEvent.titleWithKey, true);
 
 	if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
 		processedEvents:push(upcomingEvent.titleWithKey);
 
 		if (isNewEventBeingCreated) then
-			GOW.Logger:PrintSuccessMessage("New event is successfully created: " .. upcomingEvent.titleWithKey);
+			GOW.Logger:PrintSuccessMessage("New event is successfully created: " .. upcomingEvent.titleWithKey, false);
 			isNewEventBeingCreated = false;
 			if (containerFrame:IsShown()) then
 				Core:CreateUpcomingEvents();
 			end
 		elseif (not isEventProcessCompleted) then
-			GOW.Logger:PrintMessage("Event RSVP process completed: " .. upcomingEvent.titleWithKey);
+			GOW.Logger:PrintMessage("Event RSVP process completed: " .. upcomingEvent.titleWithKey, false);
 		end
 	end
 
@@ -2035,7 +2035,7 @@ function Core:InitializeEventInvites()
 			if (GOW.DB.profile.guilds[guildKey].eventsRefreshTime and ns.UPCOMING_EVENTS.exportTime and ns.UPCOMING_EVENTS.exportTime < GOW.DB.profile.guilds[guildKey].eventsRefreshTime) then
 				isEventProcessCompleted = true;
 
-				GOW.Logger:PrintMessage("The most recently imported data has already been processed, the RSVP synchronization will be skipped...");
+				GOW.Logger:PrintMessage("The most recently imported data has already been processed, the RSVP synchronization will be skipped...", true);
 			else
 				GOW.Logger:Debug("Event attendance initial process started!");
 
