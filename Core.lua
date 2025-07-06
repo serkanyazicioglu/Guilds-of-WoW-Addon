@@ -30,7 +30,7 @@ local getGowGameVersionId = function()
 		return 1;
 	elseif (WOW_PROJECT_ID == WOW_PROJECT_CLASSIC) then
 		return 2;
-	elseif (WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC) then
+	else --if (WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC) then
 		return 3;
 	end
 
