@@ -15,7 +15,7 @@ GOW.defaults = {
 	profile = {
 		version = 1,
 		minimap = { hide = false },
-		reduceEventNotifications = true,
+		reduceEventNotifications = false,
 		warnNewEvents = true,
 		hideInCombat = true,
 	}

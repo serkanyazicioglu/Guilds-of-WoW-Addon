@@ -41,14 +41,16 @@ local optionsTable = {
                         GOW.DB.profile.warnNewEvents = value;
                     end,
                 },
-                reduceEventNotifications = {
+                ReduceEventNotifications = {
                     type = "toggle",
                     order = 3,
                     name = "Reduce event notifications",
                     desc = "Show only important event notifications in chat.",
                     width = "full",
                     get = function() return GOW.DB.profile.reduceEventNotifications end,
-                    set = function(_, val) GOW.DB.profile.reduceEventNotifications = val end,
+                    set = function(_, value)
+                        GOW.DB.profile.reduceEventNotifications = value;
+                    end,
                 },
                 HideInCombat = {
                     type = "toggle",
