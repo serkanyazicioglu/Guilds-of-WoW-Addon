@@ -65,7 +65,6 @@ end
 local ns = select(2, ...);
 
 local Core = {};
-GOW.Core = Core;
 local f = CreateFrame("Frame");
 f:RegisterEvent("PLAYER_ENTERING_WORLD");
 f:RegisterEvent("FIRST_FRAME_RENDERED");
