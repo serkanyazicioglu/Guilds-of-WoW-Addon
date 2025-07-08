@@ -1,6 +1,6 @@
 GoWTeams = {}
 GoWTeams.__index = GoWTeams
-GOW = GOW or {};
+local GOW = GuildsOfWow or {};
 LibQTip = LibQTip or LibStub('LibQTip-1.0');
 
 local f = CreateFrame("Frame");
@@ -745,6 +745,7 @@ function GoWTeams:AppendTeam(teamData)
             end;
         end;
     end);
+    C_GuildInfo.GuildRoster();
     buttonsGroup:AddChild(viewTeamButton);
 
     local inviteToPartyButton = self.GUI:Create("Button");
@@ -755,6 +756,21 @@ function GoWTeams:AppendTeam(teamData)
         self.CORE:InviteAllTeamMembersToPartyCheck(teamData);
     end);
     buttonsGroup:AddChild(inviteToPartyButton);
+
+    local setOfficerNotesButton = self.GUI:Create("Button");
+    local canEdit = GoWTeams:CanEditOfficerNote();
+    if canEdit then
+        setOfficerNotesButton:SetDisabled(false);
+    else
+        setOfficerNotesButton:SetDisabled(true);
+    end
+    setOfficerNotesButton:SetText("Sync Officer Notes");
+    setOfficerNotesButton:SetWidth(160);
+    setOfficerNotesButton:SetCallback("OnClick", function()
+        self.CORE:DestroyTeamContainer();
+        GoWTeams:syncOfficerNotes(teamData);
+    end);
+    buttonsGroup:AddChild(setOfficerNotesButton);
 
     if self.UI.containerScrollFrame then
         self.UI.containerScrollFrame:AddChild(itemGroup);
@@ -798,4 +814,98 @@ function GoWTeams:SetBackdrop()
 
     frame:SetBackdropColor(0, 0, 0, 1);
     frame:SetBackdropBorderColor(1, 1, 1, 1);
+end
+
+function GoWTeams:buildTeamMemberSet(teamData)
+    local teamMembers = {};
+    for _, member in ipairs(teamData.members or {}) do
+        local fullName = member.name .. "-" .. member.realmNormalized;
+        teamMembers[fullName] = true;
+    end
+    return teamMembers;
+end
+
+function GoWTeams:getCurrentTags(note)
+    local tags = {};
+    if not note then return tags end
+    for tag in note:gmatch("%[GoW:[^%[%]]+%]") do
+        tags[tag] = true;
+    end
+    return tags;
+end
+
+function GoWTeams:GetNormalizedFullName(name)
+    local shortName, realm = strsplit("-", name)
+    realm = realm or GetNormalizedRealmName();
+    return shortName .. "-" .. realm
+end
+
+function GoWTeams:stripTag(note, tag)
+    -- Remove any instance of this tag with or without brackets
+    local pattern = "%s*%[?" .. tag:gsub("([%-%.%+%*%?%[%]%^%$%%])", "%%%1") .. "%]?%s*"
+    return (note or ""):gsub(pattern, " "):gsub("^%s*(.-)%s*$", "%1")
+end
+
+function GoWTeams:syncOfficerNotes(teamData)
+    if not teamData or not teamData.id or not teamData.members then
+        GOW.Logger:PrintErrorMessage("Invalid teamData passed to syncOfficerNotes.");
+        return;
+    end
+
+    if not GoWTeams:CanEditOfficerNote() then
+        GOW.Logger:PrintErrorMessage("You do not have permission to edit officer notes.");
+        return;
+    end
+
+    local guildKey = GOW.Core:GetGuildKey();
+    if not guildKey or not GOW.DB.profile.guilds[guildKey] then
+        GOW.Logger:PrintErrorMessage("No valid guild profile found.");
+        return;
+    end
+
+    local cachedRoster = GOW.DB.profile.guilds[guildKey].roster
+    if not cachedRoster or not next(cachedRoster) then
+        GOW.Logger:PrintErrorMessage("Cached roster is missing or empty. Refresh the addon first.");
+        return;
+    end
+
+    local tag = "GoW:" .. teamData.id;
+    local bracketedTag = "[" .. tag .. "]";
+    local teamMembers = GoWTeams:buildTeamMemberSet(teamData);
+    local numGuildMembers = GetNumGuildMembers();
+
+    for name, data in pairs(cachedRoster) do
+        local fullName = GoWTeams:GetNormalizedFullName(name);
+        local currentNote = data.officerNote or "";
+        local cleanedNote = GoWTeams:stripTag(currentNote, tag);
+        local newNote = cleanedNote;
+
+        if teamMembers[fullName] then
+            newNote = cleanedNote .. (cleanedNote ~= "" and " " or "") .. bracketedTag;
+        end
+
+        newNote = newNote:gsub("^%s*(.-)%s*$", "%1");
+
+        if newNote ~= currentNote then
+            -- Find the actual live index to apply the change
+            for i = 1, numGuildMembers do
+                local liveName = GetGuildRosterInfo(i);
+                if GoWTeams:GetNormalizedFullName(liveName) == fullName then
+                    GuildRosterSetOfficerNote(i, newNote);
+                    GOW.Logger:PrintMessage("Updated " .. fullName .. ": " .. newNote);
+                    break;
+                end
+            end
+        end
+    end
+end
+
+function GoWTeams:CanEditOfficerNote()
+    if WOW_PROJECT_ID == WOW_PROJECT_CLASSIC then
+        return true;
+    elseif C_GuildInfo and C_GuildInfo.CanEditOfficerNote then
+        return C_GuildInfo.CanEditOfficerNote();
+    else
+        return true;
+    end
 end
