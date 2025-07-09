@@ -770,6 +770,21 @@ function GoWTeams:AppendTeam(teamData)
         self.CORE:DestroyTeamContainer();
         GoWTeams:syncOfficerNotes(teamData);
     end);
+    setOfficerNotesButton:SetCallback("OnEnter", function(self)
+        local tooltip = LibQTip:Acquire("SyncOfficerTooltip", 1, "LEFT");
+        GOW.tooltip = tooltip;
+
+        tooltip:AddHeader('|cffffcc00Sync Officer Notes|r');
+        local line = tooltip:AddLine();
+        local tooltipText = "Click to apply the GoW team tags to all team members' officer notes.\n\n" .. "This will add the tag [GoW:<team_id>] to each member's officer note.\n\n" .. "You must have permission to edit officer notes in your guild.";
+        tooltip:SetCell(line, 1, tooltipText, "LEFT", 1, nil, 0, 0, 300, 50);
+        tooltip:SmartAnchorTo(self.frame);
+        tooltip:Show();
+    end);
+    setOfficerNotesButton:SetCallback("OnLeave", function()
+        LibQTip:Release(GOW.tooltip);
+        GOW.tooltip = nil;
+    end);
     buttonsGroup:AddChild(setOfficerNotesButton);
 
     if self.UI.containerScrollFrame then
