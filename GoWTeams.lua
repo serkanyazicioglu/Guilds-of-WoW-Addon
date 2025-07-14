@@ -759,11 +759,7 @@ function GoWTeams:AppendTeam(teamData)
 
     local setOfficerNotesButton = self.GUI:Create("Button");
     local canEdit = GoWTeams:CanEditOfficerNote();
-    if canEdit then
-        setOfficerNotesButton:SetDisabled(false);
-    else
-        setOfficerNotesButton:SetDisabled(true);
-    end
+    setOfficerNotesButton:SetDisabled(not canEdit);
     setOfficerNotesButton:SetText("Sync Officer Notes");
     setOfficerNotesButton:SetWidth(160);
     setOfficerNotesButton:SetCallback("OnClick", function()
@@ -869,7 +865,7 @@ function GoWTeams:SyncOfficerNotes(teamData)
         return;
     end
 
-    local cachedRoster = GOW.DB.profile.guilds[guildKey].roster
+    local cachedRoster = GOW.DB.profile.guilds[guildKey].roster;
     if not cachedRoster or not next(cachedRoster) then
         GOW.Logger:PrintErrorMessage("Cached roster is missing or empty. Refresh the addon first.");
         return;
@@ -883,7 +879,6 @@ function GoWTeams:SyncOfficerNotes(teamData)
     for name, data in pairs(cachedRoster) do
         local fullName = GoWTeams:GetNormalizedFullName(name);
         local currentNote = data.officerNote or "";
-        print(string.len(currentNote), officerNoteLength, fullName, name);
         local newNote = currentNote;
 
         local tagExists = currentNote:find(tag:gsub("([%-%.%+%*%?%[%]%^%$%%])", "%%%1"), 1, true) ~= nil;
