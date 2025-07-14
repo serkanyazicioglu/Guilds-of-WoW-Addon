@@ -841,15 +841,15 @@ function GoWTeams:BuildTeamMemberSet(teamData)
 end
 
 function GoWTeams:GetNormalizedFullName(name)
-    local shortName, realm = strsplit("-", name)
+    local shortName, realm = strsplit("-", name);
     realm = realm or GetNormalizedRealmName();
-    return shortName .. "-" .. realm
+    return shortName .. "-" .. realm;
 end
 
 function GoWTeams:StripTag(note, tag)
     -- Remove any instance of this tag with or without brackets
-    local pattern = "%s*%[?" .. tag:gsub("([%-%.%+%*%?%[%]%^%$%%])", "%%%1") .. "%]?%s*"
-    return (note or ""):gsub(pattern, " "):gsub("^%s*(.-)%s*$", "%1")
+    local pattern = "%s*%[?" .. tag:gsub("([%-%.%+%*%?%[%]%^%$%%])", "%%%1") .. "%]?%s*";
+    return (note or ""):gsub(pattern, " "):gsub("^%s*(.-)%s*$", "%1");
 end
 
 function GoWTeams:SyncOfficerNotes(teamData)
