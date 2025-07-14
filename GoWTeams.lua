@@ -875,10 +875,10 @@ function GoWTeams:SyncOfficerNotes(teamData)
         return;
     end
 
-    local tag = "GoW:" .. teamData.id;
-    local bracketedTag = "[" .. tag .. "]";
+    local tag = "GoW:" .. tostring(teamData.id);
     local teamMembers = GoWTeams:BuildTeamMemberSet(teamData);
     local numGuildMembers = GetNumGuildMembers();
+    local officerNoteLength = 35; -- Maximum character length for officer notes
 
     for name, data in pairs(cachedRoster) do
         local fullName = GoWTeams:GetNormalizedFullName(name);
@@ -887,12 +887,15 @@ function GoWTeams:SyncOfficerNotes(teamData)
         local newNote = cleanedNote;
 
         if teamMembers[fullName] then
-            newNote = cleanedNote .. (cleanedNote ~= "" and " " or "") .. bracketedTag;
+            newNote = cleanedNote .. (cleanedNote ~= "" and " " or "") .. tag;
         end
 
         newNote = newNote:gsub("^%s*(.-)%s*$", "%1");
 
-        if newNote ~= currentNote then
+
+        if string.len(newNote) > officerNoteLength then
+            GOW.Logger:PrintMessage("Unable to update " .. fullName .. ": Note exceeds maximum length");
+        elseif newNote ~= currentNote then
             -- Find the actual live index to apply the change
             for i = 1, numGuildMembers do
                 local liveName = GetGuildRosterInfo(i);
