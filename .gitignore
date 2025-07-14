@@ -1,3 +1,6 @@
 db/
 db/*
 .vscode/
+guildevents.lua
+guildrecruitmentapplications.lua
+guildteams.lua
