@@ -768,7 +768,7 @@ function GoWTeams:AppendTeam(teamData)
     setOfficerNotesButton:SetWidth(160);
     setOfficerNotesButton:SetCallback("OnClick", function()
         self.CORE:DestroyTeamContainer();
-        GoWTeams:syncOfficerNotes(teamData);
+        GoWTeams:SyncOfficerNotes(teamData);
     end);
     setOfficerNotesButton:SetCallback("OnEnter", function(self)
         local tooltip = LibQTip:Acquire("SyncOfficerTooltip", 1, "LEFT");
@@ -831,7 +831,7 @@ function GoWTeams:SetBackdrop()
     frame:SetBackdropBorderColor(1, 1, 1, 1);
 end
 
-function GoWTeams:buildTeamMemberSet(teamData)
+function GoWTeams:BuildTeamMemberSet(teamData)
     local teamMembers = {};
     for _, member in ipairs(teamData.members or {}) do
         local fullName = member.name .. "-" .. member.realmNormalized;
@@ -846,15 +846,15 @@ function GoWTeams:GetNormalizedFullName(name)
     return shortName .. "-" .. realm
 end
 
-function GoWTeams:stripTag(note, tag)
+function GoWTeams:StripTag(note, tag)
     -- Remove any instance of this tag with or without brackets
     local pattern = "%s*%[?" .. tag:gsub("([%-%.%+%*%?%[%]%^%$%%])", "%%%1") .. "%]?%s*"
     return (note or ""):gsub(pattern, " "):gsub("^%s*(.-)%s*$", "%1")
 end
 
-function GoWTeams:syncOfficerNotes(teamData)
+function GoWTeams:SyncOfficerNotes(teamData)
     if not teamData or not teamData.id or not teamData.members then
-        GOW.Logger:PrintErrorMessage("Invalid teamData passed to syncOfficerNotes.");
+        GOW.Logger:PrintErrorMessage("Invalid teamData passed to SyncOfficerNotes.");
         return;
     end
 
@@ -877,13 +877,13 @@ function GoWTeams:syncOfficerNotes(teamData)
 
     local tag = "GoW:" .. teamData.id;
     local bracketedTag = "[" .. tag .. "]";
-    local teamMembers = GoWTeams:buildTeamMemberSet(teamData);
+    local teamMembers = GoWTeams:BuildTeamMemberSet(teamData);
     local numGuildMembers = GetNumGuildMembers();
 
     for name, data in pairs(cachedRoster) do
         local fullName = GoWTeams:GetNormalizedFullName(name);
         local currentNote = data.officerNote or "";
-        local cleanedNote = GoWTeams:stripTag(currentNote, tag);
+        local cleanedNote = GoWTeams:StripTag(currentNote, tag);
         local newNote = cleanedNote;
 
         if teamMembers[fullName] then
