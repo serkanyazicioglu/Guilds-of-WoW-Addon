@@ -840,15 +840,6 @@ function GoWTeams:buildTeamMemberSet(teamData)
     return teamMembers;
 end
 
-function GoWTeams:getCurrentTags(note)
-    local tags = {};
-    if not note then return tags end
-    for tag in note:gmatch("%[GoW:[^%[%]]+%]") do
-        tags[tag] = true;
-    end
-    return tags;
-end
-
 function GoWTeams:GetNormalizedFullName(name)
     local shortName, realm = strsplit("-", name)
     realm = realm or GetNormalizedRealmName();
