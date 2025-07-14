@@ -909,11 +909,11 @@ function GoWTeams:SyncOfficerNotes(teamData)
 end
 
 function GoWTeams:CanEditOfficerNote()
-    if WOW_PROJECT_ID == WOW_PROJECT_CLASSIC then
-        return true;
-    elseif C_GuildInfo and C_GuildInfo.CanEditOfficerNote then
-        return C_GuildInfo.CanEditOfficerNote();
-    else
-        return true;
+    local GetAddOnMetadataFunc = CanEditOfficerNote or (C_GuildInfo and C_GuildInfo.CanEditOfficerNote);
+
+    if GetAddOnMetadataFunc then
+        return GetAddOnMetadataFunc();
     end
+
+    return true;
 end
