@@ -776,7 +776,7 @@ function GoWTeams:AppendTeam(teamData)
 
         tooltip:AddHeader('|cffffcc00Sync Officer Notes|r');
         local line = tooltip:AddLine();
-        local tooltipText = "Click to apply the GoW team tags to all team members' officer notes.\n\n" .. "This will add the tag [GoW:<team_id>] to each member's officer note.\n\n" .. "You must have permission to edit officer notes in your guild.";
+        local tooltipText = "Click to apply the GoW team tags to all team members' officer notes.\n\n" .. "This will add the tag GoW:<team_id> to each member's officer note.\n\n" .. "You must have permission to edit officer notes in your guild.";
         tooltip:SetCell(line, 1, tooltipText, "LEFT", 1, nil, 0, 0, 300, 50);
         tooltip:SmartAnchorTo(self.frame);
         tooltip:Show();
@@ -878,24 +878,37 @@ function GoWTeams:SyncOfficerNotes(teamData)
     local tag = "GoW:" .. tostring(teamData.id);
     local teamMembers = GoWTeams:BuildTeamMemberSet(teamData);
     local numGuildMembers = GetNumGuildMembers();
-    local officerNoteLength = 35; -- Maximum character length for officer notes
+    local officerNoteLength = 31; -- Maximum length for officer notes
 
     for name, data in pairs(cachedRoster) do
         local fullName = GoWTeams:GetNormalizedFullName(name);
         local currentNote = data.officerNote or "";
-        local cleanedNote = GoWTeams:StripTag(currentNote, tag);
-        local newNote = cleanedNote;
+        print(string.len(currentNote), officerNoteLength, fullName, name);
+        local newNote = currentNote;
+
+        local tagExists = currentNote:find(tag:gsub("([%-%.%+%*%?%[%]%^%$%%])", "%%%1"), 1, true) ~= nil;
 
         if teamMembers[fullName] then
-            newNote = cleanedNote .. (cleanedNote ~= "" and " " or "") .. tag;
+            if not tagExists then
+                local separator = currentNote ~= "" and " " or "";
+                local tagWithSeparator = separator .. tag;
+
+                if (string.len(currentNote) + string.len(tagWithSeparator) > officerNoteLength) then
+                    GOW.Logger:PrintMessage("Unable to update " .. fullName .. ": Note exceeds maximum length");
+                    newNote = currentNote; -- Keep the original note if it exceeds length
+                else
+                    newNote = currentNote .. tagWithSeparator;
+                end
+            end
+        else
+            if tagExists then
+                newNote = GoWTeams:StripTag(currentNote, tag);
+            end
         end
 
         newNote = newNote:gsub("^%s*(.-)%s*$", "%1");
 
-
-        if string.len(newNote) > officerNoteLength then
-            GOW.Logger:PrintMessage("Unable to update " .. fullName .. ": Note exceeds maximum length");
-        elseif newNote ~= currentNote then
+        if newNote ~= currentNote then
             -- Find the actual live index to apply the change
             for i = 1, numGuildMembers do
                 local liveName = GetGuildRosterInfo(i);
