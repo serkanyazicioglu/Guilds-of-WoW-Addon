@@ -1,6 +1,6 @@
 GoWTeams = {}
 GoWTeams.__index = GoWTeams
-GOW = GOW or {};
+local GOW = GuildsOfWow or {};
 LibQTip = LibQTip or LibStub('LibQTip-1.0');
 
 local f = CreateFrame("Frame");
@@ -745,6 +745,7 @@ function GoWTeams:AppendTeam(teamData)
             end;
         end;
     end);
+    C_GuildInfo.GuildRoster();
     buttonsGroup:AddChild(viewTeamButton);
 
     local inviteToPartyButton = self.GUI:Create("Button");
@@ -755,6 +756,32 @@ function GoWTeams:AppendTeam(teamData)
         self.CORE:InviteAllTeamMembersToPartyCheck(teamData);
     end);
     buttonsGroup:AddChild(inviteToPartyButton);
+
+    local setOfficerNotesButton = self.GUI:Create("Button");
+    local canEdit = GoWTeams:CanEditOfficerNote();
+    setOfficerNotesButton:SetDisabled(not canEdit);
+    setOfficerNotesButton:SetText("Sync Officer Notes");
+    setOfficerNotesButton:SetWidth(160);
+    setOfficerNotesButton:SetCallback("OnClick", function()
+        self.CORE:DestroyTeamContainer();
+        GoWTeams:SyncOfficerNotes(teamData);
+    end);
+    setOfficerNotesButton:SetCallback("OnEnter", function(self)
+        local tooltip = LibQTip:Acquire("SyncOfficerTooltip", 1, "LEFT");
+        GOW.tooltip = tooltip;
+
+        tooltip:AddHeader('|cffffcc00Sync Officer Notes|r');
+        local line = tooltip:AddLine();
+        local tooltipText = "Click to apply the GoW team tags to all team members' officer notes.\n\n" .. "This will add the tag GoW:<team_id> to each member's officer note.\n\n" .. "You must have permission to edit officer notes in your guild.";
+        tooltip:SetCell(line, 1, tooltipText, "LEFT", 1, nil, 0, 0, 300, 50);
+        tooltip:SmartAnchorTo(self.frame);
+        tooltip:Show();
+    end);
+    setOfficerNotesButton:SetCallback("OnLeave", function()
+        LibQTip:Release(GOW.tooltip);
+        GOW.tooltip = nil;
+    end);
+    buttonsGroup:AddChild(setOfficerNotesButton);
 
     if self.UI.containerScrollFrame then
         self.UI.containerScrollFrame:AddChild(itemGroup);
@@ -798,4 +825,106 @@ function GoWTeams:SetBackdrop()
 
     frame:SetBackdropColor(0, 0, 0, 1);
     frame:SetBackdropBorderColor(1, 1, 1, 1);
+end
+
+function GoWTeams:BuildTeamMemberSet(teamData)
+    local teamMembers = {};
+    for _, member in ipairs(teamData.members or {}) do
+        local fullName = member.name .. "-" .. member.realmNormalized;
+        teamMembers[fullName] = true;
+    end
+    return teamMembers;
+end
+
+function GoWTeams:GetNormalizedFullName(name)
+    local shortName, realm = strsplit("-", name);
+    realm = realm or GetNormalizedRealmName();
+    return shortName .. "-" .. realm;
+end
+
+function GoWTeams:StripTag(note, tag)
+    -- Remove any instance of this tag with or without brackets
+    local pattern = "%s*%[?" .. tag:gsub("([%-%.%+%*%?%[%]%^%$%%])", "%%%1") .. "%]?%s*";
+    return (note or ""):gsub(pattern, " "):gsub("^%s*(.-)%s*$", "%1");
+end
+
+function GoWTeams:SyncOfficerNotes(teamData)
+    if not teamData or not teamData.id or not teamData.members then
+        GOW.Logger:PrintErrorMessage("Invalid teamData passed to SyncOfficerNotes.");
+        return;
+    end
+
+    if not GoWTeams:CanEditOfficerNote() then
+        GOW.Logger:PrintErrorMessage("You do not have permission to edit officer notes.");
+        return;
+    end
+
+    local guildKey = GOW.Core:GetGuildKey();
+    if not guildKey or not GOW.DB.profile.guilds[guildKey] then
+        GOW.Logger:PrintErrorMessage("No valid guild profile found.");
+        return;
+    end
+
+    local cachedRoster = GOW.DB.profile.guilds[guildKey].roster;
+    if not cachedRoster or not next(cachedRoster) then
+        GOW.Logger:PrintErrorMessage("Cached roster is missing or empty. Refresh the addon first.");
+        return;
+    end
+
+    local tag = "GoW:" .. tostring(teamData.id);
+    local teamMembers = GoWTeams:BuildTeamMemberSet(teamData);
+    local numGuildMembers = GetNumGuildMembers();
+    local officerNoteLength = 31; -- Maximum length for officer notes
+
+    for name, data in pairs(cachedRoster) do
+        local fullName = GoWTeams:GetNormalizedFullName(name);
+        local currentNote = data.officerNote or "";
+        local newNote = currentNote;
+
+        local tagExists = currentNote:find(tag:gsub("([%-%.%+%*%?%[%]%^%$%%])", "%%%1"), 1, true) ~= nil;
+
+        if teamMembers[fullName] then
+            if not tagExists then
+                local separator = currentNote ~= "" and " " or "";
+                local tagWithSeparator = separator .. tag;
+
+                if (string.len(currentNote) + string.len(tagWithSeparator) > officerNoteLength) then
+                    GOW.Logger:PrintMessage("Unable to update " .. fullName .. ": Note exceeds maximum length when attempting to add tag for team " .. "|cFFFFFFFF" .. teamData.name .. "|r.");
+                    newNote = currentNote; -- Keep the original note if it exceeds length
+                else
+                    newNote = currentNote .. tagWithSeparator;
+                end
+            end
+        else
+            if tagExists then
+                newNote = GoWTeams:StripTag(currentNote, tag);
+            end
+        end
+
+        newNote = newNote:gsub("^%s*(.-)%s*$", "%1");
+
+        if newNote ~= currentNote then
+            -- Find the actual live index to apply the change
+            for i = 1, numGuildMembers do
+                local liveName = GetGuildRosterInfo(i);
+                if GoWTeams:GetNormalizedFullName(liveName) == fullName then
+                    GuildRosterSetOfficerNote(i, newNote);
+                    if (not GOW.DB.profile.reduceEventNotifications) then
+                        GOW.Logger:PrintMessage("Updated " .. fullName .. ": " .. newNote);
+                    end
+                    break;
+                end
+            end
+        end
+    end
+end
+
+function GoWTeams:CanEditOfficerNote()
+    local GetAddOnMetadataFunc = CanEditOfficerNote or (C_GuildInfo and C_GuildInfo.CanEditOfficerNote);
+
+    if GetAddOnMetadataFunc then
+        return GetAddOnMetadataFunc();
+    end
+
+    return true;
 end
