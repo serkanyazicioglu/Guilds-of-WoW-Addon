@@ -889,7 +889,7 @@ function GoWTeams:SyncOfficerNotes(teamData)
                 local tagWithSeparator = separator .. tag;
 
                 if (string.len(currentNote) + string.len(tagWithSeparator) > officerNoteLength) then
-                    GOW.Logger:PrintMessage("Unable to update " .. fullName .. ": Note exceeds maximum length");
+                    GOW.Logger:PrintMessage("Unable to update " .. fullName .. ": Note exceeds maximum length when attempting to add tag for team " .. "|cFFFFFFFF" .. teamData.name .. "|r.");
                     newNote = currentNote; -- Keep the original note if it exceeds length
                 else
                     newNote = currentNote .. tagWithSeparator;
