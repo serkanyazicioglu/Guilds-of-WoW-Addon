@@ -898,7 +898,9 @@ function GoWTeams:SyncOfficerNotes(teamData)
                 local liveName = GetGuildRosterInfo(i);
                 if GoWTeams:GetNormalizedFullName(liveName) == fullName then
                     GuildRosterSetOfficerNote(i, newNote);
-                    GOW.Logger:PrintMessage("Updated " .. fullName .. ": " .. newNote);
+                    if (not GOW.DB.profile.reduceEventNotifications) then
+                        GOW.Logger:PrintMessage("Updated " .. fullName .. ": " .. newNote);
+                    end
                     break;
                 end
             end
