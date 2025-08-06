@@ -3,7 +3,7 @@
 ## Notes: Guilds of WoW guild herald for Classic Progression servers
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 1.9.0
+## Version: 1.9.1
 ## SavedVariables: GoWDB
 ## IconTexture: Interface\Icons\vas_guildfactionchange
 
