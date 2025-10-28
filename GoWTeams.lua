@@ -495,7 +495,7 @@ function GoWTeams:AppendTeam(teamData)
                         local className, classFile, classID = GetClassInfo(member.classId);
                         local classColor = { r = 1, g = 1, b = 1 };
                         if classFile then
-                            local GetClassColorFunc = C_ClassColor.GetClassColor or GetClassColor;
+                            local GetClassColorFunc = GetClassColorObj or C_ClassColor.GetClassColor;
                             classColor = GetClassColorFunc(classFile);
                         end;
                         local classColorRGB = { r = classColor.r, g = classColor.g, b = classColor.b };
