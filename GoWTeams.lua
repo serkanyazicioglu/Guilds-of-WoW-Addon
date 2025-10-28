@@ -43,7 +43,6 @@ local valuesForDropdown = {
     ["Online Status"] = "Online Status",
 };
 
--- //SECTION - AppendTeams
 function GoWTeams:AppendTeam(teamData)
     local itemGroup = self.GUI:Create("InlineGroup");
     itemGroup:SetFullWidth(true);
@@ -496,7 +495,8 @@ function GoWTeams:AppendTeam(teamData)
                         local className, classFile, classID = GetClassInfo(member.classId);
                         local classColor = { r = 1, g = 1, b = 1 };
                         if classFile then
-                            classColor = C_ClassColor.GetClassColor(classFile);
+                            local GetClassColorFunc = C_ClassColor.GetClassColor or GetClassColor;
+                            classColor = GetClassColorFunc(classFile);
                         end;
                         local classColorRGB = { r = classColor.r, g = classColor.g, b = classColor.b };
 

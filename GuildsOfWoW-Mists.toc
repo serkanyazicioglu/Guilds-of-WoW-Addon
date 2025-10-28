@@ -1,9 +1,9 @@
-## Interface: 50500
+## Interface: 50501
 ## Title: Guilds of WoW
 ## Notes: Guilds of WoW guild herald for Classic Progression servers
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 1.9.1
+## Version: 1.9.2
 ## SavedVariables: GoWDB
 ## IconTexture: Interface\Icons\vas_guildfactionchange
 
