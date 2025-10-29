@@ -1,0 +1,86 @@
+# azure-pipelines.yml
+trigger:
+- main   # adjust as needed
+
+pool:
+  vmImage: ubuntu-latest
+
+# ---- Configure these to match your Azure setup ----
+variables:
+  azureSubscription: 'YOUR-AZURE-RM-SERVICE-CONNECTION'   # Service connection name in DevOps
+  storageAccountName: 'yourstorageaccount'                # e.g. mystorageacct
+  containerName: 'yourcontainer'                          # e.g. releases
+# ---------------------------------------------------
+
+steps:
+  - checkout: self
+
+  # Parse version from GuildsOfWoW.toc (line starting with "## Version:")
+  - bash: |
+      set -euo pipefail
+      TOC_FILE="$(Build.SourcesDirectory)/GuildsOfWoW.toc"
+      if [ ! -f "$TOC_FILE" ]; then
+        echo "ERROR: $TOC_FILE not found."
+        exit 1
+      fi
+
+      LINE="$(grep -E '^[[:space:]]*##[[:space:]]*Version:' "$TOC_FILE" || true)"
+      if [ -z "$LINE" ]; then
+        echo "ERROR: No '## Version:' line found in $TOC_FILE"
+        exit 1
+      fi
+
+      VERSION="$(echo "$LINE" | sed -E 's/^[[:space:]]*##[[:space:]]*Version:[[:space:]]*//')"
+      # Trim quotes/whitespace just in case
+      VERSION="$(echo "$VERSION" | sed -E 's/^["'\'']?(.+?)["'\'']?$/\1/' | xargs)"
+      if [ -z "$VERSION" ]; then
+        echo "ERROR: Version value empty after parsing."
+        exit 1
+      fi
+
+      echo "Found addon version: $VERSION"
+      echo "##vso[task.setvariable variable=addonVersion]$VERSION"
+      echo "##vso[task.setvariable variable=versionTag]v$VERSION"
+    displayName: Extract version from .toc
+
+  # Stage everything except .gitignore
+  - task: CopyFiles@2
+    displayName: Stage files (exclude .gitignore)
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)'
+      Contents: |
+        **/*
+        !**/.gitignore
+      TargetFolder: '$(Build.ArtifactStagingDirectory)/package'
+      CleanTargetFolder: true
+
+  # Create the zip: GuildsOfWoW.zip
+  - task: ArchiveFiles@2
+    displayName: Create GuildsOfWoW.zip
+    inputs:
+      rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/package'
+      includeRootFolder: false
+      archiveType: zip
+      archiveFile: '$(Build.ArtifactStagingDirectory)/GuildsOfWoW.zip'
+      replaceExistingArchive: true
+
+  # Optional: publish the zip as a pipeline artifact
+  - task: PublishBuildArtifacts@1
+    displayName: Publish artifact (optional)
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)/GuildsOfWoW.zip'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
+
+  # Upload to Azure Storage:
+  #   /gow-sync-app/releases/addon/<versionTag>/GuildsOfWoW.zip
+  # Example final blob name: /gow-sync-app/releases/addon/v1.9.3/GuildsOfWoW.zip
+  - task: AzureFileCopy@4
+    displayName: Upload zip to Azure Storage
+    inputs:
+      SourcePath: '$(Build.ArtifactStagingDirectory)/GuildsOfWoW.zip'
+      azureSubscription: '$(azureSubscription)'
+      Destination: 'AzureBlob'
+      storage: '$(storageAccountName)'
+      ContainerName: '$(containerName)'
+      BlobPrefix: 'gow-sync-app/releases/addon/$(versionTag)/'
