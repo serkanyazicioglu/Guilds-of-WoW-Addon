@@ -4,7 +4,16 @@ GOW.GoWComm = GoWComm;
 
 local ns = select(2, ...)
 
+local gameVersion = nil;
+if GOW and GOW.Core and GOW.Core.GetGowGameVersionId then
+    gameVersion = GOW.Core:GetGowGameVersionId();
+end
+
 function GOW:OnEnable()
+    if not gameVersion or gameVersion ~= 1 then
+        return;
+    end
+
     if GOW.eventMessageTimer then
         GOW.timers:CancelTimer(GOW.eventMessageTimer);
     end
@@ -29,11 +38,11 @@ end
 
 function GoWComm:GetUpcomingEvents(upcomingEvents)
     -- Check if the upcoming events data is available
-    if (upcomingEvents == nil or upcomingEvents.totalEvents == 0) then
+    if upcomingEvents == nil or upcomingEvents.totalEvents == 0 then
         return;
     end
 
-    local events = {}
+    local events = {};
     local guildName = GetGuildInfo("player");
 
     -- grab the next 3 upcoming events for the guild
@@ -49,15 +58,15 @@ function GoWComm:GetUpcomingEvents(upcomingEvents)
                 durationText = event.durationText,
                 webUrl = event.webUrl,
                 team = event.team,
-            }
-            tinsert(events, eventData)
+            };
+            table.insert(events, eventData);
         end
     end
     return events
 end
 
 function GoWComm:CheckEvents(events)
-    if (events and #events > 0) then
+    if events and #events > 0 then
         GOW.Logger:Debug("Transmitting upcoming events data to guild members.");
         GoWComm:Transmit(events);
     else

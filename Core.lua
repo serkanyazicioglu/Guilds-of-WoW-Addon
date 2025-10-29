@@ -21,7 +21,13 @@ GOW.defaults = {
 	}
 }
 
-local getGowGameVersionId = function()
+local ns = select(2, ...);
+
+local Core = {};
+GOW.Core = Core;
+
+
+function Core.GetGowGameVersionId()
 	-- if (GOW.consts.ENABLE_DEBUGGING) then
 	-- 	print("WOW_PROJECT_ID: " .. WOW_PROJECT_ID);
 	-- end
@@ -40,9 +46,9 @@ end
 function GetCurrentRegionByGameVersion()
 	local regionId = GetCurrentRegion();
 
-	if (getGowGameVersionId() == 3) then
+	if (Core:GetGowGameVersionId() == 3) then
 		return tonumber("4" .. tostring(regionId));
-	elseif (getGowGameVersionId() == 2) then
+	elseif (Core:GetGowGameVersionId() == 2) then
 		return tonumber("8" .. tostring(regionId));
 	end
 
@@ -58,14 +64,11 @@ function GetCurrentCharacterUniqueKey()
 end
 
 local openRaidLib = nil;
-if (getGowGameVersionId() == 1) then
+if (Core:GetGowGameVersionId() == 1) then
 	openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0");
 end
 
-local ns = select(2, ...);
 
-local Core = {};
-GOW.Core = Core;
 local f = CreateFrame("Frame");
 f:RegisterEvent("PLAYER_ENTERING_WORLD");
 f:RegisterEvent("FIRST_FRAME_RENDERED");
@@ -1929,7 +1932,7 @@ function Core:SetRosterInfo()
 
 		if (guildKey) then
 			local me = GetCurrentCharacterUniqueKey();
-			local isKeystonesEnabled = getGowGameVersionId() == 1;
+			local isKeystonesEnabled = Core:GetGowGameVersionId() == 1;
 
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime();
 			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD();
