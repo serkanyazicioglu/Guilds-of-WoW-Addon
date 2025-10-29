@@ -802,7 +802,7 @@ function GoWTeams:GoWHexToRGB(hex)
         local b = tonumber("0x" .. hex:sub(5, 6)) / 255;
         return r, g, b;
     else
-        error("Invalid hex color: " .. tostring(hex));
+        return 1, 1, 1;
     end
 end
 
