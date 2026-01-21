@@ -323,7 +323,8 @@ function GOW:OnInitialize()
 		button1                = "Send",
 		button2                = CANCEL,
 		OnAccept               = function(self, data)
-			local text = self.editBox:GetText();
+            local editBox = self:GetEditBox()
+			local text = editBox:GetText();
 			if (text ~= nil and text ~= "") then
 				SendChatMessage(text, "WHISPER", nil, data);
 				Core:DialogClosed();
@@ -349,9 +350,10 @@ function GOW:OnInitialize()
 		text                   = "Select & copy following text",
 		button1                = DONE,
 		OnShow                 = function(self, data)
-			self.editBox:SetText(data);
-			self.editBox:HighlightText();
-			self.editBox:SetFocus();
+            local editBox = self:GetEditBox()
+			editBox:SetText(data);
+			editBox:HighlightText();
+			editBox:SetFocus();
 		end,
 		OnAccept               = function()
 			Core:DialogClosed();
