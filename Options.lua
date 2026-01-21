@@ -6,7 +6,7 @@ local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 
 local optionsTable = {
     type = "group",
-    name = "Guilds of WoW",
+    name = GOW.consts.APP_NAME,
     args = {
         BagSettings = {
             type = "group",
@@ -69,11 +69,12 @@ local optionsTable = {
 }
 
 AceConfig:RegisterOptionsTable(addonName, optionsTable, nil);
-AceConfigDialog:AddToBlizOptions(addonName, "Guilds of WoW");
-local GetAddOnMetadataFunc = GetAddOnMetadata or C_AddOns.GetAddOnMetadata;
-local OpenSettingsFunc = InterfaceOptionsFrame_OpenToCategory or Settings.OpenToCategory;
+local categoryFrame, categoryId = AceConfigDialog:AddToBlizOptions(addonName, GOW.consts.APP_NAME);
 
 function GOW:OpenSettings()
-    local title = GetAddOnMetadataFunc(addonName, "Title");
-    OpenSettingsFunc(title);
+    if (C_SettingsUtil.OpenSettingsPanel) then
+        C_SettingsUtil.OpenSettingsPanel(categoryId);
+    else
+        InterfaceOptionsFrame_OpenToCategory(GOW.consts.APP_NAME);
+    end
 end

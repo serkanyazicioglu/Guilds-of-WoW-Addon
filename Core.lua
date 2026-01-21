@@ -8,7 +8,8 @@ GOW.consts = {
 	INVITE_INTERVAL = 2,
 	ENABLE_DEBUGGING = false,
 	GUILD_EVENT = 1,
-	PLAYER_EVENT = 2
+	PLAYER_EVENT = 2,
+	APP_NAME = "Guilds of WoW"
 };
 
 GOW.defaults = {
@@ -25,7 +26,6 @@ local ns = select(2, ...);
 
 local Core = {};
 GOW.Core = Core;
-
 
 function Core.GetGowGameVersionId()
 	-- if (GOW.consts.ENABLE_DEBUGGING) then
@@ -139,11 +139,11 @@ function GOW:OnInitialize()
 
 	local dataobj = self.LDB:NewDataObject("gowicon", {
 		type = "data source",
-		label = "Guilds of WoW",
-		text = "Guilds of WoW",
+		label = GOW.consts.APP_NAME,
+		text = GOW.consts.APP_NAME,
 		icon = "Interface\\Addons\\GuildsOfWoW\\icons\\VAS_GuildFactionChange.tga",
 		OnTooltipShow = function(tooltip)
-			tooltip:SetText("Guilds of WoW");
+			tooltip:SetText(GOW.consts.APP_NAME);
 			tooltip:Show();
 		end,
 		OnClick = GuildsOfWow_OnAddonButtonClick
@@ -170,7 +170,7 @@ function GOW:OnInitialize()
 	containerFrame:SetWidth(1000);
 	containerFrame:EnableResize(false);
 	containerFrame.frame:SetFrameStrata("MEDIUM");
-	containerFrame:SetTitle("Guilds of WoW");
+	containerFrame:SetTitle(GOW.consts.APP_NAME);
 	containerFrame:SetStatusText("Type /gow for quick access");
 	containerFrame:SetCallback("OnClose", function(widget)
 		containerFrame:Hide();
