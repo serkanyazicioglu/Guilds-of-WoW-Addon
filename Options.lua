@@ -72,9 +72,11 @@ AceConfig:RegisterOptionsTable(addonName, optionsTable, nil);
 local categoryFrame, categoryId = AceConfigDialog:AddToBlizOptions(addonName, GOW.consts.APP_NAME);
 
 function GOW:OpenSettings()
-    if (C_SettingsUtil.OpenSettingsPanel) then
+    if (C_SettingsUtil and C_SettingsUtil.OpenSettingsPanel) then
         C_SettingsUtil.OpenSettingsPanel(categoryId);
-    else
+    elseif (Settings) then
+        Settings.OpenToCategory(categoryId);
+    elseif (InterfaceOptionsFrame_OpenToCategory) then
         InterfaceOptionsFrame_OpenToCategory(GOW.consts.APP_NAME);
     end
 end
