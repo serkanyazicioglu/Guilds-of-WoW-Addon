@@ -3,7 +3,7 @@
 ## Notes: Guilds of WoW guild herald for Classic Anniversary servers
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 1.10.3
+## Version: 1.10.4
 ## SavedVariables: GoWDB
 
 embed.xml

@@ -36,6 +36,8 @@ function Core.GetGowGameVersionId()
 		return 1;
 	elseif (WOW_PROJECT_ID == WOW_PROJECT_CLASSIC) then
 		return 2;
+	elseif (WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC) then
+		return 4;
 	else --if (WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC) then
 		return 3;
 	end
@@ -50,6 +52,8 @@ function GetCurrentRegionByGameVersion()
 		return tonumber("4" .. tostring(regionId));
 	elseif (Core:GetGowGameVersionId() == 2) then
 		return tonumber("8" .. tostring(regionId));
+	elseif (Core:GetGowGameVersionId() == 4) then
+		return tonumber("19" .. tostring(regionId));
 	end
 
 	return regionId;
@@ -877,8 +881,8 @@ function Core:searchForEvent(event)
 	if (numDayEvents > 0) then
 		for i = 1, numDayEvents do
 			local dayEvent = C_Calendar.GetDayEvent(offsetMonths, event.day, i);
-
-			if (dayEvent.calendarType == "GUILD_EVENT" or dayEvent.calendarType == "PLAYER") then
+			local calendarType = dayEvent.calendarType;
+			if (calendarType and (calendarType == "GUILD_EVENT" or calendarType == "PLAYER")) then
 				--GOW.Logger:Debug("dayEvent: " .. dayEvent.title .. " - " .. dayEvent.calendarType);
 
 				if (string.match(dayEvent.title, "*" .. event.eventKey)) then
