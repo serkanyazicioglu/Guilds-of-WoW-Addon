@@ -1,10 +1,11 @@
-## Interface: 11508
+## Interface: 11505, 11508
 ## Title: Guilds of WoW
 ## Notes: Guilds of WoW guild herald for Classic Era servers
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
 ## Version: 1.10.4
 ## SavedVariables: GoWDB
+## IconTexture: Interface\Addons\GuildsOfWoW\icons\guilds-of-wow-logo-flag-plain.png
 
 embed.xml
 

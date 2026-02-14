@@ -7,7 +7,7 @@
 ## SavedVariables: GoWDB
 ## OptionalDeps: AstralKeys
 ## AddonCompartmentFunc: GuildsOfWow_OnAddonButtonClick
-## IconTexture: Interface\Icons\vas_guildfactionchange
+## IconTexture: Interface\Addons\GuildsOfWoW\icons\guilds-of-wow-logo-flag-plain.png
 
 embed.xml
 

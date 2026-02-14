@@ -5,7 +5,7 @@
 ## Author: Nhea
 ## Version: 1.10.4
 ## SavedVariables: GoWDB
-## IconTexture: Interface\Icons\vas_guildfactionchange
+## IconTexture: Interface\Addons\GuildsOfWoW\icons\guilds-of-wow-logo-flag-plain.png
 
 embed.xml
 

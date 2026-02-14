@@ -145,7 +145,7 @@ function GOW:OnInitialize()
 		type = "data source",
 		label = GOW.consts.APP_NAME,
 		text = GOW.consts.APP_NAME,
-		icon = "Interface\\Addons\\GuildsOfWoW\\icons\\VAS_GuildFactionChange.tga",
+		icon = "Interface\\Addons\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png",
 		OnTooltipShow = function(tooltip)
 			tooltip:SetText(GOW.consts.APP_NAME);
 			tooltip:Show();
