@@ -530,12 +530,13 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 			local eventInfo = C_Calendar.GetEventInfo();
 
 			if (eventInfo and eventInfo.title and string.len(eventInfo.title) > 0) then
+				local calendarType = tostring(eventInfo.calendarType);
 				GOW.Logger:Debug("CALENDAR_OPEN_EVENT: Opened: " ..
-					eventInfo.title .. ". Calendar Type: " .. eventInfo.calendarType);
+					eventInfo.title .. ". Calendar Type: " .. calendarType);
 				Core:ClearEventInvites(false);
 				isNewEventBeingCreated = false;
 
-				if (eventInfo.calendarType == "GUILD_EVENT" or eventInfo.calendarType == "PLAYER") then
+				if (calendarType == "GUILD_EVENT" or calendarType == "PLAYER") then
 					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title);
 
 					if (upcomingEvent) then
@@ -549,7 +550,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 							end
 						end
 
-						if (eventInfo.calendarType == "PLAYER") then
+						if (calendarType == "PLAYER") then
 							--processedEvents:remove(upcomingEvent.titleWithKey)
 							Core:CreateEventInvites(upcomingEvent, not isEventProcessCompleted);
 						else
@@ -881,8 +882,8 @@ function Core:searchForEvent(event)
 	if (numDayEvents > 0) then
 		for i = 1, numDayEvents do
 			local dayEvent = C_Calendar.GetDayEvent(offsetMonths, event.day, i);
-			local calendarType = dayEvent.calendarType;
-			if (calendarType and (calendarType == "GUILD_EVENT" or calendarType == "PLAYER")) then
+			local calendarType = tostring(dayEvent.calendarType);
+			if (calendarType == "GUILD_EVENT" or calendarType == "PLAYER") then
 				--GOW.Logger:Debug("dayEvent: " .. dayEvent.title .. " - " .. dayEvent.calendarType);
 
 				if (string.match(dayEvent.title, "*" .. event.eventKey)) then
@@ -1514,10 +1515,12 @@ function Core:CheckEventInvites()
 									hasAnyUninvitedEvent = true;
 								end
 							elseif (eventIndex > 0) then
-								GOW.Logger:Debug(dayEvent.title .. " creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex);
+								local calendarType = tostring(dayEvent.calendarType);
+								local modStatus = tostring(dayEvent.modStatus);
+								GOW.Logger:Debug(dayEvent.title .. " creator: " .. modStatus .. " eventIndex:" .. eventIndex);
 
-								if (dayEvent.calendarType == "PLAYER" or dayEvent.calendarType == "GUILD_EVENT") then
-									if (dayEvent.modStatus == "CREATOR" or dayEvent.modStatus == "MODERATOR") then
+								if (calendarType == "PLAYER" or calendarType == "GUILD_EVENT") then
+									if (modStatus == "CREATOR" or modStatus == "MODERATOR") then
 										if (CalendarFrame and CalendarFrame:IsShown()) then
 											GOW.Logger:Debug("Calendar frame is open.");
 										else
