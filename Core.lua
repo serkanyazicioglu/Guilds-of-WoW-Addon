@@ -94,6 +94,13 @@ function GOW:OnInitialize()
 	local consoleCommandFunc = function(msg, editbox)
 		if (msg == "minimap") then
 			Core:ToggleMinimap();
+		elseif (msg:sub(1, 8) == "wishlist") then
+			local subArg = msg:sub(10):match("^%s*(.-)%s*$");
+			if GOW.Wishlists then
+				GOW.Wishlists:HandleSlashCommand(subArg);
+			else
+				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
+			end
 		else
 			Core:ToggleWindow();
 		end
@@ -434,6 +441,10 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 
 		if (openRaidLib) then
 			openRaidLib.RequestKeystoneDataFromGuild();
+		end
+
+		if GOW.Wishlists then
+			GOW.Wishlists:Initialize();
 		end
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		Core:SetRosterInfo();

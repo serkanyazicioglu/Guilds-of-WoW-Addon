@@ -24,4 +24,5 @@
 	<Script file="db/guildevents.lua" />
 	<Script file="db/guildrecruitmentapplications.lua" />
 	<Script file="db/guildteams.lua" />
+	<Script file="db/wishlist.lua" />
 </Ui>
