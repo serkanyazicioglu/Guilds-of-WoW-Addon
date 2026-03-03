@@ -1934,7 +1934,7 @@ function Core:GetGuildKey()
 end
 
 function Core:SetRosterInfo()
-	local inCombat = UnitAffectingCombat("player");
+	local inCombat = InCombatLockdown() or UnitAffectingCombat("player");
 	if (inCombat) then
 		GOW.Logger:Debug("Cannot set roster info in combat!");
 		return;
