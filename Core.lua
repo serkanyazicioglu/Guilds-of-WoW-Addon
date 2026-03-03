@@ -1934,6 +1934,12 @@ function Core:GetGuildKey()
 end
 
 function Core:SetRosterInfo()
+	local inCombat = UnitAffectingCombat("player");
+	if (inCombat) then
+		GOW.Logger:Debug("Cannot set roster info in combat!");
+		return;
+	end
+
 	local numTotalMembers, _, _ = GetNumGuildMembers();
 
 	if (numTotalMembers > 0) then
@@ -1944,7 +1950,7 @@ function Core:SetRosterInfo()
 			local isKeystonesEnabled = Core:GetGowGameVersionId() == 1;
 
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime();
-			GOW.DB.profile.guilds[guildKey].motd = tostring(GetGuildRosterMOTD());
+			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD();
 			GOW.DB.profile.guilds[guildKey].roster = {};
 			GOW.DB.profile.guilds[guildKey].ranks = {};
 
