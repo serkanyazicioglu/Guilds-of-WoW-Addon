@@ -1944,7 +1944,7 @@ function Core:SetRosterInfo()
 			local isKeystonesEnabled = Core:GetGowGameVersionId() == 1;
 
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime();
-			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD();
+			GOW.DB.profile.guilds[guildKey].motd = tostring(GetGuildRosterMOTD());
 			GOW.DB.profile.guilds[guildKey].roster = {};
 			GOW.DB.profile.guilds[guildKey].ranks = {};
 
