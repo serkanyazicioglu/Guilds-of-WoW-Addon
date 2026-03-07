@@ -59,6 +59,14 @@ function GetCurrentRegionByGameVersion()
 	return regionId;
 end
 
+function IsInGameCalendarAccessible()
+	return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
+end
+
+function IsKeystonesEnabled()
+	return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
+end
+
 function GetCurrentCharacterUniqueKey()
 	local name, characterRealm = UnitName("player");
 	if (characterRealm == nil) then
@@ -68,10 +76,9 @@ function GetCurrentCharacterUniqueKey()
 end
 
 local openRaidLib = nil;
-if (Core:GetGowGameVersionId() == 1) then
+if (IsKeystonesEnabled()) then
 	openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0");
 end
-
 
 local f = CreateFrame("Frame");
 f:RegisterEvent("PLAYER_ENTERING_WORLD");
@@ -101,7 +108,7 @@ local workQueue = nil;
 local persistentWorkQueue = nil;
 
 local processedEvents = nil;
-local isEventProcessCompleted = false;
+local isEventProcessCompleted = IsInGameCalendarAccessible() == false; -- if calendar is not accessible, consider event process completed to avoid blocking the app
 local isNewEventBeingCreated = false;
 local isProcessedEventsPrinted = false;
 local isCalendarOpened = false;
@@ -418,20 +425,6 @@ function GOW:OnInitialize()
 
 	StaticPopupDialogs["INVITE_TO_PARTY_NOONE_FOUND"] = {
 		text                   = "No member from this event is available to invite.",
-		button1                = OKAY,
-		OnHide                 = function()
-			Core:DialogClosed();
-		end,
-		timeout                = 0,
-		enterClicksFirstButton = 1,
-		whileDead              = true,
-		hideOnEscape           = true,
-		exclusive              = 1,
-		preferredIndex         = 1
-	};
-
-	StaticPopupDialogs["INVITE_TO_PARTY_INVALID_CALENDAR"] = {
-		text                   = "Only 'Player Event' attendances can be invited via addon. For 'Guild Events' you can create the event and use that event's 'Invite Members' functionality.",
 		button1                = OKAY,
 		OnHide                 = function()
 			Core:DialogClosed();
@@ -856,6 +849,10 @@ function Core:ResetCalendar()
 end
 
 function Core:searchForEvent(event)
+	if (not IsInGameCalendarAccessible()) then
+		return -2;
+	end
+
 	local serverTime = C_DateAndTime.GetServerTimeLocal();
 
 	if (CalendarFrame and CalendarFrame:IsShown()) then
@@ -1019,10 +1016,10 @@ function Core:AppendCalendarList(event)
 	end
 
 	local isEventMember = event.isEventMember;
-	local canAddEvent = event.isEventManager;
+	local canAddEvent = event.isEventManager and IsInGameCalendarAccessible();
 
 	local eventInvitingMembersLabel = GOW.GUI:Create("SFX-Info");
-	eventInvitingMembersLabel:SetLabel("Inviting");
+	eventInvitingMembersLabel:SetLabel("Audience");
 
 	local invitineDetailsText = "";
 
@@ -1107,38 +1104,34 @@ function Core:AppendCalendarList(event)
 			end);
 		end
 		buttonsGroup:AddChild(eventButton);
+	end
 
-		if (event.eventEndDate >= C_DateAndTime.GetServerTimeLocal()) then
-			local inviteButton = GOW.GUI:Create("Button");
-			inviteButton:SetWidth(150);
-			inviteButton:SetText("Invite Attendees");
-			inviteButton:SetCallback("OnClick", function()
-				if (event.calendarType == GOW.consts.PLAYER_EVENT) then
-					if (eventIndex > 0) then
-						Core:OpenDialog("INVITE_TO_PARTY_USE_CALENDAR");
-					else
-						Core:InviteAllToPartyCheck(event);
-					end
-				else
-					Core:OpenDialog("INVITE_TO_PARTY_INVALID_CALENDAR");
-				end
-			end);
+	if (event.isEventManager and event.eventEndDate >= C_DateAndTime.GetServerTimeLocal()) then
+		local inviteButton = GOW.GUI:Create("Button");
+		inviteButton:SetWidth(150);
+		inviteButton:SetText("Invite Attendees");
+		inviteButton:SetCallback("OnClick", function()
+			if (eventIndex > 0) then
+				Core:OpenDialog("INVITE_TO_PARTY_USE_CALENDAR");
+			else
+				Core:InviteAllToPartyCheck(event);
+			end
+		end);
 
-			inviteButton:SetCallback("OnEnter", function(self)
-				local tooltip = LibQTip:Acquire("EventMessageTooltip", 1, "LEFT");
-				GOW.tooltip = tooltip;
+		inviteButton:SetCallback("OnEnter", function(self)
+			local tooltip = LibQTip:Acquire("EventMessageTooltip", 1, "LEFT");
+			GOW.tooltip = tooltip;
 
-				local line = tooltip:AddLine();
-				tooltip:SetCell(line, 1, "You can invite attendees directly into your party or raid.", "LEFT", 1, nil, 0, 0, 300, 50);
-				tooltip:SmartAnchorTo(self.frame);
-				tooltip:Show();
-			end);
-			inviteButton:SetCallback("OnLeave", function()
-				LibQTip:Release(GOW.tooltip);
-				GOW.tooltip = nil;
-			end);
-			buttonsGroup:AddChild(inviteButton);
-		end
+			local line = tooltip:AddLine();
+			tooltip:SetCell(line, 1, "You can invite attendees directly into your party or raid.", "LEFT", 1, nil, 0, 0, 300, 50);
+			tooltip:SmartAnchorTo(self.frame);
+			tooltip:Show();
+		end);
+		inviteButton:SetCallback("OnLeave", function()
+			LibQTip:Release(GOW.tooltip);
+			GOW.tooltip = nil;
+		end);
+		buttonsGroup:AddChild(inviteButton);
 	end
 
 	local copyLinkButton = GOW.GUI:Create("Button");
@@ -1352,9 +1345,6 @@ function Core:DialogClosed()
 	currentOpenDialog = nil;
 end
 
-function Core:ShowTooltip(container, header, message)
-end
-
 function Core:CreateCalendarEvent(event)
 	if (event.calendarType == GOW.consts.PLAYER_EVENT and event.totalMembers >= 100) then
 		GOW.Logger:PrintErrorMessage("You cannot create events with more than 100 members! To proceed, narrow your audience by using filters, binding a team, or disabling filters entirely to create a guild event.");
@@ -1453,7 +1443,7 @@ end
 
 function Core:IsInvitedToEvent(upcomingEvent)
 	if (upcomingEvent.isEventMember) then
-		if (upcomingEvent.calendarType == 1) then
+		if (upcomingEvent.calendarType == GOW.consts.GUILD_EVENT) then
 			return true;
 		else
 			local currentCharacterInvite = GetCurrentCharacterUniqueKey();
@@ -1685,30 +1675,27 @@ function Core:SetAttendance(upcomingEvent, closeAfterEnd)
 
 		local attendanceChangedCount = 0;
 		local currentEventAttendances = {};
-		local attendanceIndex = 1;
-		local processAttendanceValues = (not processedEvents:contains(upcomingEvent.titleWithKey) and upcomingEvent.calendarType == 2);
+		local processAttendanceValues = (not processedEvents:contains(upcomingEvent.titleWithKey) and upcomingEvent.calendarType == GOW.consts.PLAYER_EVENT);
 
 		for a = 1, invitesNum do
 			local inviteInfo = C_Calendar.EventGetInvite(a);
 
 			if (inviteInfo.name) then
-				if (inviteInfo.inviteStatus > 0) then
+				if (inviteInfo.inviteStatus > Enum.CalendarStatus.Invited) then
 					local responseTime = C_Calendar.EventGetInviteResponseTime(a);
 					local responeTimeFormatted = nil;
 					if (responseTime) then
 						responeTimeFormatted = responseTime.year .. "-" .. string.lpad(tostring(responseTime.month), 2, '0') .. "-" .. string.lpad(tostring(responseTime.monthDay), 2, '0') .. "T" .. string.lpad(tostring(responseTime.hour), 2, '0') .. ":" .. string.lpad(tostring(responseTime.minute), 2, '0');
 					end
 
-					currentEventAttendances[attendanceIndex] = {
+					table.insert(currentEventAttendances, {
 						name = inviteInfo.name,
 						level = inviteInfo.level,
 						attendance = inviteInfo.inviteStatus,
 						classId = inviteInfo.classID,
 						guid = inviteInfo.guid,
 						date = responeTimeFormatted
-					};
-
-					attendanceIndex = attendanceIndex + 1;
+					});
 				end
 
 				if (processAttendanceValues) then
@@ -1814,60 +1801,47 @@ function Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
 	end
 end
 
-function Core:InviteAllToPartyCheck(event)
+function Core:GetAttendeesToInvite(event)
 	local me = GetCurrentCharacterUniqueKey();
-
-	local eligibleMembers = 0;
+	local attendeesToInvite = {};
 
 	for i = 1, event.totalMembers do
 		local currentInviteMember = event.inviteMembers[i];
 
-		if (currentInviteMember.attendance == 2 or currentInviteMember.attendance == 4 or currentInviteMember.attendance == 9) then
+		local inviteStatus = currentInviteMember.attendance - 1;
+
+		if (inviteStatus == Enum.CalendarStatus.Available or inviteStatus == Enum.CalendarStatus.Confirmed or inviteStatus == Enum.CalendarStatus.Tentative) then
 			local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized;
 
 			if (inviteName ~= me) then
-				eligibleMembers = eligibleMembers + 1;
+				table.insert(attendeesToInvite, inviteName);
 			end
 		end
 	end
 
-	if (eligibleMembers > 0) then
-		Core:OpenDialogWithData("CONFIRM_INVITE_TO_PARTY", eligibleMembers, nil, event);
+	return attendeesToInvite;
+end
+
+function Core:InviteAllToPartyCheck(event)
+	local eligibleMembers = Core:GetAttendeesToInvite(event);
+	local eligibleMembersCount = #eligibleMembers;
+
+	if (eligibleMembersCount > 0) then
+		Core:OpenDialogWithData("CONFIRM_INVITE_TO_PARTY", eligibleMembersCount, nil, event);
 	else
 		Core:OpenDialog("INVITE_TO_PARTY_NOONE_FOUND");
 	end
 end
 
 function Core:InviteAllToParty(event)
-	local invitingMembers = {};
-	local inviteIndex = 1;
+	local eligibleMembers = Core:GetAttendeesToInvite(event);
 
-	local me = GetCurrentCharacterUniqueKey();
-
-	for i = 1, event.totalMembers do
-		local currentInviteMember = event.inviteMembers[i];
-
-		if (currentInviteMember.attendance == 2 or currentInviteMember.attendance == 4 or currentInviteMember.attendance == 9) then
-			local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized;
-
-			invitingMembers[inviteIndex] = inviteName;
-			inviteIndex = inviteIndex + 1;
+	for i, inviteName in ipairs(eligibleMembers) do
+		if not IsInRaid() and GetNumGroupMembers() == 5 and C_PartyInfo.AllowedToDoPartyConversion(true) then
+			C_PartyInfo.ConvertToRaid();
 		end
-	end
 
-	GOW.Logger:Debug("inviteIndex: " .. inviteIndex);
-
-	if (inviteIndex > 1) then
-		for a = 1, inviteIndex - 1 do
-			local inviteName = invitingMembers[a];
-			if (inviteName ~= me) then
-				if not IsInRaid() and GetNumGroupMembers() == 5 then
-					C_PartyInfo.ConvertToRaid();
-				end
-
-				C_PartyInfo.InviteUnit(inviteName);
-			end
-		end
+		C_PartyInfo.InviteUnit(inviteName);
 	end
 end
 
@@ -1895,10 +1869,12 @@ function Core:InviteAllTeamMembersToParty(teamData)
 	GOW.Logger:Debug("inviteIndex: " .. inviteIndex);
 
 	if (inviteIndex > 1) then
+		local me = GetCurrentCharacterUniqueKey();
+
 		for a = 1, inviteIndex - 1 do
 			local inviteName = invitingMembers[a];
 			if (inviteName ~= me) then
-				if not IsInRaid() and GetNumGroupMembers() == 5 then
+				if not IsInRaid() and GetNumGroupMembers() == 5 and C_PartyInfo.AllowedToDoPartyConversion(true) then
 					C_PartyInfo.ConvertToRaid();
 				end
 
@@ -1947,7 +1923,7 @@ function Core:SetRosterInfo()
 
 		if (guildKey) then
 			local me = GetCurrentCharacterUniqueKey();
-			local isKeystonesEnabled = Core:GetGowGameVersionId() == 1;
+			local isKeystonesEnabled = IsKeystonesEnabled();
 
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime();
 			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD();
