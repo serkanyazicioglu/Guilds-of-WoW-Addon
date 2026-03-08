@@ -69,9 +69,9 @@ local isCalendarOpenEventBound = false;
 
 local selectedTab = "events";
 local tabs = {
-	{ value = "events",          text = "Upcoming Events" },
+	{ value = "events",          text = "Events" },
 	{ value = "teams",           text = "Teams" },
-	{ value = "recruitmentApps", text = "Recruitment Applications" },
+	{ value = "recruitmentApps", text = "Recruitment" },
 };
 
 local LibQTip = LibStub('LibQTip-1.0');
@@ -157,6 +157,7 @@ function GOW:OnInitialize()
 	containerTabs:SelectTab(selectedTab);
 	containerTabs:SetCallback("OnGroupSelected", function(frame, event, value) Core:ToggleTabs(value) end);
 	containerFrame:AddChild(containerTabs);
+	Core:ApplyTabHeaderFontSize(containerTabs);
 
 	containerScrollFrame = GOW.GUI:Create("ScrollFrame");
 	containerScrollFrame:SetLayout("Flow");
@@ -575,6 +576,23 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		end
 	end
 end)
+
+
+function Core:ApplyTabHeaderFontSize(tabGroup)
+    if (not tabGroup or type(tabGroup.tabs) ~= "table") then
+        return;
+    end
+
+    for _, tab in ipairs(tabGroup.tabs) do
+        if (tab and tab.text and tab.text.GetFont and tab.text.SetFont) then
+            local fontPath, fontSize, fontFlags = tab.text:GetFont();
+            if (fontPath and fontSize) then
+                tab.gowBaseFontSize = tab.gowBaseFontSize or fontSize;
+                tab.text:SetFont(fontPath, tab.gowBaseFontSize + 2, fontFlags or "");
+            end
+        end
+    end
+end
 
 function Core:ToggleTabs(tabKey)
 	selectedTab = tabKey;
