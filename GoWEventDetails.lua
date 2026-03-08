@@ -208,6 +208,7 @@ function GoWEventDetails:BuildEventInviteRows(event, roleFilter)
                 table.insert(inviteRows, {
                     inviteName = inviteName,
                     name = currentInviteMember.name,
+                    realm = currentInviteMember.realm,
                     classId = currentInviteMember.classId,
                     className = currentInviteMember.class,
                     faction = currentInviteMember.faction,
@@ -329,6 +330,12 @@ function GoWEventDetails:RenderEventInviteRows()
     nameHeader:SetFontObject(GameFontNormal);
     nameHeader:SetColor(headerColorR, headerColorG, headerColorB);
     headerRow:AddChild(nameHeader);
+    local realmHeader = self.GUI:Create("Label");
+    realmHeader:SetText("Realm");
+    realmHeader:SetWidth(160);
+    realmHeader:SetFontObject(GameFontNormal);
+    realmHeader:SetColor(headerColorR, headerColorG, headerColorB);
+    headerRow:AddChild(realmHeader);
 
     local classHeader = self.GUI:Create("Label");
     classHeader:SetText("Class");
@@ -383,6 +390,11 @@ function GoWEventDetails:RenderEventInviteRows()
             memberNameLabel:SetColor(classColor.r, classColor.g, classColor.b);
         end
         memberContainer:AddChild(memberNameLabel);
+        local realmLabel = self.GUI:Create("Label");
+        realmLabel:SetWidth(160);
+        realmLabel:SetText(row.realm or "");
+        realmLabel:SetFontObject(GameFontNormal);
+        memberContainer:AddChild(realmLabel);
 
         local classLabel = self.GUI:Create("Label");
         classLabel:SetWidth(130);
