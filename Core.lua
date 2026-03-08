@@ -417,14 +417,18 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		GOW.Logger:Debug(tostring(arg1));
 		GOW.Logger:Debug(tostring(arg2));
 	elseif event == "FIRST_FRAME_RENDERED" then
-		isCalendarOpened = true;
+		if (GOW.Helper:IsInGameCalendarAccessible()) then
+			isCalendarOpened = true;
 
-		if (isInitialLogin) then
-			persistentWorkQueue:addTask(function()
+			if (isInitialLogin) then
+				persistentWorkQueue:addTask(function()
+					Core:InitializeEventInvites();
+				end, nil, 5);
+			else
 				Core:InitializeEventInvites();
-			end, nil, 5);
+			end
 		else
-			Core:InitializeEventInvites();
+			isEventProcessCompleted = true; -- if calendar is not accessible, consider event process completed to avoid blocking the app
 		end
 
 		if (openRaidLib) then
@@ -1068,7 +1072,7 @@ function Core:AppendCalendarList(event)
 
 	if (event.isEventManager and event.eventEndDate >= C_DateAndTime.GetServerTimeLocal()) then
 		local inviteButton = GOW.GUI:Create("Button");
-		inviteButton:SetWidth(150);
+		inviteButton:SetWidth(160);
 		inviteButton:SetText("Invite Attendees");
 		inviteButton:SetCallback("OnClick", function()
 			if (eventIndex > 0) then
@@ -1096,7 +1100,7 @@ function Core:AppendCalendarList(event)
 
 	local copyLinkButton = GOW.GUI:Create("Button");
 	copyLinkButton:SetText("Copy Link");
-	copyLinkButton:SetWidth(150);
+	copyLinkButton:SetWidth(100);
 	copyLinkButton:SetCallback("OnClick", function()
 		Core:OpenDialogWithData("COPY_TEXT", nil, nil, event.webUrl);
 	end);
@@ -1105,7 +1109,7 @@ function Core:AppendCalendarList(event)
 	if (canAddEvent and eventIndex < 0) then
 		local copyKeyButton = GOW.GUI:Create("Button");
 		copyKeyButton:SetText("Copy Key");
-		copyKeyButton:SetWidth(150);
+		copyKeyButton:SetWidth(100);
 		copyKeyButton:SetCallback("OnClick", function()
 			Core:OpenDialogWithData("COPY_TEXT", nil, nil, event.eventKey);
 		end);
