@@ -27,56 +27,9 @@ local ns = select(2, ...);
 local Core = {};
 GOW.Core = Core;
 
-function Core.GetGowGameVersionId()
-	-- if (GOW.consts.ENABLE_DEBUGGING) then
-	-- 	print("WOW_PROJECT_ID: " .. WOW_PROJECT_ID);
-	-- end
-
-	if (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE) then
-		return 1;
-	elseif (WOW_PROJECT_ID == WOW_PROJECT_CLASSIC) then
-		return 2;
-	elseif (WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC) then
-		return 4;
-	else --if (WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC) then
-		return 3;
-	end
-
-	return nil;
-end
-
-function GetCurrentRegionByGameVersion()
-	local regionId = GetCurrentRegion();
-
-	if (Core:GetGowGameVersionId() == 3) then
-		return tonumber("4" .. tostring(regionId));
-	elseif (Core:GetGowGameVersionId() == 2) then
-		return tonumber("8" .. tostring(regionId));
-	elseif (Core:GetGowGameVersionId() == 4) then
-		return tonumber("19" .. tostring(regionId));
-	end
-
-	return regionId;
-end
-
-function IsInGameCalendarAccessible()
-	return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
-end
-
-function IsKeystonesEnabled()
-	return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
-end
-
-function GetCurrentCharacterUniqueKey()
-	local name, characterRealm = UnitName("player");
-	if (characterRealm == nil) then
-		characterRealm = GetNormalizedRealmName();
-	end
-	return name .. "-" .. characterRealm;
-end
 
 local openRaidLib = nil;
-if (IsKeystonesEnabled()) then
+if ((GOW.Helper and GOW.Helper:IsKeystonesEnabled()) or WOW_PROJECT_ID == WOW_PROJECT_MAINLINE) then
 	openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0");
 end
 
@@ -108,7 +61,7 @@ local workQueue = nil;
 local persistentWorkQueue = nil;
 
 local processedEvents = nil;
-local isEventProcessCompleted = IsInGameCalendarAccessible() == false; -- if calendar is not accessible, consider event process completed to avoid blocking the app
+local isEventProcessCompleted = ((GOW.Helper and GOW.Helper:IsInGameCalendarAccessible()) or (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)) == false; -- if calendar is not accessible, consider event process completed to avoid blocking the app
 local isNewEventBeingCreated = false;
 local isProcessedEventsPrinted = false;
 local isCalendarOpened = false;
@@ -192,6 +145,7 @@ function GOW:OnInitialize()
 		end
 
 		Core:DestroyTeamContainer();
+		Core:DestroyEventInviteDialog();
 	end);
 	containerFrame:Hide();
 
@@ -216,6 +170,7 @@ function GOW:OnInitialize()
 		containerScrollFrame = containerScrollFrame
 	};
 	GOW.teams = GoWTeams:new(Core, self.UI, self.GUI);
+	GOW.eventDetails = GoWEventDetails:new(Core, self.UI, self.GUI);
 
 	if (ns.UPCOMING_EVENTS == nil or ns.TEAMS == nil or ns.RECRUITMENT_APPLICATIONS == nil) then
 		GOW.Logger:PrintErrorMessage("Data is not fetched! Please make sure your sync app is installed and working properly.");
@@ -493,9 +448,11 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 					workQueue:clearTasks();
 				end
 				containerFrame:Hide();
+				Core:DestroyEventInviteDialog();
 			end);
 			if (containerFrame:IsShown()) then
 				containerFrame:Hide();
+				Core:DestroyEventInviteDialog();
 			end
 		end
 
@@ -610,6 +567,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		if GOW.DB.profile.hideInCombat and containerFrame and containerFrame:IsShown() then
 			containerFrame:Hide();
 			Core:DestroyTeamContainer();
+			Core:DestroyEventInviteDialog();
 		end
 	end
 end)
@@ -617,6 +575,7 @@ end)
 function Core:ToggleTabs(tabKey)
 	selectedTab = tabKey;
 	Core:DestroyTeamContainer();
+	Core:DestroyEventInviteDialog();
 	Core:RefreshApplication();
 end
 
@@ -635,6 +594,7 @@ end
 function Core:ToggleWindow()
 	if (containerFrame:IsShown()) then
 		containerFrame:Hide();
+		Core:DestroyEventInviteDialog();
 	else
 		if (CalendarFrame) then
 			HideUIPanel(CalendarFrame);
@@ -696,7 +656,7 @@ function Core:CreateUpcomingEvents()
 			realmName = GetNormalizedRealmName();
 		end
 
-		local regionId = GetCurrentRegionByGameVersion();
+		local regionId = GOW.Helper:GetCurrentRegionByGameVersion();
 
 		local hasAnyData = false;
 
@@ -756,7 +716,7 @@ function Core:CreateTeams()
 			realmName = GetNormalizedRealmName();
 		end
 
-		local regionId = GetCurrentRegionByGameVersion();
+		local regionId = GOW.Helper:GetCurrentRegionByGameVersion();
 
 		local hasAnyData = false;
 
@@ -808,7 +768,7 @@ function Core:CreateRecruitmentApplications()
 			realmName = GetNormalizedRealmName();
 		end
 
-		local regionId = GetCurrentRegionByGameVersion();
+		local regionId = GOW.Helper:GetCurrentRegionByGameVersion();
 
 		local hasAnyData = false;
 
@@ -849,7 +809,7 @@ function Core:ResetCalendar()
 end
 
 function Core:searchForEvent(event)
-	if (not IsInGameCalendarAccessible()) then
+	if (not GOW.Helper:IsInGameCalendarAccessible()) then
 		return -2;
 	end
 
@@ -1016,7 +976,7 @@ function Core:AppendCalendarList(event)
 	end
 
 	local isEventMember = event.isEventMember;
-	local canAddEvent = event.isEventManager and IsInGameCalendarAccessible();
+	local canAddEvent = event.isEventManager and GOW.Helper:IsInGameCalendarAccessible();
 
 	local eventInvitingMembersLabel = GOW.GUI:Create("SFX-Info");
 	eventInvitingMembersLabel:SetLabel("Audience");
@@ -1114,7 +1074,7 @@ function Core:AppendCalendarList(event)
 			if (eventIndex > 0) then
 				Core:OpenDialog("INVITE_TO_PARTY_USE_CALENDAR");
 			else
-				Core:InviteAllToPartyCheck(event);
+				Core:OpenEventAttendeesInviteDialog(event);
 			end
 		end);
 
@@ -1393,7 +1353,7 @@ function Core:ConfirmEventCreation(event)
 end
 
 function Core:InviteMultiplePeopleToEvent(event)
-	local currentPlayer = GetCurrentCharacterUniqueKey();
+	local currentPlayer = GOW.Helper:GetCurrentCharacterUniqueKey();
 
 	local numInvites = C_Calendar.GetNumInvites();
 
@@ -1446,7 +1406,7 @@ function Core:IsInvitedToEvent(upcomingEvent)
 		if (upcomingEvent.calendarType == GOW.consts.GUILD_EVENT) then
 			return true;
 		else
-			local currentCharacterInvite = GetCurrentCharacterUniqueKey();
+			local currentCharacterInvite = GOW.Helper:GetCurrentCharacterUniqueKey();
 
 			for m = 1, upcomingEvent.totalMembers do
 				local currentInviteMember = upcomingEvent.inviteMembers[m];
@@ -1478,7 +1438,7 @@ function Core:CheckEventInvites()
 				realmName = GetNormalizedRealmName();
 			end
 
-			local regionId = GetCurrentRegionByGameVersion();
+			local regionId = GOW.Helper:GetCurrentRegionByGameVersion();
 			GOW.Logger:Debug("Guild name: " .. guildName .. ". Region id: " .. regionId);
 
 			if (ns.UPCOMING_EVENTS.totalEvents) then
@@ -1576,7 +1536,7 @@ function Core:FindUpcomingEventFromName(eventTitle)
 			realmName = GetNormalizedRealmName();
 		end
 
-		local regionId = GetCurrentRegionByGameVersion();
+		local regionId = GOW.Helper:GetCurrentRegionByGameVersion();
 
 		for i = 1, ns.UPCOMING_EVENTS.totalEvents do
 			local upcomingEvent = ns.UPCOMING_EVENTS.events[i];
@@ -1744,7 +1704,7 @@ function Core:SetAttendanceValues(upcomingEvent, inviteInfo, inviteIndex)
 		local currentInviteMember = upcomingEvent.inviteMembers[m];
 
 		if (currentInviteMember) then
-			if (currentInviteMember.isManager or currentInviteMember.attendance > 1) then
+			if (currentInviteMember.isManager or currentInviteMember.inviteStatus > Enum.CalendarStatus.Invited) then
 				local isFound = false;
 
 				if (string.find(inviteInfo.name, "-")) then
@@ -1764,10 +1724,10 @@ function Core:SetAttendanceValues(upcomingEvent, inviteInfo, inviteIndex)
 						end
 					end
 
-					if (currentInviteMember.forceUpdate or (currentInviteMember.attendance > 1 and inviteInfo.inviteStatus == 0)) then
+					if (currentInviteMember.forceUpdate or (currentInviteMember.inviteStatus > Enum.CalendarStatus.Invited and inviteInfo.inviteStatus == 0)) then
 						isInvitationChanged = true;
 						GOW.Logger:Debug("Setting member attendance: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name .. ". GoWAttendance: " .. tostring(currentInviteMember.attendance) .. ". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus));
-						workQueue:addTask(function() C_Calendar.EventSetInviteStatus(inviteIndex, currentInviteMember.attendance - 1) end, nil, GOW.consts.INVITE_INTERVAL);
+						workQueue:addTask(function() C_Calendar.EventSetInviteStatus(inviteIndex, currentInviteMember.inviteStatus) end, nil, GOW.consts.INVITE_INTERVAL);
 					end
 
 					return isInvitationChanged;
@@ -1801,47 +1761,34 @@ function Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
 	end
 end
 
-function Core:GetAttendeesToInvite(event)
-	local me = GetCurrentCharacterUniqueKey();
-	local attendeesToInvite = {};
-
-	for i = 1, event.totalMembers do
-		local currentInviteMember = event.inviteMembers[i];
-
-		local inviteStatus = currentInviteMember.attendance - 1;
-
-		if (inviteStatus == Enum.CalendarStatus.Available or inviteStatus == Enum.CalendarStatus.Confirmed or inviteStatus == Enum.CalendarStatus.Tentative) then
-			local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized;
-
-			if (inviteName ~= me) then
-				table.insert(attendeesToInvite, inviteName);
-			end
-		end
+function Core:OpenEventAttendeesInviteDialog(event)
+	if (GOW.eventDetails) then
+		GOW.eventDetails:OpenEventAttendeesInviteDialog(event);
 	end
+end
 
-	return attendeesToInvite;
+function Core:DestroyEventInviteDialog()
+	if (GOW.eventDetails) then
+		GOW.eventDetails:DestroyEventInviteDialog();
+	end
+end
+
+function Core:GetAttendeesToInvite(event)
+	if (GOW.eventDetails) then
+		return GOW.eventDetails:GetAttendeesToInvite(event);
+	end
+	return {};
 end
 
 function Core:InviteAllToPartyCheck(event)
-	local eligibleMembers = Core:GetAttendeesToInvite(event);
-	local eligibleMembersCount = #eligibleMembers;
-
-	if (eligibleMembersCount > 0) then
-		Core:OpenDialogWithData("CONFIRM_INVITE_TO_PARTY", eligibleMembersCount, nil, event);
-	else
-		Core:OpenDialog("INVITE_TO_PARTY_NOONE_FOUND");
+	if (GOW.eventDetails) then
+		GOW.eventDetails:InviteAllToPartyCheck(event);
 	end
 end
 
-function Core:InviteAllToParty(event)
-	local eligibleMembers = Core:GetAttendeesToInvite(event);
-
-	for i, inviteName in ipairs(eligibleMembers) do
-		if not IsInRaid() and GetNumGroupMembers() == 5 and C_PartyInfo.AllowedToDoPartyConversion(true) then
-			C_PartyInfo.ConvertToRaid();
-		end
-
-		C_PartyInfo.InviteUnit(inviteName);
+function Core:InviteAllToParty(data)
+	if (GOW.eventDetails) then
+		GOW.eventDetails:InviteAllToParty(data);
 	end
 end
 
@@ -1869,16 +1816,12 @@ function Core:InviteAllTeamMembersToParty(teamData)
 	GOW.Logger:Debug("inviteIndex: " .. inviteIndex);
 
 	if (inviteIndex > 1) then
-		local me = GetCurrentCharacterUniqueKey();
+		local me = GOW.Helper:GetCurrentCharacterUniqueKey();
 
 		for a = 1, inviteIndex - 1 do
 			local inviteName = invitingMembers[a];
 			if (inviteName ~= me) then
-				if not IsInRaid() and GetNumGroupMembers() == 5 and C_PartyInfo.AllowedToDoPartyConversion(true) then
-					C_PartyInfo.ConvertToRaid();
-				end
-
-				C_PartyInfo.InviteUnit(inviteName);
+				GOW.Helper:InviteToParty(inviteName);
 			end
 		end
 	end
@@ -1895,7 +1838,7 @@ function Core:GetGuildKey()
 		realmName = GetNormalizedRealmName();
 	end
 
-	local regionId = GetCurrentRegionByGameVersion();
+	local regionId = GOW.Helper:GetCurrentRegionByGameVersion();
 	local guildKey = guildName .. "-" .. regionId .. "-" .. realmName;
 
 	if (GOW.DB.profile.guilds == nil) then
@@ -1910,7 +1853,7 @@ function Core:GetGuildKey()
 end
 
 function Core:SetRosterInfo()
-	local inCombat = InCombatLockdown() or UnitAffectingCombat("player");
+	local inCombat = GOW.Helper:IsInCombat();
 	if (inCombat) then
 		GOW.Logger:Debug("Cannot set roster info in combat!");
 		return;
@@ -1922,8 +1865,8 @@ function Core:SetRosterInfo()
 		local guildKey = Core:GetGuildKey();
 
 		if (guildKey) then
-			local me = GetCurrentCharacterUniqueKey();
-			local isKeystonesEnabled = IsKeystonesEnabled();
+			local me = GOW.Helper:GetCurrentCharacterUniqueKey();
+			local isKeystonesEnabled = GOW.Helper:IsKeystonesEnabled();
 
 			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime();
 			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD();

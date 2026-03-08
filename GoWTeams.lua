@@ -20,11 +20,7 @@ function GoWTeams:new(core, ui, gui)
     return self;
 end
 
-local roles = {
-    [1] = { name = "Tank", iconTexCoords = { 0, 0.296875, 0.296875, 0.61 } },
-    [2] = { name = "Healer", iconTexCoords = { 0.296875, 0.59375, 0, 0.296875 } },
-    [3] = { name = "DPS", iconTexCoords = { 0.296875, 0.59375, 0.296875, 0.63 } }
-};
+local roles = (GOW.Helper and GOW.Helper:GetRoles()) or {};
 
 -- these are used to populate the "Filter by Role" dropdown
 local rolesForFilter = {

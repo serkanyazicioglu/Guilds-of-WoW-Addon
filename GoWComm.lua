@@ -5,8 +5,8 @@ GOW.GoWComm = GoWComm;
 local ns = select(2, ...)
 
 local gameVersion = nil;
-if GOW and GOW.Core and GOW.Core.GetGowGameVersionId then
-    gameVersion = GOW.Core:GetGowGameVersionId();
+if GOW and GOW.Helper and GOW.Helper.GetGowGameVersionId then
+    gameVersion = GOW.Helper:GetGowGameVersionId();
 end
 
 function GOW:OnEnable()
