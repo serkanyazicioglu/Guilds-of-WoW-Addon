@@ -18,7 +18,7 @@ GOW.defaults = {
 		minimap = { hide = false },
 		reduceEventNotifications = false,
 		warnNewEvents = true,
-		hideInCombat = true,
+		hideInCombat = true
 	}
 }
 
@@ -1746,10 +1746,16 @@ function Core:SetAttendanceValues(upcomingEvent, inviteInfo, inviteIndex)
 						end
 					end
 
-					if (currentInviteMember.forceUpdate or (currentInviteMember.inviteStatus > Enum.CalendarStatus.Invited and inviteInfo.inviteStatus == 0)) then
-						isInvitationChanged = true;
-						GOW.Logger:Debug("Setting member attendance: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name .. ". GoWAttendance: " .. tostring(currentInviteMember.attendance) .. ". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus));
-						workQueue:addTask(function() C_Calendar.EventSetInviteStatus(inviteIndex, currentInviteMember.inviteStatus) end, nil, GOW.consts.INVITE_INTERVAL);
+					if (currentInviteMember.forceUpdate or (currentInviteMember.inviteStatus > Enum.CalendarStatus.Invited and inviteInfo.inviteStatus == Enum.CalendarStatus.Invited)) then
+						if (currentInviteMember.inviteStatus == Enum.CalendarStatus.Available and inviteInfo.inviteStatus == Enum.CalendarStatus.Confirmed) then
+							GOW.Logger:Debug("Member accepted but status is confirmed in-game! " .. inviteInfo.name);
+						elseif (currentInviteMember.inviteStatus == inviteInfo.inviteStatus) then
+							GOW.Logger:Debug("Member in-game status is up-to-date! " .. inviteInfo.name);
+						else
+							isInvitationChanged = true;
+							GOW.Logger:Debug("Setting member attendance: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name .. ". GoWAttendance: " .. tostring(currentInviteMember.inviteStatus) .. ". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus));
+							workQueue:addTask(function() C_Calendar.EventSetInviteStatus(inviteIndex, currentInviteMember.inviteStatus) end, nil, GOW.consts.INVITE_INTERVAL);
+						end
 					end
 
 					return isInvitationChanged;
