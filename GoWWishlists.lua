@@ -80,14 +80,16 @@ function GoWWishlists:BuildWishlistIndex()
         return;
     end
 
-    -- Personal wishlists: find matching character
+    local isDebug = GOW.consts.ENABLE_DEBUGGING;
+
+    -- Personal wishlists: find matching character (or first entry in debug mode)
     local personalLists = ns.WISHLISTS.personalWishlists;
     if personalLists then
         for _, charEntry in ipairs(personalLists) do
             local entryName = charEntry.name and charEntry.name:lower() or "";
             local entryRealm = charEntry.realmNameNormalized and charEntry.realmNameNormalized:lower() or "";
 
-            if entryName == charInfo.nameLower and entryRealm == charInfo.realmLower then
+            if isDebug or (entryName == charInfo.nameLower and entryRealm == charInfo.realmLower) then
                 for _, item in ipairs(charEntry.wishlist) do
                     item.characterName = entryName;
                     item.characterRealmNormalized = entryRealm;
@@ -100,21 +102,25 @@ function GoWWishlists:BuildWishlistIndex()
                         table.insert(wishlistIndex[key], item);
                     end
                 end
-                break;
+                if not isDebug then break end
             end
         end
     end
 
-    -- Guild wishlists: find matching guild for current character
+    -- Guild wishlists: find matching guild for current character (or first entry in debug mode)
     local guildLists = ns.WISHLISTS.guildWishlists;
     if guildLists then
-        local playerGuild = GetGuildInfo("player");
-        if playerGuild then
-            for _, guildEntry in ipairs(guildLists) do
-                local guildRealm = guildEntry.guildRealmNormalized and guildEntry.guildRealmNormalized:lower() or "";
-                if guildEntry.guild == playerGuild and guildRealm == charInfo.realmLower then
-                    guildWishlistData = guildEntry;
-                    break;
+        if isDebug and #guildLists > 0 then
+            guildWishlistData = guildLists[1];
+        else
+            local playerGuild = GetGuildInfo("player");
+            if playerGuild then
+                for _, guildEntry in ipairs(guildLists) do
+                    local guildRealm = guildEntry.guildRealmNormalized and guildEntry.guildRealmNormalized:lower() or "";
+                    if guildEntry.guild == playerGuild and guildRealm == charInfo.realmLower then
+                        guildWishlistData = guildEntry;
+                        break;
+                    end
                 end
             end
         end
@@ -1518,6 +1524,9 @@ function GoWWishlists:ShowWishlistBrowserFrame()
         if not frame.wishlistEmptyText then
             frame.wishlistEmptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
             frame.wishlistEmptyText:SetPoint("TOP", scrollChild, "TOP", 0, -40);
+            frame.wishlistEmptyText:SetWidth(scrollChild:GetWidth() - 40);
+            frame.wishlistEmptyText:SetWordWrap(true);
+            frame.wishlistEmptyText:SetJustifyH("CENTER");
         end
         local msg;
         if not ns.WISHLISTS then
@@ -1653,6 +1662,42 @@ end
 
 -- ===== CORE UI: GUILD WISHLISTS TAB =====
 
+local function setupGuildDifficultyFilter(container, frame)
+    local difficulties = { "All", "Normal", "Heroic", "Mythic", "LFR" };
+    local btns = {};
+
+    for i, diff in ipairs(difficulties) do
+        local btn = createSubFilterBtn(container, "|cffffffff" .. diff .. "|r", 60);
+        if i == 1 then
+            btn:SetPoint("TOPLEFT", container, "TOPLEFT", 8, -4);
+        else
+            btn:SetPoint("LEFT", btns[i - 1], "RIGHT", 4, 0);
+        end
+        btns[i] = btn;
+    end
+
+    local function setDiffFilter(diff)
+        frame.guildDifficultyFilter = diff;
+        for i, btn in ipairs(btns) do
+            if difficulties[i] == diff then
+                btn:SetBackdropColor(SUB_ACTIVE_COLOR.r, SUB_ACTIVE_COLOR.g, SUB_ACTIVE_COLOR.b, SUB_ACTIVE_COLOR.a);
+                btn:SetBackdropBorderColor(GOW_ACCENT_COLOR.r, GOW_ACCENT_COLOR.g, GOW_ACCENT_COLOR.b, 0.5);
+            else
+                btn:SetBackdropColor(SUB_INACTIVE_COLOR.r, SUB_INACTIVE_COLOR.g, SUB_INACTIVE_COLOR.b, SUB_INACTIVE_COLOR.a);
+                btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
+            end
+        end
+        GoWWishlists:PopulateGuildWishlistTab(frame);
+    end
+
+    for i, btn in ipairs(btns) do
+        btn:SetScript("OnClick", function() setDiffFilter(difficulties[i]) end);
+    end
+
+    frame.guildFilterBtns = btns;
+    frame.SetGuildDiffFilter = setDiffFilter;
+end
+
 function GoWWishlists:CreateCoreGuildWishlistFrame(parent)
     if coreGuildWishlistScrollFrame then
         coreGuildWishlistScrollFrame:SetParent(parent);
@@ -1707,6 +1752,9 @@ function GoWWishlists:ShowCoreGuildWishlistTab(parent, setStatusFn)
         if not sf.guildEmptyText then
             sf.guildEmptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
             sf.guildEmptyText:SetPoint("TOP", scrollChild, "TOP", 0, -40);
+            sf.guildEmptyText:SetWidth(scrollChild:GetWidth() - 40);
+            sf.guildEmptyText:SetWordWrap(true);
+            sf.guildEmptyText:SetJustifyH("CENTER");
         end
         local msg;
         if not playerGuild then
@@ -1731,9 +1779,12 @@ function GoWWishlists:ShowCoreGuildWishlistTab(parent, setStatusFn)
 end
 
 -- ===== GUILD WISHLISTS TAB =====
-local GUILD_MEMBER_ROW_HEIGHT = 28;
+local GUILD_ITEM_ROW_HEIGHT = 28;
+local GUILD_MEMBER_ROW_HEIGHT = 22;
 local GUILD_FILTER_HEIGHT = 26;
 
+-- Collects guild wishlist data grouped by boss, then by item, then by member.
+-- Returns: bossGroups = { bossName = { items = {key = itemData}, itemOrder = {keys} } }, bossOrder = {bossNames}
 local function collectGuildWishlistByBoss(difficultyFilter)
     if not guildWishlistData or not guildWishlistData.wishlists then return {}, {} end
 
@@ -1747,17 +1798,28 @@ local function collectGuildWishlistByBoss(difficultyFilter)
                 if passFilter then
                     local bossName = item.sourceBossName or "Unknown Boss";
                     if not bossGroups[bossName] then
-                        bossGroups[bossName] = {};
+                        bossGroups[bossName] = { items = {}, itemOrder = {} };
                         table.insert(bossOrder, bossName);
                     end
-                    table.insert(bossGroups[bossName], {
-                        itemId = item.itemId,
-                        difficulty = item.difficulty,
-                        tag = item.tag,
-                        notes = item.notes,
-                        gain = item.gain,
+
+                    local boss = bossGroups[bossName];
+                    local itemKey = item.itemId .. "-" .. (item.difficulty or "");
+                    if not boss.items[itemKey] then
+                        boss.items[itemKey] = {
+                            itemId = item.itemId,
+                            difficulty = item.difficulty,
+                            members = {},
+                        };
+                        table.insert(boss.itemOrder, itemKey);
+                    end
+
+                    table.insert(boss.items[itemKey].members, {
                         characterName = charEntry.name,
                         realmName = charEntry.realmName,
+                        tag = item.tag,
+                        notes = item.notes,
+                        officerNotes = item.officerNotes,
+                        gain = item.gain,
                     });
                 end
             end
@@ -1767,9 +1829,10 @@ local function collectGuildWishlistByBoss(difficultyFilter)
     return bossGroups, bossOrder;
 end
 
-local function createGuildMemberRow(parent)
+-- ===== Guild Item Row (shows icon + item name + difficulty + member count) =====
+local function createGuildItemRow(parent)
     local row = CreateFrame("Frame", nil, parent);
-    row:SetHeight(GUILD_MEMBER_ROW_HEIGHT);
+    row:SetHeight(GUILD_ITEM_ROW_HEIGHT);
 
     local iconBorder = row:CreateTexture(nil, "ARTWORK", nil, 0);
     iconBorder:SetTexture("Interface\\Buttons\\WHITE8x8");
@@ -1790,38 +1853,10 @@ local function createGuildMemberRow(parent)
     nameText:SetWordWrap(false);
     row.nameText = nameText;
 
-    local memberText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    memberText:SetPoint("LEFT", nameText, "RIGHT", 8, 0);
-    memberText:SetJustifyH("LEFT");
-    memberText:SetTextColor(0.4, 0.8, 1, 1);
-    row.memberText = memberText;
-
-    local tagText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    tagText:SetPoint("LEFT", memberText, "RIGHT", 8, 0);
-    tagText:SetJustifyH("LEFT");
-    row.tagText = tagText;
-
-    local noteIcon = CreateFrame("Button", nil, row);
-    noteIcon:SetSize(16, 16);
-    noteIcon:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    local noteIconTex = noteIcon:CreateTexture(nil, "ARTWORK");
-    noteIconTex:SetAllPoints();
-    noteIconTex:SetTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up");
-    noteIcon:SetScript("OnEnter", function(self)
-        row.highlight:Show();
-        if self.noteText then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine("Note", 0, 1, 0);
-            GameTooltip:AddLine(self.noteText, 1, 1, 1, true);
-            GameTooltip:Show();
-        end
-    end);
-    noteIcon:SetScript("OnLeave", function(self)
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
-    noteIcon:Hide();
-    row.noteIcon = noteIcon;
+    local infoText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    infoText:SetPoint("LEFT", nameText, "RIGHT", 8, 0);
+    infoText:SetJustifyH("LEFT");
+    row.infoText = infoText;
 
     local highlight = row:CreateTexture(nil, "BACKGROUND");
     highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
@@ -1847,84 +1882,157 @@ local function createGuildMemberRow(parent)
     return row;
 end
 
-local function populateGuildMemberRow(row, entry)
-    row.itemId = entry.itemId;
+local function populateGuildItemRow(row, itemData)
+    row.itemId = itemData.itemId;
 
-    local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(entry.itemId);
+    local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(itemData.itemId);
     row.icon:SetTexture(itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
 
     if itemQuality then
         local r, g, b, hex = C_Item.GetItemQualityColor(itemQuality);
         row.iconBorder:SetVertexColor(r, g, b, 0.7);
-        row.nameText:SetText("|c" .. hex .. (itemName or ("Item " .. entry.itemId)) .. "|r");
+        row.nameText:SetText("|c" .. hex .. (itemName or ("Item " .. itemData.itemId)) .. "|r");
     else
         row.iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
-        row.nameText:SetText(itemName or ("Item " .. entry.itemId));
+        row.nameText:SetText(itemName or ("Item " .. itemData.itemId));
     end
 
+    local parts = {};
+    if itemData.difficulty then
+        table.insert(parts, formatDifficultyTag(itemData.difficulty));
+    end
+    table.insert(parts, "|cff888888(" .. #itemData.members .. ")|r");
+    row.infoText:SetText(table.concat(parts, "  "));
+
     if not itemName then
-        registerPendingItem(entry.itemId, function()
+        registerPendingItem(itemData.itemId, function()
             if row:GetParent() then
-                populateGuildMemberRow(row, entry);
+                populateGuildItemRow(row, itemData);
             end
         end);
     end
+end
 
-    row.memberText:SetText("|cff66ccff" .. entry.characterName .. "|r");
+-- ===== Guild Member Row (shows name + tag + gain + note icons) =====
+local function createGuildMemberRow(parent)
+    local row = CreateFrame("Frame", nil, parent);
+    row:SetHeight(GUILD_MEMBER_ROW_HEIGHT);
 
-    local tags = {};
-    if entry.difficulty then
-        table.insert(tags, formatDifficultyTag(entry.difficulty));
+    local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    nameText:SetPoint("LEFT", row, "LEFT", 52, 0);
+    nameText:SetJustifyH("LEFT");
+    row.nameText = nameText;
+
+    local tagText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    tagText:SetPoint("LEFT", nameText, "RIGHT", 8, 0);
+    tagText:SetJustifyH("LEFT");
+    row.tagText = tagText;
+
+    local gainText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    gainText:SetPoint("LEFT", tagText, "RIGHT", 8, 0);
+    gainText:SetJustifyH("LEFT");
+    row.gainText = gainText;
+
+    -- Officer note icon (rightmost)
+    local officerNoteIcon = CreateFrame("Button", nil, row);
+    officerNoteIcon:SetSize(14, 14);
+    officerNoteIcon:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    local officerNoteTex = officerNoteIcon:CreateTexture(nil, "ARTWORK");
+    officerNoteTex:SetAllPoints();
+    officerNoteTex:SetTexture("Interface\\Buttons\\UI-GuildButton-OfficerNote-Up");
+    officerNoteIcon:SetScript("OnEnter", function(self)
+        row.highlight:Show();
+        if self.noteText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Officer Note", 1, 0.5, 0);
+            GameTooltip:AddLine(self.noteText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    officerNoteIcon:SetScript("OnLeave", function(self)
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+    officerNoteIcon:Hide();
+    row.officerNoteIcon = officerNoteIcon;
+
+    -- Player note icon (left of officer note)
+    local noteIcon = CreateFrame("Button", nil, row);
+    noteIcon:SetSize(14, 14);
+    noteIcon:SetPoint("RIGHT", officerNoteIcon, "LEFT", -4, 0);
+    local noteIconTex = noteIcon:CreateTexture(nil, "ARTWORK");
+    noteIconTex:SetAllPoints();
+    noteIconTex:SetTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up");
+    noteIcon:SetScript("OnEnter", function(self)
+        row.highlight:Show();
+        if self.noteText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Note", 0, 1, 0);
+            GameTooltip:AddLine(self.noteText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    noteIcon:SetScript("OnLeave", function(self)
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+    noteIcon:Hide();
+    row.noteIcon = noteIcon;
+
+    local highlight = row:CreateTexture(nil, "BACKGROUND");
+    highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
+    highlight:SetAllPoints();
+    highlight:SetVertexColor(1, 1, 1, 0.03);
+    highlight:Hide();
+    row.highlight = highlight;
+
+    row:EnableMouse(true);
+    row:SetScript("OnEnter", function(self) self.highlight:Show() end);
+    row:SetScript("OnLeave", function(self) self.highlight:Hide() end);
+
+    return row;
+end
+
+local function populateGuildMemberRow(row, member)
+    row.nameText:SetText("|cff66ccff" .. member.characterName .. "|r");
+
+    local tagLabel = formatTag(member.tag);
+    row.tagText:SetText(tagLabel or "");
+
+    local gain = member.gain;
+    if gain and ((gain.stat and gain.stat > 0) or (gain.percent and gain.percent > 0)) then
+        local parts = {};
+        if gain.stat and gain.stat > 0 then
+            table.insert(parts, "+" .. gain.stat);
+        end
+        if gain.percent and gain.percent > 0 then
+            local metric = gain.metric or "";
+            table.insert(parts, string.format("(+%.1f%% %s)", gain.percent, metric));
+        end
+        row.gainText:SetText("|cff00ff00" .. table.concat(parts, " ") .. "|r");
+    else
+        row.gainText:SetText("");
     end
-    local tagLabel = formatTag(entry.tag);
-    if tagLabel then table.insert(tags, tagLabel) end
-    row.tagText:SetText(table.concat(tags, " "));
 
-    if entry.notes and entry.notes ~= "" then
-        row.noteIcon.noteText = entry.notes;
+    if member.notes and member.notes ~= "" then
+        row.noteIcon.noteText = member.notes;
         row.noteIcon:Show();
     else
         row.noteIcon.noteText = nil;
         row.noteIcon:Hide();
     end
+
+    if member.officerNotes and member.officerNotes ~= "" then
+        row.officerNoteIcon.noteText = member.officerNotes;
+        row.officerNoteIcon:Show();
+    else
+        row.officerNoteIcon.noteText = nil;
+        row.officerNoteIcon:Hide();
+    end
 end
 
-local function setupGuildDifficultyFilter(container, frame)
-    local difficulties = { "All", "Normal", "Heroic", "Mythic", "LFR" };
-    local btns = {};
-
-    for i, diff in ipairs(difficulties) do
-        local btn = createSubFilterBtn(container, "|cffffffff" .. diff .. "|r", 60);
-        if i == 1 then
-            btn:SetPoint("TOPLEFT", container, "TOPLEFT", 8, -4);
-        else
-            btn:SetPoint("LEFT", btns[i - 1], "RIGHT", 4, 0);
-        end
-        btns[i] = btn;
-    end
-
-    local function setDiffFilter(diff)
-        frame.guildDifficultyFilter = diff;
-        for i, btn in ipairs(btns) do
-            if difficulties[i] == diff then
-                btn:SetBackdropColor(SUB_ACTIVE_COLOR.r, SUB_ACTIVE_COLOR.g, SUB_ACTIVE_COLOR.b, SUB_ACTIVE_COLOR.a);
-                btn:SetBackdropBorderColor(GOW_ACCENT_COLOR.r, GOW_ACCENT_COLOR.g, GOW_ACCENT_COLOR.b, 0.5);
-            else
-                btn:SetBackdropColor(SUB_INACTIVE_COLOR.r, SUB_INACTIVE_COLOR.g, SUB_INACTIVE_COLOR.b, SUB_INACTIVE_COLOR.a);
-                btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
-            end
-        end
-        GoWWishlists:PopulateGuildWishlistTab(frame);
-    end
-
-    for i, btn in ipairs(btns) do
-        btn:SetScript("OnClick", function() setDiffFilter(difficulties[i]) end);
-    end
-
-    frame.guildFilterBtns = btns;
-    frame.SetGuildDiffFilter = setDiffFilter;
-end
-
+-- ===== Guild Layout =====
+-- guildSections = { { header, items = { { row, memberRows = {} }, ... } }, ... }
 local function relayoutGuildContent(frame)
     local scrollChild = frame.guildScrollChild;
     local yOffset = GUILD_FILTER_HEIGHT;
@@ -1938,16 +2046,28 @@ local function relayoutGuildContent(frame)
         yOffset = yOffset + BROWSER_BOSS_HEADER_HEIGHT;
 
         if not header.isCollapsed then
-            for _, row in ipairs(header.itemRows) do
-                row:ClearAllPoints();
-                row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
-                row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
-                row:Show();
-                yOffset = yOffset + GUILD_MEMBER_ROW_HEIGHT;
+            for _, itemGroup in ipairs(section.items or {}) do
+                local itemRow = itemGroup.row;
+                itemRow:ClearAllPoints();
+                itemRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+                itemRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+                itemRow:Show();
+                yOffset = yOffset + GUILD_ITEM_ROW_HEIGHT;
+
+                for _, memberRow in ipairs(itemGroup.memberRows or {}) do
+                    memberRow:ClearAllPoints();
+                    memberRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+                    memberRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+                    memberRow:Show();
+                    yOffset = yOffset + GUILD_MEMBER_ROW_HEIGHT;
+                end
             end
         else
-            for _, row in ipairs(header.itemRows) do
-                row:Hide();
+            for _, itemGroup in ipairs(section.items or {}) do
+                itemGroup.row:Hide();
+                for _, memberRow in ipairs(itemGroup.memberRows or {}) do
+                    memberRow:Hide();
+                end
             end
         end
 
@@ -1982,13 +2102,16 @@ function GoWWishlists:PopulateGuildWishlistTab(frame)
 
     local bossGroups, bossOrder = collectGuildWishlistByBoss(filter);
 
-    -- Count unique members
+    -- Count unique members and total unique items
     local memberSet = {};
     local totalItems = 0;
-    for _, items in pairs(bossGroups) do
-        for _, item in ipairs(items) do
-            memberSet[item.characterName] = true;
+    for _, bossName in ipairs(bossOrder) do
+        local boss = bossGroups[bossName];
+        for _, itemKey in ipairs(boss.itemOrder) do
             totalItems = totalItems + 1;
+            for _, member in ipairs(boss.items[itemKey].members) do
+                memberSet[member.characterName] = true;
+            end
         end
     end
     local memberCount = 0;
@@ -2001,6 +2124,9 @@ function GoWWishlists:PopulateGuildWishlistTab(frame)
         if not frame.guildEmptyText then
             frame.guildEmptyText = guildScrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
             frame.guildEmptyText:SetPoint("TOP", guildScrollChild, "TOP", 0, -56);
+            frame.guildEmptyText:SetWidth(guildScrollChild:GetWidth() - 40);
+            frame.guildEmptyText:SetWordWrap(true);
+            frame.guildEmptyText:SetJustifyH("CENTER");
         end
         local msg;
         if not ns.WISHLISTS then
@@ -2019,19 +2145,29 @@ function GoWWishlists:PopulateGuildWishlistTab(frame)
 
     if frame.guildEmptyText then frame.guildEmptyText:Hide() end
 
-    -- Build sections
+    -- Build sections: Boss → Items → Members
     frame.guildSections = {};
     for _, bossName in ipairs(bossOrder) do
-        local items = bossGroups[bossName];
-        local header = createBossHeader(guildScrollChild, bossName, #items);
+        local boss = bossGroups[bossName];
+        local header = createBossHeader(guildScrollChild, bossName, #boss.itemOrder);
         header.isCollapsed = true;
         updateBossHeaderArrow(header);
 
-        header.itemRows = {};
-        for _, entry in ipairs(items) do
-            local row = createGuildMemberRow(guildScrollChild);
-            populateGuildMemberRow(row, entry);
-            table.insert(header.itemRows, row);
+        local items = {};
+        for _, itemKey in ipairs(boss.itemOrder) do
+            local itemData = boss.items[itemKey];
+
+            local itemRow = createGuildItemRow(guildScrollChild);
+            populateGuildItemRow(itemRow, itemData);
+
+            local memberRows = {};
+            for _, member in ipairs(itemData.members) do
+                local memberRow = createGuildMemberRow(guildScrollChild);
+                populateGuildMemberRow(memberRow, member);
+                table.insert(memberRows, memberRow);
+            end
+
+            table.insert(items, { row = itemRow, memberRows = memberRows });
         end
 
         header:SetScript("OnClick", function(self)
@@ -2040,7 +2176,7 @@ function GoWWishlists:PopulateGuildWishlistTab(frame)
             relayoutGuildContent(frame);
         end);
 
-        table.insert(frame.guildSections, { header = header });
+        table.insert(frame.guildSections, { header = header, items = items });
     end
 
     relayoutGuildContent(frame);
