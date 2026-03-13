@@ -6,7 +6,7 @@ GuildsOfWow = GOW;
 
 GOW.consts = {
 	INVITE_INTERVAL = 2,
-	ENABLE_DEBUGGING = false,
+	ENABLE_DEBUGGING = true,
 	GUILD_EVENT = 1,
 	PLAYER_EVENT = 2,
 	APP_NAME = "Guilds of WoW"
@@ -18,7 +18,11 @@ GOW.defaults = {
 		minimap = { hide = false },
 		reduceEventNotifications = false,
 		warnNewEvents = true,
-		hideInCombat = true
+		hideInCombat = true,
+		lootHistory = {},
+		allLootHistory = {},
+		wishlistInfoFramePos = nil,
+		wishlistBrowserFramePos = nil,
 	}
 }
 
@@ -72,6 +76,9 @@ local tabs = {
 	{ value = "events",          text = "Events" },
 	{ value = "teams",           text = "Teams" },
 	{ value = "recruitmentApps", text = "Recruitment" },
+	{ value = "wishlist",        text = "Wishlist" },
+	{ value = "guildWishlists",  text = "Guild Wishlists" },
+	{ value = "lootHistory",     text = "Loot History" },
 };
 
 local LibQTip = LibStub('LibQTip-1.0');
@@ -94,10 +101,22 @@ function GOW:OnInitialize()
 	local consoleCommandFunc = function(msg, editbox)
 		if (msg == "minimap") then
 			Core:ToggleMinimap();
-		elseif (msg:sub(1, 8) == "wishlist") then
-			local subArg = msg:sub(10):match("^%s*(.-)%s*$");
+		elseif (msg == "loot") then
 			if GOW.Wishlists then
-				GOW.Wishlists:HandleSlashCommand(subArg);
+				GOW.Wishlists:HandleSlashCommand();
+			else
+				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
+			end
+		elseif (msg == "gloot") then
+			if GOW.Wishlists then
+				GOW.Wishlists:HandleGuildSlashCommand();
+			else
+				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
+			end
+		elseif (msg:match("^testloot") and GOW.consts.ENABLE_DEBUGGING) then
+			local count = tonumber(msg:match("^testloot%s+(%d+)")) or 1;
+			if GOW.Wishlists then
+				GOW.Wishlists:SimulateLootDrops(count);
 			else
 				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
 			end
@@ -615,12 +634,55 @@ end
 function Core:RefreshApplication()
 	isPropogatingUpdate = true;
 
+	if GOW.Wishlists then
+		GOW.Wishlists:HideCoreFrames();
+	end
+
 	if (selectedTab == "events") then
+		containerScrollFrame.frame:Show();
 		Core:CreateUpcomingEvents();
 	elseif (selectedTab == "teams") then
+		containerScrollFrame.frame:Show();
 		Core:CreateTeams();
 	elseif (selectedTab == "recruitmentApps") then
+		containerScrollFrame.frame:Show();
 		Core:CreateRecruitmentApplications();
+	elseif (selectedTab == "wishlist") then
+		containerScrollFrame.frame:Hide();
+		if GOW.Wishlists then
+			GOW.Wishlists:ShowCoreWishlistTab(containerTabs.content, function(text)
+				containerFrame:SetStatusText(text);
+			end);
+		else
+			containerScrollFrame.frame:Show();
+			containerScrollFrame:ReleaseChildren();
+			Core:AppendMessage("Wishlist module not loaded.", true);
+		end
+		isPropogatingUpdate = false;
+	elseif (selectedTab == "lootHistory") then
+		containerScrollFrame.frame:Hide();
+		if GOW.Wishlists then
+			GOW.Wishlists:ShowCoreLootHistoryTab(containerTabs.content, function(text)
+				containerFrame:SetStatusText(text);
+			end);
+		else
+			containerScrollFrame.frame:Show();
+			containerScrollFrame:ReleaseChildren();
+			Core:AppendMessage("Wishlist module not loaded.", true);
+		end
+		isPropogatingUpdate = false;
+	elseif (selectedTab == "guildWishlists") then
+		containerScrollFrame.frame:Hide();
+		if GOW.Wishlists then
+			GOW.Wishlists:ShowCoreGuildWishlistTab(containerTabs.content, function(text)
+				containerFrame:SetStatusText(text);
+			end);
+		else
+			containerScrollFrame.frame:Show();
+			containerScrollFrame:ReleaseChildren();
+			Core:AppendMessage("Wishlist module not loaded.", true);
+		end
+		isPropogatingUpdate = false;
 	end
 end
 
