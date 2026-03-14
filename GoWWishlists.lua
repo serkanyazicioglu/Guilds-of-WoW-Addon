@@ -576,7 +576,7 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     row.detailText = detailText;
 
     local gainBadge = self:CreateGainBadge(inner);
-    gainBadge:SetPoint("RIGHT", inner, "RIGHT", -8, 0);
+    gainBadge:SetPoint("BOTTOMRIGHT", inner, "BOTTOMRIGHT", -8, 0);
     row.gainBadge = gainBadge;
 
     -- Bottom separator
@@ -1166,7 +1166,7 @@ function GoWWishlists:CreateItemRow(parent)
     row.detailText = detailText;
 
     local gainBadge = self:CreateGainBadge(inner);
-    gainBadge:SetPoint("RIGHT", inner, "RIGHT", -8, 0);
+    gainBadge:SetPoint("BOTTOMRIGHT", inner, "BOTTOMRIGHT", -8, 0);
     row.gainBadge = gainBadge;
 
     noteIcon:SetScript("OnEnter", function(self)
