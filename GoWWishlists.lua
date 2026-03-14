@@ -323,18 +323,8 @@ function GoWWishlists:BuildInfoLine(entry, showSource)
 end
 
 function GoWWishlists:BuildDetailLine(entry)
-    local parts = {};
     local tagLabel = self:FormatTag(entry.tag);
-    if tagLabel then table.insert(parts, tagLabel) end
-
-    local gain = entry.gain;
-    if gain and gain.percent and gain.percent > 0 then
-        local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
-        table.insert(parts, "|cff00ff00+" .. string.format("%.1f", gain.percent) .. "% " .. metric .. "|r");
-    elseif gain and gain.stat and gain.stat > 0 then
-        table.insert(parts, "|cff00ff00+" .. gain.stat .. "|r");
-    end
-    return table.concat(parts, "  |cff555555\194\183|r  ");
+    return tagLabel or "";
 end
 
 function GoWWishlists:ApplyNoteIcon(row, notes)
@@ -344,6 +334,49 @@ function GoWWishlists:ApplyNoteIcon(row, notes)
     else
         row.noteIcon.noteText = nil;
         row.noteIcon:Hide();
+    end
+end
+
+function GoWWishlists:CreateGainBadge(parent)
+    local badge = CreateFrame("Frame", nil, parent, "BackdropTemplate");
+    badge:SetHeight(16);
+    badge:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+        insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    });
+    badge:SetBackdropColor(0.05, 0.15, 0.05, 0.85);
+    badge:SetBackdropBorderColor(0.1, 0.8, 0.3, 0.6);
+
+    local text = badge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    text:SetPoint("CENTER", badge, "CENTER", 0, 0);
+    text:SetJustifyH("CENTER");
+    badge.text = text;
+
+    badge:Hide();
+    return badge;
+end
+
+function GoWWishlists:ApplyGainBadge(badge, gain, prefix)
+    if not badge then return end
+    prefix = prefix or "";
+
+    local hasGain = false;
+    if gain and gain.percent and gain.percent > 0 then
+        local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
+        badge.text:SetText("|cff00ff00" .. prefix .. "+" .. string.format("%.1f", gain.percent) .. "% " .. metric .. "|r");
+        hasGain = true;
+    elseif gain and gain.stat and gain.stat > 0 then
+        badge.text:SetText("|cff00ff00" .. prefix .. "+" .. gain.stat .. "|r");
+        hasGain = true;
+    end
+
+    if hasGain then
+        badge:SetWidth(badge.text:GetStringWidth() + 12);
+        badge:Show();
+    else
+        badge:Hide();
     end
 end
 
@@ -522,6 +555,10 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     detailText:SetWordWrap(false);
     row.detailText = detailText;
 
+    local gainBadge = self:CreateGainBadge(inner);
+    gainBadge:SetPoint("RIGHT", inner, "RIGHT", -8, 0);
+    row.gainBadge = gainBadge;
+
     -- Bottom separator
     local sep = row:CreateTexture(nil, "ARTWORK");
     sep:SetTexture("Interface\\Buttons\\WHITE8x8");
@@ -595,6 +632,7 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     row.infoText:SetText(self:BuildInfoLine(match));
     row.detailText:SetText(self:BuildDetailLine(match));
     self:ApplyNoteIcon(row, match.notes);
+    self:ApplyGainBadge(row.gainBadge, match.gain);
 
     -- Row hover: highlight only (tooltip on icon)
     row:EnableMouse(true);
@@ -1107,6 +1145,10 @@ function GoWWishlists:CreateItemRow(parent)
     detailText:SetWordWrap(false);
     row.detailText = detailText;
 
+    local gainBadge = self:CreateGainBadge(inner);
+    gainBadge:SetPoint("RIGHT", inner, "RIGHT", -8, 0);
+    row.gainBadge = gainBadge;
+
     noteIcon:SetScript("OnEnter", function(self)
         row.highlight:Show();
         if self.noteText then
@@ -1176,6 +1218,7 @@ function GoWWishlists:PopulateItemRow(row, entry)
     row.infoText:SetText(self:BuildInfoLine(entry, row.showSource));
     row.detailText:SetText(self:BuildDetailLine(entry));
     self:ApplyNoteIcon(row, entry.notes);
+    self:ApplyGainBadge(row.gainBadge, entry.gain);
 end
 
 function GoWWishlists:CreateBossHeader(parent, bossName, itemCount)
@@ -2644,6 +2687,10 @@ function GoWWishlists:CreateGuildItemRow(parent)
     infoText:SetJustifyH("LEFT");
     row.infoText = infoText;
 
+    local gainBadge = self:CreateGainBadge(row);
+    gainBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
+    row.gainBadge = gainBadge;
+
     local highlight = row:CreateTexture(nil, "BACKGROUND");
     highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
     highlight:SetAllPoints();
@@ -2686,8 +2733,8 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
     end
     local memberCount = #itemData.members;
     table.insert(parts, "|cff888888" .. memberCount .. (memberCount == 1 and " wants" or " want") .. "|r");
+    row.infoText:SetText(table.concat(parts, "  "));
 
-    -- Avg gain badge
     local totalPercent, gainCount, avgMetric = 0, 0, nil;
     for _, m in ipairs(itemData.members) do
         if m.gain and m.gain.percent and m.gain.percent > 0 then
@@ -2699,12 +2746,10 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
         end
     end
     if gainCount > 0 then
-        local avgPercent = totalPercent / gainCount;
-        avgMetric = avgMetric or "DPS";
-        table.insert(parts, "|cff00ff00avg +" .. string.format("%.1f", avgPercent) .. "% " .. avgMetric .. "|r");
+        self:ApplyGainBadge(row.gainBadge, { percent = totalPercent / gainCount, metric = avgMetric or "DPS" }, "avg ");
+    else
+        row.gainBadge:Hide();
     end
-
-    row.infoText:SetText(table.concat(parts, "  "));
 
     if not itemName then
         self:RegisterPendingItem(itemData.itemId, function()
@@ -2737,10 +2782,9 @@ function GoWWishlists:CreateGuildMemberRow(parent)
     tagText:SetJustifyH("LEFT");
     row.tagText = tagText;
 
-    local gainText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    gainText:SetPoint("LEFT", tagText, "RIGHT", 8, 0);
-    gainText:SetJustifyH("LEFT");
-    row.gainText = gainText;
+    local gainBadge = self:CreateGainBadge(row);
+    gainBadge:SetPoint("LEFT", tagText, "RIGHT", 8, 0);
+    row.gainBadge = gainBadge;
 
     -- Officer note icon (rightmost)
     local officerNoteIcon = CreateFrame("Button", nil, row);
@@ -2822,16 +2866,7 @@ function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
     local tagLabel = self:FormatTag(member.tag);
     row.tagText:SetText(tagLabel or "");
 
-    -- Clean gain format: +X.X% DPS/HPS
-    local gain = member.gain;
-    if gain and gain.percent and gain.percent > 0 then
-        local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
-        row.gainText:SetText("|cff00ff00+" .. string.format("%.1f", gain.percent) .. "% " .. metric .. "|r");
-    elseif gain and gain.stat and gain.stat > 0 then
-        row.gainText:SetText("|cff00ff00+" .. gain.stat .. "|r");
-    else
-        row.gainText:SetText("");
-    end
+    self:ApplyGainBadge(row.gainBadge, member.gain);
 
     if member.notes and member.notes ~= "" then
         row.noteIcon.noteText = member.notes;
