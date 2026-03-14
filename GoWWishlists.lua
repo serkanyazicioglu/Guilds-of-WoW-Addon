@@ -354,6 +354,17 @@ function GoWWishlists:CreateGainBadge(parent)
     text:SetJustifyH("CENTER");
     badge.text = text;
 
+    badge:EnableMouse(true);
+    badge:SetScript("OnEnter", function(self)
+        if self.tooltipText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Upgrade", 0, 1, 0);
+            GameTooltip:AddLine(self.tooltipText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    badge:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
     badge:Hide();
     return badge;
 end
@@ -365,10 +376,18 @@ function GoWWishlists:ApplyGainBadge(badge, gain, prefix)
     local hasGain = false;
     if gain and gain.percent and gain.percent > 0 then
         local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
-        badge.text:SetText("|cff00ff00" .. prefix .. "+" .. string.format("%.1f", gain.percent) .. "% " .. metric .. "|r");
+        badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.1f", gain.percent) .. "%|r");
+
+        local tipParts = {};
+        table.insert(tipParts, string.format("%.1f%% %s", gain.percent, metric));
+        if gain.stat and gain.stat > 0 then
+            table.insert(tipParts, "+" .. gain.stat .. " " .. metric);
+        end
+        badge.tooltipText = table.concat(tipParts, "\n");
         hasGain = true;
     elseif gain and gain.stat and gain.stat > 0 then
-        badge.text:SetText("|cff00ff00" .. prefix .. "+" .. gain.stat .. "|r");
+        badge.text:SetText("|cff00ff00" .. prefix .. gain.stat .. "|r");
+        badge.tooltipText = "+" .. gain.stat;
         hasGain = true;
     end
 
@@ -376,6 +395,7 @@ function GoWWishlists:ApplyGainBadge(badge, gain, prefix)
         badge:SetWidth(badge.text:GetStringWidth() + 12);
         badge:Show();
     else
+        badge.tooltipText = nil;
         badge:Hide();
     end
 end
