@@ -1464,9 +1464,9 @@ function GoWWishlists:PopulateSourcePanel(panel, bossOrder, bossCounts, onBossSe
             end
         end
 
-        -- Sort raids by instance ID descending (newest first)
+        -- Sort raids by instance ID ascending (oldest first)
         table.sort(raidOrder, function(a, b)
-            return getRaidInstanceId(a, raidBosses[a]) > getRaidInstanceId(b, raidBosses[b]);
+            return getRaidInstanceId(a, raidBosses[a]) < getRaidInstanceId(b, raidBosses[b]);
         end);
 
         -- Sort bosses within each raid by encounter journal ID ascending (boss order)
@@ -2002,7 +2002,7 @@ function GoWWishlists:RelayoutBrowserContent(frame)
     scrollChild:SetHeight(yOffset + 8);
 end
 
-function GoWWishlists:BuildSections(container, scrollChild, bossGroups, bossOrder, unknownItems, bossToRaid)
+function GoWWishlists:BuildSections(container, scrollChild, bossGroups, bossOrder, unknownItems, bossToRaid, bossToJournalId)
     container.sections = {};
 
     local function addSection(bossName, items)
@@ -2034,6 +2034,19 @@ function GoWWishlists:BuildSections(container, scrollChild, bossGroups, bossOrde
         table.insert(container.sections, { raidLabel = label });
     end
 
+    -- Helper to resolve instance ID for sorting
+    local jid = bossToJournalId or {};
+    local function getRaidInstanceId(raidName, bossList)
+        for _, bName in ipairs(bossList) do
+            local encId = jid[bName];
+            if encId and EJ_GetEncounterInfo then
+                local _, _, _, _, _, instId = EJ_GetEncounterInfo(encId);
+                if instId then return instId end
+            end
+        end
+        return 0;
+    end
+
     -- Group by raid if mapping available
     local hasRaidGroups = bossToRaid and next(bossToRaid);
     if hasRaidGroups then
@@ -2052,6 +2065,18 @@ function GoWWishlists:BuildSections(container, scrollChild, bossGroups, bossOrde
             else
                 table.insert(ungrouped, bossName);
             end
+        end
+
+        -- Sort raids by instance ID ascending (oldest first)
+        table.sort(raidOrder, function(a, b)
+            return getRaidInstanceId(a, raidBosses[a]) < getRaidInstanceId(b, raidBosses[b]);
+        end);
+
+        -- Sort bosses within each raid by encounter journal ID ascending
+        for _, raidName in ipairs(raidOrder) do
+            table.sort(raidBosses[raidName], function(a, b)
+                return (jid[a] or 0) < (jid[b] or 0);
+            end);
         end
 
         for _, raidName in ipairs(raidOrder) do
@@ -2182,7 +2207,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
             end
         else
             -- Show all bosses (collapsed by default)
-            self:BuildSections(container, scrollChild, bossGroups, bossOrder, unknownItems, bossToRaid);
+            self:BuildSections(container, scrollChild, bossGroups, bossOrder, unknownItems, bossToRaid, bossToJournalId);
         end
 
         self:RelayoutBrowserContent(container);
@@ -2965,7 +2990,7 @@ end
 -- guildSections = { { header, items = { { row, memberRows = {} }, ... } }, ... }
 function GoWWishlists:RelayoutGuildContent(frame)
     local scrollChild = frame.guildScrollChild;
-    local yOffset = self.constants.GUILD_FILTER_HEIGHT;
+    local yOffset = 0;
 
     for _, section in ipairs(frame.guildSections or {}) do
         if section.raidLabel then
@@ -3148,7 +3173,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
     rebuildGuildView();
 end
 
-function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, selectedBoss, guildRealm, detailPanel, bossToRaid)
+function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, selectedBoss, guildRealm, detailPanel, bossToRaid, bossToJournalId)
     local scrollChild = lootPanel.scrollChild;
     self:ClearChildren(scrollChild);
     scrollChild:SetWidth(lootPanel.scrollFrame:GetWidth());
@@ -3211,6 +3236,19 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
         table.insert(container.guildSections, { raidLabel = label });
     end
 
+    -- Helper to resolve instance ID for sorting
+    local jid = bossToJournalId or {};
+    local function getRaidInstanceId(raidName, bossList)
+        for _, bName in ipairs(bossList) do
+            local encId = jid[bName];
+            if encId and EJ_GetEncounterInfo then
+                local _, _, _, _, _, instId = EJ_GetEncounterInfo(encId);
+                if instId then return instId end
+            end
+        end
+        return 0;
+    end
+
     if selectedBoss then
         buildBossSection(selectedBoss);
     else
@@ -3231,6 +3269,18 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
                 else
                     table.insert(ungrouped, bossName);
                 end
+            end
+
+            -- Sort raids by instance ID ascending (oldest first)
+            table.sort(raidOrder, function(a, b)
+                return getRaidInstanceId(a, raidBosses[a]) < getRaidInstanceId(b, raidBosses[b]);
+            end);
+
+            -- Sort bosses within each raid by encounter journal ID ascending
+            for _, raidName in ipairs(raidOrder) do
+                table.sort(raidBosses[raidName], function(a, b)
+                    return (jid[a] or 0) < (jid[b] or 0);
+                end);
             end
 
             for _, raidName in ipairs(raidOrder) do
