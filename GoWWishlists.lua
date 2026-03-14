@@ -198,6 +198,155 @@ GoWWishlists.constants.TAG_DISPLAY = {
     OFFSPEC  = { label = "OS",  color = "00ccff" },
 };
 
+GoWWishlists.constants.DIFFICULTIES = { "All", "Normal", "Heroic", "Mythic", "LFR" };
+GoWWishlists.constants.DIFFICULTY_LABELS = { "All", "N", "H", "M", "LFR" };
+
+GoWWishlists.constants.STANDARD_BACKDROP = {
+    bgFile = "Interface\\Buttons\\WHITE8x8",
+    edgeFile = "Interface\\Buttons\\WHITE8x8",
+    edgeSize = 1,
+    insets = { left = 1, right = 1, top = 1, bottom = 1 },
+};
+
+function GoWWishlists:ApplyBackdrop(frame, bgR, bgG, bgB, bgA, borderR, borderG, borderB, borderA)
+    frame:SetBackdrop(self.constants.STANDARD_BACKDROP);
+    frame:SetBackdropColor(bgR, bgG, bgB, bgA or 1);
+    frame:SetBackdropBorderColor(borderR, borderG, borderB, borderA or 1);
+end
+
+function GoWWishlists:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId)
+    local jid = bossToJournalId or {};
+    local raidOrder = {};
+    local raidBosses = {};
+    local ungrouped = {};
+
+    for _, bossName in ipairs(bossOrder) do
+        local raidName = bossToRaid[bossName];
+        if raidName then
+            if not raidBosses[raidName] then
+                raidBosses[raidName] = {};
+                table.insert(raidOrder, raidName);
+            end
+            table.insert(raidBosses[raidName], bossName);
+        else
+            table.insert(ungrouped, bossName);
+        end
+    end
+
+    table.sort(raidOrder, function(a, b)
+        local function getInstanceId(raid, bossList)
+            for _, bName in ipairs(bossList) do
+                local encId = jid[bName];
+                if encId and EJ_GetEncounterInfo then
+                    local _, _, _, _, _, instId = EJ_GetEncounterInfo(encId);
+                    if instId then return instId end
+                end
+            end
+            return 0;
+        end
+        return getInstanceId(a, raidBosses[a]) < getInstanceId(b, raidBosses[b]);
+    end);
+
+    for _, raidName in ipairs(raidOrder) do
+        table.sort(raidBosses[raidName], function(a, b)
+            return (jid[a] or 0) < (jid[b] or 0);
+        end);
+    end
+
+    return raidOrder, raidBosses, ungrouped;
+end
+
+function GoWWishlists:HighlightDifficultyBtn(btns, activeDiff)
+    local difficulties = self.constants.DIFFICULTIES;
+    for i, btn in ipairs(btns) do
+        if difficulties[i] == activeDiff then
+            btn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
+            btn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
+        else
+            btn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
+            btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
+        end
+    end
+end
+
+function GoWWishlists:SetupDifficultyFilterButtons(sourcePanel, onChangeCallback)
+    if sourcePanel.diffFilterBtns then return end
+    local difficulties = self.constants.DIFFICULTIES;
+    local diffLabels = self.constants.DIFFICULTY_LABELS;
+    local btns = {};
+    local headerBar = sourcePanel.headerBar;
+
+    for i, diff in ipairs(difficulties) do
+        local btn = self:CreateSubFilterBtn(sourcePanel, diffLabels[i], 36);
+        btn:SetHeight(14);
+        if i == 1 then
+            btn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
+        else
+            btn:SetPoint("LEFT", btns[i - 1], "RIGHT", 2, 0);
+        end
+        btns[i] = btn;
+    end
+
+    for i, btn in ipairs(btns) do
+        btn:SetScript("OnClick", function() onChangeCallback(difficulties[i]) end);
+    end
+
+    sourcePanel.diffFilterBtns = btns;
+    sourcePanel.scrollFrame:SetPoint("TOPLEFT", btns[1], "BOTTOMLEFT", -4, -4);
+end
+
+function GoWWishlists:SetItemIconAndName(row, itemId, itemLink)
+    local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(itemId);
+    row.icon:SetTexture(itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
+
+    if itemQuality then
+        local r, g, b, hex = C_Item.GetItemQualityColor(itemQuality);
+        row.iconBorder:SetVertexColor(r, g, b, 0.7);
+        row.nameText:SetText(itemLink or ("|c" .. hex .. (itemName or ("Item " .. itemId)) .. "|r"));
+    else
+        row.iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
+        row.nameText:SetText(itemLink or itemName or ("Item " .. itemId));
+    end
+
+    return itemName;
+end
+
+function GoWWishlists:BuildInfoLine(entry, showSource)
+    local parts = {};
+    if showSource ~= false and entry.sourceBossName then
+        table.insert(parts, "|cff888888" .. entry.sourceBossName .. "|r");
+    end
+    if entry.difficulty then
+        table.insert(parts, self:FormatDifficultyTag(entry.difficulty));
+    end
+    return table.concat(parts, "  ");
+end
+
+function GoWWishlists:BuildDetailLine(entry)
+    local parts = {};
+    local tagLabel = self:FormatTag(entry.tag);
+    if tagLabel then table.insert(parts, tagLabel) end
+
+    local gain = entry.gain;
+    if gain and gain.percent and gain.percent > 0 then
+        local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
+        table.insert(parts, "|cff00ff00+" .. string.format("%.1f", gain.percent) .. "% " .. metric .. "|r");
+    elseif gain and gain.stat and gain.stat > 0 then
+        table.insert(parts, "|cff00ff00+" .. gain.stat .. "|r");
+    end
+    return table.concat(parts, "  |cff555555\194\183|r  ");
+end
+
+function GoWWishlists:ApplyNoteIcon(row, notes)
+    if notes and notes ~= "" then
+        row.noteIcon.noteText = notes;
+        row.noteIcon:Show();
+    else
+        row.noteIcon.noteText = nil;
+        row.noteIcon:Hide();
+    end
+end
+
 function GoWWishlists:FormatTag(tag)
     if not tag or tag == "" then return nil end
     local info = self.constants.TAG_DISPLAY[tag];
@@ -256,14 +405,7 @@ function GoWWishlists:CreateSubFilterBtn(btnParent, label, width)
     local btn = CreateFrame("Button", nil, btnParent, "BackdropTemplate");
     btn:SetHeight(18);
     btn:SetWidth(width);
-    btn:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 },
-    });
-    btn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
-    btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
+    self:ApplyBackdrop(btn, self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a, 0.3, 0.3, 0.3, 0.4);
 
     local btnText = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     btnText:SetPoint("CENTER", btn, "CENTER", 0, 0);
@@ -439,70 +581,23 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     end);
 
     -- Populate: icon + name (Line 1)
-    local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(match.itemId);
-    row.icon:SetTexture(itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
-
-    if itemQuality then
-        local r, g, b, hex = C_Item.GetItemQualityColor(itemQuality);
-        row.iconBorder:SetVertexColor(r, g, b, 0.7);
-        row.nameText:SetText("|c" .. hex .. (itemName or ("Item " .. match.itemId)) .. "|r");
-    else
-        row.iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
-        row.nameText:SetText(itemLink or itemName or ("Item " .. match.itemId));
-    end
+    row.itemId = match.itemId;
+    local itemName = self:SetItemIconAndName(row, match.itemId, itemLink);
 
     if not itemName then
         self:RegisterPendingItem(match.itemId, function()
             if row:GetParent() then
-                local name, _, quality, _, _, _, _, _, _, texture = C_Item.GetItemInfo(match.itemId);
-                if name then
-                    row.icon:SetTexture(texture or "Interface\\Icons\\INV_Misc_QuestionMark");
-                    if quality then
-                        local r, g, b, hex = C_Item.GetItemQualityColor(quality);
-                        row.iconBorder:SetVertexColor(r, g, b, 0.7);
-                        row.nameText:SetText("|c" .. hex .. name .. "|r");
-                    end
-                end
+                self:SetItemIconAndName(row, match.itemId, itemLink);
             end
         end);
     end
 
-    -- Line 2: source + difficulty
-    local infoParts = {};
-    if match.sourceBossName then
-        table.insert(infoParts, "|cff888888" .. match.sourceBossName .. "|r");
-    end
-    if match.difficulty then
-        table.insert(infoParts, self:FormatDifficultyTag(match.difficulty));
-    end
-    row.infoText:SetText(table.concat(infoParts, "  "));
-
-    -- Line 3: tag + gain + notes (with · separators)
-    local detailParts = {};
-    local tagLabel = self:FormatTag(match.tag);
-    if tagLabel then table.insert(detailParts, tagLabel) end
-
-    local gain = match.gain;
-    if gain and gain.percent and gain.percent > 0 then
-        local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
-        table.insert(detailParts, "|cff00ff00+" .. string.format("%.1f", gain.percent) .. "% " .. metric .. "|r");
-    elseif gain and gain.stat and gain.stat > 0 then
-        table.insert(detailParts, "|cff00ff00+" .. gain.stat .. "|r");
-    end
-    row.detailText:SetText(table.concat(detailParts, "  |cff555555\194\183|r  "));
-
-    -- Notes icon with tooltip
-    if match.notes and match.notes ~= "" then
-        row.noteIcon.noteText = match.notes;
-        row.noteIcon:Show();
-    else
-        row.noteIcon.noteText = nil;
-        row.noteIcon:Hide();
-    end
+    row.infoText:SetText(self:BuildInfoLine(match));
+    row.detailText:SetText(self:BuildDetailLine(match));
+    self:ApplyNoteIcon(row, match.notes);
 
     -- Row hover: highlight only (tooltip on icon)
     row:EnableMouse(true);
-    row.itemId = match.itemId;
     row:SetScript("OnEnter", function(self) self.highlight:Show() end);
     row:SetScript("OnLeave", function(self) self.highlight:Hide() end);
 
@@ -527,14 +622,7 @@ function GoWWishlists:CreateWishlistAlertContainer()
     end);
     frame:SetClampedToScreen(true);
 
-    frame:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 },
-    });
-    frame:SetBackdropColor(self.constants.GOW_BG_COLOR.r, self.constants.GOW_BG_COLOR.g, self.constants.GOW_BG_COLOR.b, 0.92);
-    frame:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.7);
+    self:ApplyBackdrop(frame, self.constants.GOW_BG_COLOR.r, self.constants.GOW_BG_COLOR.g, self.constants.GOW_BG_COLOR.b, 0.92, self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.7);
 
     local topStripe = frame:CreateTexture(nil, "ARTWORK");
     topStripe:SetTexture("Interface\\Buttons\\WHITE8x8");
@@ -1075,17 +1163,7 @@ end
 function GoWWishlists:PopulateItemRow(row, entry)
     row.itemId = entry.itemId;
 
-    local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(entry.itemId);
-    row.icon:SetTexture(itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
-
-    if itemQuality then
-        local r, g, b, hex = C_Item.GetItemQualityColor(itemQuality);
-        row.iconBorder:SetVertexColor(r, g, b, 0.7);
-        row.nameText:SetText("|c" .. hex .. (itemName or ("Item " .. entry.itemId)) .. "|r");
-    else
-        row.iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
-        row.nameText:SetText(itemName or ("Item " .. entry.itemId));
-    end
+    local itemName = self:SetItemIconAndName(row, entry.itemId);
 
     if not itemName then
         self:RegisterPendingItem(entry.itemId, function()
@@ -1095,38 +1173,9 @@ function GoWWishlists:PopulateItemRow(row, entry)
         end);
     end
 
-    -- Line 2: source + difficulty
-    local infoParts = {};
-    if row.showSource and entry.sourceBossName then
-        table.insert(infoParts, "|cff888888" .. entry.sourceBossName .. "|r");
-    end
-    if entry.difficulty then
-        table.insert(infoParts, self:FormatDifficultyTag(entry.difficulty));
-    end
-    row.infoText:SetText(table.concat(infoParts, "  "));
-
-    -- Line 3: tag + gain + notes
-    local detailParts = {};
-    local tagLabel = self:FormatTag(entry.tag);
-    if tagLabel then table.insert(detailParts, tagLabel) end
-
-    local gain = entry.gain;
-    if gain and gain.percent and gain.percent > 0 then
-        local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
-        table.insert(detailParts, "|cff00ff00+" .. string.format("%.1f", gain.percent) .. "% " .. metric .. "|r");
-    elseif gain and gain.stat and gain.stat > 0 then
-        table.insert(detailParts, "|cff00ff00+" .. gain.stat .. "|r");
-    end
-    row.detailText:SetText(table.concat(detailParts, "  |cff555555·|r  "));
-
-    -- Notes icon with tooltip
-    if entry.notes and entry.notes ~= "" then
-        row.noteIcon.noteText = entry.notes;
-        row.noteIcon:Show();
-    else
-        row.noteIcon.noteText = nil;
-        row.noteIcon:Hide();
-    end
+    row.infoText:SetText(self:BuildInfoLine(entry, row.showSource));
+    row.detailText:SetText(self:BuildDetailLine(entry));
+    self:ApplyNoteIcon(row, entry.notes);
 end
 
 function GoWWishlists:CreateBossHeader(parent, bossName, itemCount)
@@ -1238,14 +1287,7 @@ end
 
 function GoWWishlists:CreatePanelFrame(parent, name)
     local panel = CreateFrame("Frame", name, parent, "BackdropTemplate");
-    panel:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 },
-    });
-    panel:SetBackdropColor(0.06, 0.06, 0.08, 0.95);
-    panel:SetBackdropBorderColor(0.2, 0.2, 0.25, 0.6);
+    self:ApplyBackdrop(panel, 0.06, 0.06, 0.08, 0.95, 0.2, 0.2, 0.25, 0.6);
 
     -- Panel header bar
     local headerBar = CreateFrame("Frame", nil, panel);
@@ -1431,53 +1473,11 @@ function GoWWishlists:PopulateSourcePanel(panel, bossOrder, bossCounts, onBossSe
         yOffset = yOffset + self.constants.BOSS_ROW_HEIGHT;
     end
 
-    -- Helper to resolve instance ID for a raid name (from any boss in that raid)
-    local jid = bossToJournalId or {};
-    local function getRaidInstanceId(raidName, bossList)
-        for _, bName in ipairs(bossList) do
-            local encId = jid[bName];
-            if encId and EJ_GetEncounterInfo then
-                local _, _, _, _, _, instId = EJ_GetEncounterInfo(encId);
-                if instId then return instId end
-            end
-        end
-        return 0;
-    end
-
-    -- Group bosses by raid if mapping is available
     local hasRaidGroups = bossToRaid and next(bossToRaid);
     if hasRaidGroups then
-        local raidOrder = {};
-        local raidBosses = {};
-        local ungrouped = {};
-
-        for _, bossName in ipairs(bossOrder) do
-            local raidName = bossToRaid[bossName];
-            if raidName then
-                if not raidBosses[raidName] then
-                    raidBosses[raidName] = {};
-                    table.insert(raidOrder, raidName);
-                end
-                table.insert(raidBosses[raidName], bossName);
-            else
-                table.insert(ungrouped, bossName);
-            end
-        end
-
-        -- Sort raids by instance ID ascending (oldest first)
-        table.sort(raidOrder, function(a, b)
-            return getRaidInstanceId(a, raidBosses[a]) < getRaidInstanceId(b, raidBosses[b]);
-        end);
-
-        -- Sort bosses within each raid by encounter journal ID ascending (boss order)
-        for _, raidName in ipairs(raidOrder) do
-            table.sort(raidBosses[raidName], function(a, b)
-                return (jid[a] or 0) < (jid[b] or 0);
-            end);
-        end
+        local raidOrder, raidBosses, ungrouped = self:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId);
 
         for _, raidName in ipairs(raidOrder) do
-            -- Raid header
             local raidHeader = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
             raidHeader:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 8, -(yOffset + 2));
             raidHeader:SetPoint("RIGHT", scrollChild, "RIGHT", -8, 0);
@@ -1491,7 +1491,6 @@ function GoWWishlists:PopulateSourcePanel(panel, bossOrder, bossCounts, onBossSe
             end
         end
 
-        -- Ungrouped bosses
         if #ungrouped > 0 then
             local otherHeader = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
             otherHeader:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 8, -(yOffset + 2));
@@ -1534,14 +1533,7 @@ end
 function GoWWishlists:CreateSearchBox(parent)
     local search = CreateFrame("EditBox", nil, parent, "BackdropTemplate");
     search:SetHeight(20);
-    search:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 },
-    });
-    search:SetBackdropColor(0.05, 0.05, 0.07, 0.9);
-    search:SetBackdropBorderColor(0.25, 0.25, 0.3, 0.5);
+    self:ApplyBackdrop(search, 0.05, 0.05, 0.07, 0.9, 0.25, 0.25, 0.3, 0.5);
     search:SetFontObject("GameFontNormalSmall");
     search:SetTextInsets(20, 6, 0, 0);
     search:SetAutoFocus(false);
@@ -1590,14 +1582,7 @@ function GoWWishlists:CreateWishlistBrowserFrame()
     end);
     frame:SetClampedToScreen(true);
 
-    frame:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 },
-    });
-    frame:SetBackdropColor(self.constants.GOW_BG_COLOR.r, self.constants.GOW_BG_COLOR.g, self.constants.GOW_BG_COLOR.b, 0.95);
-    frame:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.7);
+    self:ApplyBackdrop(frame, self.constants.GOW_BG_COLOR.r, self.constants.GOW_BG_COLOR.g, self.constants.GOW_BG_COLOR.b, 0.95, self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.7);
 
     local topStripe = frame:CreateTexture(nil, "ARTWORK");
     topStripe:SetTexture("Interface\\Buttons\\WHITE8x8");
@@ -1874,19 +1859,8 @@ end
 function GoWWishlists:PopulateLootHistoryRow(row, record)
     row.itemId = record.itemId;
 
-    local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(record.itemId);
-    row.icon:SetTexture(itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
+    local itemName = self:SetItemIconAndName(row, record.itemId, record.itemLink);
 
-    if itemQuality then
-        local r, g, b, hex = C_Item.GetItemQualityColor(itemQuality);
-        row.iconBorder:SetVertexColor(r, g, b, 0.7);
-        row.nameText:SetText(record.itemLink or ("|c" .. hex .. (itemName or ("Item " .. record.itemId)) .. "|r"));
-    else
-        row.iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
-        row.nameText:SetText(record.itemLink or itemName or ("Item " .. tostring(record.itemId)));
-    end
-
-    -- If item data wasn't cached yet, re-populate when it arrives
     if not itemName then
         self:RegisterPendingItem(record.itemId, function()
             if row:GetParent() then
@@ -2034,50 +2008,9 @@ function GoWWishlists:BuildSections(container, scrollChild, bossGroups, bossOrde
         table.insert(container.sections, { raidLabel = label });
     end
 
-    -- Helper to resolve instance ID for sorting
-    local jid = bossToJournalId or {};
-    local function getRaidInstanceId(raidName, bossList)
-        for _, bName in ipairs(bossList) do
-            local encId = jid[bName];
-            if encId and EJ_GetEncounterInfo then
-                local _, _, _, _, _, instId = EJ_GetEncounterInfo(encId);
-                if instId then return instId end
-            end
-        end
-        return 0;
-    end
-
-    -- Group by raid if mapping available
     local hasRaidGroups = bossToRaid and next(bossToRaid);
     if hasRaidGroups then
-        local raidOrder = {};
-        local raidBosses = {};
-        local ungrouped = {};
-
-        for _, bossName in ipairs(bossOrder) do
-            local raidName = bossToRaid[bossName];
-            if raidName then
-                if not raidBosses[raidName] then
-                    raidBosses[raidName] = {};
-                    table.insert(raidOrder, raidName);
-                end
-                table.insert(raidBosses[raidName], bossName);
-            else
-                table.insert(ungrouped, bossName);
-            end
-        end
-
-        -- Sort raids by instance ID ascending (oldest first)
-        table.sort(raidOrder, function(a, b)
-            return getRaidInstanceId(a, raidBosses[a]) < getRaidInstanceId(b, raidBosses[b]);
-        end);
-
-        -- Sort bosses within each raid by encounter journal ID ascending
-        for _, raidName in ipairs(raidOrder) do
-            table.sort(raidBosses[raidName], function(a, b)
-                return (jid[a] or 0) < (jid[b] or 0);
-            end);
-        end
+        local raidOrder, raidBosses, ungrouped = self:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId);
 
         for _, raidName in ipairs(raidOrder) do
             addRaidLabel(raidName);
@@ -2334,14 +2267,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         -- Reusable popup menu frame (shared, only one open at a time)
         local popup = CreateFrame("Frame", "GoWDetailPopup", UIParent, "BackdropTemplate");
         popup:SetFrameStrata("TOOLTIP");
-        popup:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8x8",
-            edgeFile = "Interface\\Buttons\\WHITE8x8",
-            edgeSize = 1,
-            insets = { left = 1, right = 1, top = 1, bottom = 1 },
-        });
-        popup:SetBackdropColor(0.1, 0.1, 0.13, 0.96);
-        popup:SetBackdropBorderColor(0.3, 0.3, 0.35, 0.8);
+        self:ApplyBackdrop(popup, 0.1, 0.1, 0.13, 0.96, 0.3, 0.3, 0.35, 0.8);
         popup:Hide();
         popup:SetClampedToScreen(true);
         popup.items = {};
@@ -2509,64 +2435,16 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
     detailPanel.updateSortLabel();
     detailPanel.updateSlotLabel();
 
-    -- Setup difficulty filter buttons in the source panel header area
-    if not sourcePanel.diffFilterBtns then
-        local difficulties = { "All", "Normal", "Heroic", "Mythic", "LFR" };
-        local diffLabels = { "All", "N", "H", "M", "LFR" };
-        local btns = {};
-        local headerBar = sourcePanel.headerBar;
+    self:SetupDifficultyFilterButtons(sourcePanel, function(diff)
+        frame.personalDifficultyFilter = diff;
+        self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, diff);
+        rebuildPersonalView();
+    end);
 
-        for i, diff in ipairs(difficulties) do
-            local btn = self:CreateSubFilterBtn(sourcePanel, diffLabels[i], 36);
-            btn:SetHeight(14);
-            if i == 1 then
-                btn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
-            else
-                btn:SetPoint("LEFT", btns[i - 1], "RIGHT", 2, 0);
-            end
-            btns[i] = btn;
-        end
-
-        local function setDiffFilter(diff)
-            frame.personalDifficultyFilter = diff;
-            for i, btn in ipairs(btns) do
-                if difficulties[i] == diff then
-                    btn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
-                    btn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
-                else
-                    btn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
-                    btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
-                end
-            end
-            rebuildPersonalView();
-        end
-
-        for i, btn in ipairs(btns) do
-            btn:SetScript("OnClick", function() setDiffFilter(difficulties[i]) end);
-        end
-
-        sourcePanel.diffFilterBtns = btns;
-        sourcePanel.scrollFrame:SetPoint("TOPLEFT", btns[1], "BOTTOMLEFT", -4, -4);
-    end
-
-    -- Set initial difficulty active
-    if sourcePanel.diffFilterBtns then
-        local difficulties = { "All", "Normal", "Heroic", "Mythic", "LFR" };
-        for i, btn in ipairs(sourcePanel.diffFilterBtns) do
-            if difficulties[i] == filter then
-                btn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
-                btn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
-            else
-                btn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
-                btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
-            end
-        end
-    end
+    self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, filter);
 
     rebuildPersonalView();
 end
-
--- ===== CORE UI TAB INTEGRATION =====
 
 function GoWWishlists:CreateCoreWishlistFrame(parent)
     if self.frames.coreWishlistScroll then
@@ -2647,8 +2525,6 @@ function GoWWishlists:HideCoreFrames()
     if self.frames.coreGuildWishlistScroll then self.frames.coreGuildWishlistScroll:Hide() end
 end
 
--- ===== CORE UI: GUILD WISHLISTS TAB =====
-
 function GoWWishlists:CreateCoreGuildWishlistFrame(parent)
     if self.frames.coreGuildWishlistScroll then
         self.frames.coreGuildWishlistScroll:SetParent(parent);
@@ -2683,7 +2559,6 @@ function GoWWishlists:ShowCoreGuildWishlistTab(parent, setStatusFn)
     container:Show();
 end
 
--- ===== GUILD WISHLISTS TAB =====
 GoWWishlists.constants.GUILD_ITEM_ROW_HEIGHT = 28;
 GoWWishlists.constants.GUILD_MEMBER_ROW_HEIGHT = 22;
 GoWWishlists.constants.GUILD_FILTER_HEIGHT = 26;
@@ -2741,7 +2616,6 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter)
     return bossGroups, bossOrder, bossToRaid, bossToJournalId;
 end
 
--- ===== Guild Item Row (shows icon + item name + difficulty + member count) =====
 function GoWWishlists:CreateGuildItemRow(parent)
     local row = CreateFrame("Frame", nil, parent);
     row:SetHeight(self.constants.GUILD_ITEM_ROW_HEIGHT);
@@ -2804,17 +2678,7 @@ end
 function GoWWishlists:PopulateGuildItemRow(row, itemData)
     row.itemId = itemData.itemId;
 
-    local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(itemData.itemId);
-    row.icon:SetTexture(itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
-
-    if itemQuality then
-        local r, g, b, hex = C_Item.GetItemQualityColor(itemQuality);
-        row.iconBorder:SetVertexColor(r, g, b, 0.7);
-        row.nameText:SetText("|c" .. hex .. (itemName or ("Item " .. itemData.itemId)) .. "|r");
-    else
-        row.iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
-        row.nameText:SetText(itemName or ("Item " .. itemData.itemId));
-    end
+    local itemName = self:SetItemIconAndName(row, itemData.itemId);
 
     local parts = {};
     if itemData.difficulty then
@@ -2851,7 +2715,6 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
     end
 end
 
--- ===== Guild Member Row (shows name + tag + gain + note icons) =====
 function GoWWishlists:CreateGuildMemberRow(parent)
     local row = CreateFrame("Button", nil, parent);
     row:SetHeight(self.constants.GUILD_MEMBER_ROW_HEIGHT);
@@ -3116,59 +2979,13 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         self:PopulateGuildDetailDefault(detailPanel, guildName, memberCount, totalItems);
     end
 
-    -- Setup difficulty filter buttons in the source panel header area
-    if not sourcePanel.diffFilterBtns then
-        local difficulties = { "All", "Normal", "Heroic", "Mythic", "LFR" };
-        local diffLabels = { "All", "N", "H", "M", "LFR" };
-        local btns = {};
-        local headerBar = sourcePanel.headerBar;
+    self:SetupDifficultyFilterButtons(sourcePanel, function(diff)
+        frame.guildDifficultyFilter = diff;
+        self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, diff);
+        rebuildGuildView();
+    end);
 
-        for i, diff in ipairs(difficulties) do
-            local btn = self:CreateSubFilterBtn(sourcePanel, diffLabels[i], 36);
-            btn:SetHeight(14);
-            if i == 1 then
-                btn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
-            else
-                btn:SetPoint("LEFT", btns[i - 1], "RIGHT", 2, 0);
-            end
-            btns[i] = btn;
-        end
-
-        local function setDiffFilter(diff)
-            frame.guildDifficultyFilter = diff;
-            for i, btn in ipairs(btns) do
-                if difficulties[i] == diff then
-                    btn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
-                    btn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
-                else
-                    btn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
-                    btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
-                end
-            end
-            rebuildGuildView();
-        end
-
-        for i, btn in ipairs(btns) do
-            btn:SetScript("OnClick", function() setDiffFilter(difficulties[i]) end);
-        end
-
-        sourcePanel.diffFilterBtns = btns;
-        sourcePanel.scrollFrame:SetPoint("TOPLEFT", btns[1], "BOTTOMLEFT", -4, -4);
-    end
-
-    -- Set initial difficulty active
-    if sourcePanel.diffFilterBtns then
-        local difficulties = { "All", "Normal", "Heroic", "Mythic", "LFR" };
-        for i, btn in ipairs(sourcePanel.diffFilterBtns) do
-            if difficulties[i] == filter then
-                btn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
-                btn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
-            else
-                btn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
-                btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
-            end
-        end
-    end
+    self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, filter);
 
     rebuildGuildView();
 end
@@ -3236,52 +3053,12 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
         table.insert(container.guildSections, { raidLabel = label });
     end
 
-    -- Helper to resolve instance ID for sorting
-    local jid = bossToJournalId or {};
-    local function getRaidInstanceId(raidName, bossList)
-        for _, bName in ipairs(bossList) do
-            local encId = jid[bName];
-            if encId and EJ_GetEncounterInfo then
-                local _, _, _, _, _, instId = EJ_GetEncounterInfo(encId);
-                if instId then return instId end
-            end
-        end
-        return 0;
-    end
-
     if selectedBoss then
         buildBossSection(selectedBoss);
     else
         local hasRaidGroups = bossToRaid and next(bossToRaid);
         if hasRaidGroups then
-            local raidOrder = {};
-            local raidBosses = {};
-            local ungrouped = {};
-
-            for _, bossName in ipairs(bossOrder) do
-                local raidName = bossToRaid[bossName];
-                if raidName then
-                    if not raidBosses[raidName] then
-                        raidBosses[raidName] = {};
-                        table.insert(raidOrder, raidName);
-                    end
-                    table.insert(raidBosses[raidName], bossName);
-                else
-                    table.insert(ungrouped, bossName);
-                end
-            end
-
-            -- Sort raids by instance ID ascending (oldest first)
-            table.sort(raidOrder, function(a, b)
-                return getRaidInstanceId(a, raidBosses[a]) < getRaidInstanceId(b, raidBosses[b]);
-            end);
-
-            -- Sort bosses within each raid by encounter journal ID ascending
-            for _, raidName in ipairs(raidOrder) do
-                table.sort(raidBosses[raidName], function(a, b)
-                    return (jid[a] or 0) < (jid[b] or 0);
-                end);
-            end
+            local raidOrder, raidBosses, ungrouped = self:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId);
 
             for _, raidName in ipairs(raidOrder) do
                 addRaidLabel(raidName);
@@ -3306,39 +3083,14 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
     self:RelayoutGuildContent(container);
 end
 
-function GoWWishlists:CollectGuildObtainedItems()
+function GoWWishlists:CollectObtainedItems(characterName, realmName)
     local results = {};
     local data = self.state.guildWishlistData;
     if not data or not data.wishlists then return results end
 
     for _, charEntry in ipairs(data.wishlists) do
-        for _, item in ipairs(charEntry.wishlist) do
-            if item.isObtained then
-                table.insert(results, {
-                    itemId = item.itemId,
-                    difficulty = item.difficulty,
-                    encounterName = item.sourceBossName or "Unknown",
-                    winner = charEntry.name,
-                    timestamp = item.obtainedOn and math.floor(item.obtainedOn / 1000) or nil,
-                });
-            end
-        end
-    end
-
-    table.sort(results, function(a, b)
-        return (a.timestamp or 0) > (b.timestamp or 0);
-    end);
-
-    return results;
-end
-
-function GoWWishlists:CollectMemberObtainedItems(characterName, realmName)
-    local results = {};
-    local data = self.state.guildWishlistData;
-    if not data or not data.wishlists then return results end
-
-    for _, charEntry in ipairs(data.wishlists) do
-        if charEntry.name == characterName and charEntry.realmName == realmName then
+        local match = not characterName or (charEntry.name == characterName and charEntry.realmName == realmName);
+        if match then
             for _, item in ipairs(charEntry.wishlist) do
                 if item.isObtained then
                     table.insert(results, {
@@ -3350,7 +3102,7 @@ function GoWWishlists:CollectMemberObtainedItems(characterName, realmName)
                     });
                 end
             end
-            break;
+            if characterName then break end
         end
     end
 
@@ -3381,7 +3133,7 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
     yOffset = yOffset + 16;
 
     -- Guild obtained items from wishlists
-    local obtainedItems = self:CollectGuildObtainedItems();
+    local obtainedItems = self:CollectObtainedItems();
     if #obtainedItems == 0 then
         local emptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
         emptyText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
@@ -3502,7 +3254,7 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     end
 
     -- Obtained items for this member
-    local memberObtained = self:CollectMemberObtainedItems(member.characterName, member.realmName);
+    local memberObtained = self:CollectObtainedItems(member.characterName, member.realmName);
     if #memberObtained > 0 then
         -- Section separator
         local sep = scrollChild:CreateTexture(nil, "ARTWORK");
