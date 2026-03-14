@@ -14,6 +14,7 @@ embed.xml
 Core.lua
 Helper.lua
 GoWWishlists.lua
+wishlists\load.xml
 GoWTeams.lua
 GoWEventDetails.lua
 GoWComm.lua

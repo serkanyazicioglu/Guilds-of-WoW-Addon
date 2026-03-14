@@ -1,0 +1,1127 @@
+local GOW = GuildsOfWow;
+local GoWWishlists = GOW.Wishlists;
+
+GoWWishlists.constants.GUILD_ITEM_ROW_HEIGHT = 28;
+GoWWishlists.constants.GUILD_MEMBER_ROW_HEIGHT = 22;
+GoWWishlists.constants.GUILD_FILTER_HEIGHT = 26;
+
+-- Collects guild wishlist data grouped by boss, then by item, then by member.
+-- Returns: bossGroups = { bossName = { items = {key = itemData}, itemOrder = {keys} } }, bossOrder = {bossNames}
+function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter)
+    if not self.state.guildWishlistData or not self.state.guildWishlistData.wishlists then return {}, {}, {}, {} end
+
+    local bossGroups = {};
+    local bossOrder = {};
+    local bossToRaid = {};
+    local bossToJournalId = {};
+
+    for _, charEntry in ipairs(self.state.guildWishlistData.wishlists) do
+        for _, item in ipairs(charEntry.wishlist) do
+            if not item.isObtained then
+                local passFilter = (difficultyFilter == "All") or (item.difficulty == difficultyFilter);
+                if passFilter then
+                    local bossName = item.sourceBossName or "Unknown Boss";
+                    if not bossGroups[bossName] then
+                        bossGroups[bossName] = { items = {}, itemOrder = {} };
+                        table.insert(bossOrder, bossName);
+                        if item.sourceJournalId then
+                            bossToRaid[bossName] = self:GetRaidNameForEncounter(item.sourceJournalId);
+                            bossToJournalId[bossName] = item.sourceJournalId;
+                        end
+                    end
+
+                    local boss = bossGroups[bossName];
+                    local itemKey = item.itemId .. "-" .. (item.difficulty or "");
+                    if not boss.items[itemKey] then
+                        boss.items[itemKey] = {
+                            itemId = item.itemId,
+                            difficulty = item.difficulty,
+                            members = {},
+                        };
+                        table.insert(boss.itemOrder, itemKey);
+                    end
+
+                    table.insert(boss.items[itemKey].members, {
+                        characterName = charEntry.name,
+                        realmName = charEntry.realmName,
+                        classId = charEntry.classId,
+                        tag = item.tag,
+                        notes = item.notes,
+                        officerNotes = item.officerNotes,
+                        gain = item.gain,
+                    });
+                end
+            end
+        end
+    end
+
+    return bossGroups, bossOrder, bossToRaid, bossToJournalId;
+end
+
+function GoWWishlists:CreateGuildItemRow(parent)
+    local row = CreateFrame("Frame", nil, parent);
+    row:SetHeight(self.constants.GUILD_ITEM_ROW_HEIGHT);
+
+    local iconBorder = row:CreateTexture(nil, "ARTWORK", nil, 0);
+    iconBorder:SetTexture("Interface\\Buttons\\WHITE8x8");
+    iconBorder:SetSize(22, 22);
+    iconBorder:SetPoint("LEFT", row, "LEFT", 23, 0);
+    iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
+    row.iconBorder = iconBorder;
+
+    local icon = row:CreateTexture(nil, "ARTWORK", nil, 1);
+    icon:SetSize(20, 20);
+    icon:SetPoint("CENTER", iconBorder, "CENTER", 0, 0);
+    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
+    row.icon = icon;
+
+    local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+    nameText:SetPoint("LEFT", icon, "RIGHT", 6, 0);
+    nameText:SetJustifyH("LEFT");
+    nameText:SetWordWrap(false);
+    row.nameText = nameText;
+
+    local infoText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    infoText:SetPoint("LEFT", nameText, "RIGHT", 8, 0);
+    infoText:SetJustifyH("LEFT");
+    row.infoText = infoText;
+
+    local gainBadge = self:CreateGainBadge(row);
+    gainBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
+    row.gainBadge = gainBadge;
+
+    local highlight = row:CreateTexture(nil, "BACKGROUND");
+    highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
+    highlight:SetAllPoints();
+    highlight:SetVertexColor(1, 1, 1, 0.04);
+    highlight:Hide();
+    row.highlight = highlight;
+
+    -- Icon hover zone for item tooltip
+    local iconHover = CreateFrame("Frame", nil, row);
+    iconHover:SetAllPoints(iconBorder);
+    iconHover:EnableMouse(true);
+    iconHover:SetScript("OnEnter", function()
+        row.highlight:Show();
+        if row.itemId then
+            GameTooltip:SetOwner(row, "ANCHOR_RIGHT");
+            GameTooltip:SetItemByID(row.itemId);
+            GameTooltip:Show();
+        end
+    end);
+    iconHover:SetScript("OnLeave", function()
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+
+    row:EnableMouse(true);
+    row:SetScript("OnEnter", function(self) self.highlight:Show() end);
+    row:SetScript("OnLeave", function(self) self.highlight:Hide() end);
+
+    return row;
+end
+
+function GoWWishlists:PopulateGuildItemRow(row, itemData)
+    row.itemId = itemData.itemId;
+
+    local itemName = self:SetItemIconAndName(row, itemData.itemId);
+
+    local parts = {};
+    if itemData.difficulty then
+        table.insert(parts, self:FormatDifficultyTag(itemData.difficulty));
+    end
+    local memberCount = #itemData.members;
+    table.insert(parts, "|cff888888" .. memberCount .. (memberCount == 1 and " wants" or " want") .. "|r");
+    row.infoText:SetText(table.concat(parts, "  "));
+
+    local totalPercent, gainCount, avgMetric = 0, 0, nil;
+    for _, m in ipairs(itemData.members) do
+        if m.gain and m.gain.percent and m.gain.percent > 0 then
+            totalPercent = totalPercent + m.gain.percent;
+            gainCount = gainCount + 1;
+            if not avgMetric and m.gain.metric and m.gain.metric ~= "" then
+                avgMetric = m.gain.metric;
+            end
+        end
+    end
+    if gainCount > 0 then
+        self:ApplyGainBadge(row.gainBadge, { percent = totalPercent / gainCount, metric = avgMetric or "DPS" }, "avg ");
+    else
+        row.gainBadge:Hide();
+    end
+
+    if not itemName then
+        self:RegisterPendingItem(itemData.itemId, function()
+            if row:GetParent() then
+                self:PopulateGuildItemRow(row, itemData);
+            end
+        end);
+    end
+end
+
+function GoWWishlists:CreateGuildMemberRow(parent)
+    local row = CreateFrame("Button", nil, parent);
+    row:SetHeight(self.constants.GUILD_MEMBER_ROW_HEIGHT);
+
+    -- Class color accent bar
+    local classBar = row:CreateTexture(nil, "ARTWORK");
+    classBar:SetTexture("Interface\\Buttons\\WHITE8x8");
+    classBar:SetSize(2, 14);
+    classBar:SetPoint("LEFT", row, "LEFT", 42, 0);
+    classBar:SetVertexColor(0.5, 0.5, 0.5, 0.3);
+    row.classBar = classBar;
+
+    local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    nameText:SetPoint("LEFT", classBar, "RIGHT", 6, 0);
+    nameText:SetJustifyH("LEFT");
+    row.nameText = nameText;
+
+    local tagText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    tagText:SetPoint("LEFT", nameText, "RIGHT", 8, 0);
+    tagText:SetJustifyH("LEFT");
+    row.tagText = tagText;
+
+    local gainBadge = self:CreateGainBadge(row);
+    gainBadge:SetPoint("LEFT", tagText, "RIGHT", 8, 0);
+    row.gainBadge = gainBadge;
+
+    -- Officer note icon (rightmost)
+    local officerNoteIcon = CreateFrame("Button", nil, row);
+    officerNoteIcon:SetSize(14, 14);
+    officerNoteIcon:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    local officerNoteTex = officerNoteIcon:CreateTexture(nil, "ARTWORK");
+    officerNoteTex:SetAllPoints();
+    officerNoteTex:SetTexture("Interface\\Buttons\\UI-GuildButton-OfficerNote-Up");
+    officerNoteIcon:SetScript("OnEnter", function(self)
+        row.highlight:Show();
+        if self.noteText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Officer Note", 1, 0.5, 0);
+            GameTooltip:AddLine(self.noteText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    officerNoteIcon:SetScript("OnLeave", function(self)
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+    officerNoteIcon:Hide();
+    row.officerNoteIcon = officerNoteIcon;
+
+    -- Player note icon (left of officer note)
+    local noteIcon = CreateFrame("Button", nil, row);
+    noteIcon:SetSize(14, 14);
+    noteIcon:SetPoint("RIGHT", officerNoteIcon, "LEFT", -4, 0);
+    local noteIconTex = noteIcon:CreateTexture(nil, "ARTWORK");
+    noteIconTex:SetAllPoints();
+    noteIconTex:SetTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up");
+    noteIcon:SetScript("OnEnter", function(self)
+        row.highlight:Show();
+        if self.noteText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Note", 0, 1, 0);
+            GameTooltip:AddLine(self.noteText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    noteIcon:SetScript("OnLeave", function(self)
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+    noteIcon:Hide();
+    row.noteIcon = noteIcon;
+
+    local highlight = row:CreateTexture(nil, "BACKGROUND");
+    highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
+    highlight:SetAllPoints();
+    highlight:SetVertexColor(1, 1, 1, 0.03);
+    highlight:Hide();
+    row.highlight = highlight;
+
+    row:EnableMouse(true);
+    row:SetScript("OnEnter", function(self) self.highlight:Show() end);
+    row:SetScript("OnLeave", function(self) self.highlight:Hide() end);
+
+    return row;
+end
+
+function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
+    -- Class-colored name, with realm suffix if cross-realm
+    local classColor = self:GetClassColor(member.classId);
+    local colorHex = self:ClassColorToHex(classColor);
+    local displayName = member.characterName;
+    if guildRealm and member.realmName and member.realmName ~= guildRealm then
+        displayName = displayName .. "-" .. member.realmName;
+    end
+    row.nameText:SetText("|cff" .. colorHex .. displayName .. "|r");
+
+    -- Class color accent bar
+    if classColor then
+        row.classBar:SetVertexColor(classColor.r, classColor.g, classColor.b, 0.8);
+    else
+        row.classBar:SetVertexColor(0.5, 0.5, 0.5, 0.3);
+    end
+
+    local tagLabel = self:FormatTag(member.tag);
+    row.tagText:SetText(tagLabel or "");
+
+    self:ApplyGainBadge(row.gainBadge, member.gain);
+
+    if member.notes and member.notes ~= "" then
+        row.noteIcon.noteText = member.notes;
+        row.noteIcon:Show();
+    else
+        row.noteIcon.noteText = nil;
+        row.noteIcon:Hide();
+    end
+
+    if member.officerNotes and member.officerNotes ~= "" then
+        row.officerNoteIcon.noteText = member.officerNotes;
+        row.officerNoteIcon:Show();
+    else
+        row.officerNoteIcon.noteText = nil;
+        row.officerNoteIcon:Hide();
+    end
+end
+
+-- guildSections = { { header?, items?, raidLabel?, obtainedSeparator?, obtainedRows? }, ... }
+function GoWWishlists:RelayoutGuildContent(frame)
+    local scrollChild = frame.guildScrollChild;
+    local yOffset = 0;
+
+    for _, section in ipairs(frame.guildSections or {}) do
+        if section.raidLabel then
+            section.raidLabel:ClearAllPoints();
+            section.raidLabel:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 8, -(yOffset + 2));
+            section.raidLabel:SetPoint("RIGHT", scrollChild, "RIGHT", -8, 0);
+            section.raidLabel:Show();
+            yOffset = yOffset + self.constants.RAID_HEADER_HEIGHT;
+        elseif section.obtainedSeparator then
+            section.obtainedSeparator:ClearAllPoints();
+            section.obtainedSeparator:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+            section.obtainedSeparator:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+            section.obtainedSeparator:Show();
+            yOffset = yOffset + 24;
+        elseif section.obtainedRows then
+            for _, row in ipairs(section.obtainedRows) do
+                row:ClearAllPoints();
+                row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+                row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+                row:Show();
+                yOffset = yOffset + self.constants.LOOT_ROW_HEIGHT;
+            end
+        elseif section.header then
+            local header = section.header;
+            header:ClearAllPoints();
+            header:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+            header:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+            header:Show();
+            yOffset = yOffset + self.constants.BROWSER_BOSS_HEADER_HEIGHT;
+
+            if not header.isCollapsed then
+                for _, itemGroup in ipairs(section.items or {}) do
+                    local itemRow = itemGroup.row;
+                    itemRow:ClearAllPoints();
+                    itemRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+                    itemRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+                    itemRow:Show();
+                    yOffset = yOffset + self.constants.GUILD_ITEM_ROW_HEIGHT;
+
+                    for _, memberRow in ipairs(itemGroup.memberRows or {}) do
+                        memberRow:ClearAllPoints();
+                        memberRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+                        memberRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+                        memberRow:Show();
+                        yOffset = yOffset + self.constants.GUILD_MEMBER_ROW_HEIGHT;
+                    end
+                end
+            else
+                for _, itemGroup in ipairs(section.items or {}) do
+                    itemGroup.row:Hide();
+                    for _, memberRow in ipairs(itemGroup.memberRows or {}) do
+                        memberRow:Hide();
+                    end
+                end
+            end
+
+            yOffset = yOffset + 4;
+        elseif section.items then
+            -- Flat list (no header) â€” used for non-boss sorts
+            for _, itemGroup in ipairs(section.items) do
+                local itemRow = itemGroup.row;
+                itemRow:ClearAllPoints();
+                itemRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+                itemRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+                itemRow:Show();
+                yOffset = yOffset + self.constants.GUILD_ITEM_ROW_HEIGHT;
+
+                for _, memberRow in ipairs(itemGroup.memberRows or {}) do
+                    memberRow:ClearAllPoints();
+                    memberRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+                    memberRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+                    memberRow:Show();
+                    yOffset = yOffset + self.constants.GUILD_MEMBER_ROW_HEIGHT;
+                end
+            end
+        end
+    end
+
+    scrollChild:SetHeight(yOffset + 8);
+end
+
+function GoWWishlists:PopulateGuildWishlistView(frame)
+    local panel3 = frame.guild3Panel;
+    if not panel3 then return end
+
+    local sourcePanel = panel3.sourcePanel;
+    local lootPanel = panel3.lootPanel;
+    local detailPanel = panel3.detailPanel;
+
+    if not self.state.guildWishlistData or not self.state.guildWishlistData.wishlists or #self.state.guildWishlistData.wishlists == 0 then
+        local playerGuild = GetGuildInfo("player");
+        local msg;
+        if not playerGuild then
+            msg = "You are not in a guild.";
+        else
+            msg = "No guild wishlist data found for " .. playerGuild .. ".";
+        end
+        -- Show empty in loot panel
+        local sc = lootPanel.scrollChild;
+        self:ClearChildren(sc);
+        local emptyText = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+        emptyText:SetPoint("TOP", sc, "TOP", 0, -30);
+        emptyText:SetText("|cff888888" .. msg .. "|r");
+        sc:SetHeight(80);
+        frame.subtitleText:SetText(playerGuild or "No Guild");
+        return;
+    end
+
+    local guildName = self.state.guildWishlistData.guild or "Guild";
+    local guildRealm = self.state.guildWishlistData.guildRealm;
+    local filter = frame.guildDifficultyFilter or "All";
+
+    -- Source panel header
+    sourcePanel.headerText:SetText("SOURCE");
+
+    -- Loot panel header
+    lootPanel.headerText:SetText("LOOT");
+
+    -- Detail panel header
+    detailPanel.headerText:SetText("WISHLIST");
+
+    -- Guild loot sort/obtained buttons (created once)
+    local guildLootSortMode = frame.guildLootSortMode or "boss";
+    local guildHideObtained = frame.guildHideObtained;
+    if guildHideObtained == nil then guildHideObtained = true end
+    local rebuildGuildView;
+
+    if not lootPanel.guildSortBtn then
+        local headerBar = lootPanel.headerBar;
+        local popupMenu = self:GetOrCreatePopupMenu();
+        local showPopup = popupMenu.showPopup;
+
+        local GUILD_SORT_LABELS = {
+            boss = "Boss",
+            mostwanted = "Most Wanted",
+            avggain = "Avg. Gain",
+            name = "Name",
+            slot = "Slot",
+        };
+
+        local sortBtn = self:CreateSubFilterBtn(lootPanel, "Sort: Boss", 100);
+        sortBtn:SetHeight(14);
+        sortBtn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
+        lootPanel.guildSortBtn = sortBtn;
+
+        local obtainedBtn = self:CreateSubFilterBtn(lootPanel, "Obtained: Hidden", 100);
+        obtainedBtn:SetHeight(14);
+        obtainedBtn:SetPoint("LEFT", sortBtn, "RIGHT", 4, 0);
+        lootPanel.guildObtainedBtn = obtainedBtn;
+
+        local function updateGuildSortLabel()
+            sortBtn.btnText:SetText("Sort: " .. (GUILD_SORT_LABELS[guildLootSortMode] or guildLootSortMode));
+        end
+
+        local function updateGuildObtainedBtn()
+            if guildHideObtained then
+                obtainedBtn.btnText:SetText("Obtained: Hidden");
+                obtainedBtn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
+                obtainedBtn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
+            else
+                obtainedBtn.btnText:SetText("Obtained: Shown");
+                obtainedBtn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
+                obtainedBtn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
+            end
+        end
+
+        sortBtn:SetScript("OnClick", function()
+            if popupMenu.popup:IsShown() and popupMenu.popup.owner == "guildsort" then
+                popupMenu.clearPopup();
+                return;
+            end
+            local sortOptions = {
+                { key = "boss",       label = "Boss" },
+                { key = "mostwanted", label = "Most Wanted" },
+                { key = "avggain",    label = "Avg. Gain" },
+                { key = "name",       label = "Name" },
+                { key = "slot",       label = "Slot" },
+            };
+            popupMenu.popup.owner = "guildsort";
+            showPopup(sortBtn, sortOptions, guildLootSortMode, function(key)
+                guildLootSortMode = key;
+                frame.guildLootSortMode = key;
+                updateGuildSortLabel();
+                rebuildGuildView();
+            end);
+        end);
+
+        obtainedBtn:SetScript("OnClick", function()
+            guildHideObtained = not guildHideObtained;
+            frame.guildHideObtained = guildHideObtained;
+            updateGuildObtainedBtn();
+            rebuildGuildView();
+        end);
+
+        lootPanel.updateGuildSortLabel = updateGuildSortLabel;
+        lootPanel.updateGuildObtainedBtn = updateGuildObtainedBtn;
+
+        lootPanel.scrollFrame:SetPoint("TOPLEFT", sortBtn, "BOTTOMLEFT", -4, -4);
+    end
+
+    lootPanel.updateGuildSortLabel();
+    lootPanel.updateGuildObtainedBtn();
+
+    -- Setup difficulty filter in source panel (above boss list)
+    rebuildGuildView = function()
+        filter = frame.guildDifficultyFilter or "All";
+        guildLootSortMode = frame.guildLootSortMode or "boss";
+        guildHideObtained = frame.guildHideObtained;
+        if guildHideObtained == nil then guildHideObtained = true end
+        local bossGroups, bossOrder, bossToRaid, bossToJournalId = self:CollectGuildWishlistByBoss(filter);
+
+        -- Compute boss counts and totals
+        local bossCounts = {};
+        local totalItems = 0;
+        local memberSet = {};
+        for _, bossName in ipairs(bossOrder) do
+            local boss = bossGroups[bossName];
+            local count = #boss.itemOrder;
+            bossCounts[bossName] = count;
+            totalItems = totalItems + count;
+            for _, itemKey in ipairs(boss.itemOrder) do
+                for _, member in ipairs(boss.items[itemKey].members) do
+                    memberSet[member.characterName] = true;
+                end
+            end
+        end
+        local memberCount = 0;
+        for _ in pairs(memberSet) do memberCount = memberCount + 1 end
+        frame.subtitleText:SetText(guildName .. "  |  " .. memberCount .. " members  |  " .. totalItems .. " items");
+
+        -- Populate source panel boss list
+        self:PopulateSourcePanel(sourcePanel, bossOrder, bossCounts, function(selectedBoss)
+            self:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, selectedBoss, guildRealm, detailPanel, bossToRaid, bossToJournalId, guildLootSortMode, guildHideObtained);
+        end, bossToRaid, bossToJournalId);
+
+        -- Populate loot panel (all bosses)
+        self:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, nil, guildRealm, detailPanel, bossToRaid, bossToJournalId, guildLootSortMode, guildHideObtained);
+
+        -- Reset detail panel
+        self:PopulateGuildDetailDefault(detailPanel, guildName, memberCount, totalItems);
+    end
+
+    self:SetupDifficultyFilterButtons(sourcePanel, function(diff)
+        frame.guildDifficultyFilter = diff;
+        self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, diff);
+        rebuildGuildView();
+    end);
+
+    self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, filter);
+
+    rebuildGuildView();
+end
+
+function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, selectedBoss, guildRealm, detailPanel, bossToRaid, bossToJournalId, sortMode, hideObtained)
+    local scrollChild = lootPanel.scrollChild;
+    self:ClearChildren(scrollChild);
+    scrollChild:SetWidth(lootPanel.scrollFrame:GetWidth());
+
+    sortMode = sortMode or "boss";
+    if hideObtained == nil then hideObtained = true end
+
+    local container = { guildSections = {}, guildScrollChild = scrollChild };
+
+    -- Helper to build item+member rows for a single itemData entry
+    local function buildItemWithMembers(itemData)
+        table.sort(itemData.members, function(a, b)
+            local aGain = (a.gain and a.gain.percent) or 0;
+            local bGain = (b.gain and b.gain.percent) or 0;
+            return aGain > bGain;
+        end);
+
+        local itemRow = self:CreateGuildItemRow(scrollChild);
+        self:PopulateGuildItemRow(itemRow, itemData);
+
+        local memberRows = {};
+        for _, member in ipairs(itemData.members) do
+            local memberRow = self:CreateGuildMemberRow(scrollChild);
+            self:PopulateGuildMemberRow(memberRow, member, guildRealm);
+            memberRow:SetScript("OnClick", function()
+                GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm);
+            end);
+            memberRow:EnableMouse(true);
+            table.insert(memberRows, memberRow);
+        end
+
+        return { row = itemRow, memberRows = memberRows };
+    end
+
+    local function buildBossSection(bossName)
+        local boss = bossGroups[bossName];
+        if not boss then return end
+
+        local header = self:CreateBossHeader(scrollChild, bossName, #boss.itemOrder);
+        header.isCollapsed = (selectedBoss == nil);
+        self:UpdateBossHeaderArrow(header);
+
+        local items = {};
+        for _, itemKey in ipairs(boss.itemOrder) do
+            local itemData = boss.items[itemKey];
+            table.insert(items, buildItemWithMembers(itemData));
+        end
+
+        header:SetScript("OnClick", function(h)
+            h.isCollapsed = not h.isCollapsed;
+            GoWWishlists:UpdateBossHeaderArrow(h);
+            GoWWishlists:RelayoutGuildContent(container);
+        end);
+
+        table.insert(container.guildSections, { header = header, items = items });
+    end
+
+    local function addRaidLabel(raidName)
+        local label = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        label:SetJustifyH("LEFT");
+        label:SetWordWrap(false);
+        label:SetText("|cff666666" .. raidName .. "|r");
+        table.insert(container.guildSections, { raidLabel = label });
+    end
+
+    -- Build flat item list for non-boss sorts
+    local function buildFlatList(sortKey)
+        local flatItems = {};
+        for _, bossName in ipairs(bossOrder) do
+            local boss = bossGroups[bossName];
+            if boss then
+                for _, itemKey in ipairs(boss.itemOrder) do
+                    table.insert(flatItems, boss.items[itemKey]);
+                end
+            end
+        end
+
+        local SLOT_LABELS = self.constants.SLOT_LABELS;
+        if sortKey == "mostwanted" then
+            table.sort(flatItems, function(a, b) return #a.members > #b.members end);
+        elseif sortKey == "avggain" then
+            table.sort(flatItems, function(a, b)
+                local aSum, aCount = 0, 0;
+                for _, m in ipairs(a.members) do aSum = aSum + ((m.gain and m.gain.percent) or 0); aCount = aCount + 1 end
+                local bSum, bCount = 0, 0;
+                for _, m in ipairs(b.members) do bSum = bSum + ((m.gain and m.gain.percent) or 0); bCount = bCount + 1 end
+                local aAvg = aCount > 0 and (aSum / aCount) or 0;
+                local bAvg = bCount > 0 and (bSum / bCount) or 0;
+                return aAvg > bAvg;
+            end);
+        elseif sortKey == "name" then
+            table.sort(flatItems, function(a, b)
+                local aName = C_Item.GetItemInfo(a.itemId) or "";
+                local bName = C_Item.GetItemInfo(b.itemId) or "";
+                return aName < bName;
+            end);
+        elseif sortKey == "slot" then
+            table.sort(flatItems, function(a, b)
+                local _, _, _, aLoc = C_Item.GetItemInfoInstant(a.itemId);
+                local _, _, _, bLoc = C_Item.GetItemInfoInstant(b.itemId);
+                local aSlot = SLOT_LABELS[aLoc] or "zzz";
+                local bSlot = SLOT_LABELS[bLoc] or "zzz";
+                if aSlot ~= bSlot then return aSlot < bSlot end
+                local aName = C_Item.GetItemInfo(a.itemId) or "";
+                local bName = C_Item.GetItemInfo(b.itemId) or "";
+                return aName < bName;
+            end);
+        end
+
+        local items = {};
+        for _, itemData in ipairs(flatItems) do
+            table.insert(items, buildItemWithMembers(itemData));
+        end
+        table.insert(container.guildSections, { items = items });
+    end
+
+    if sortMode ~= "boss" then
+        buildFlatList(sortMode);
+    elseif selectedBoss then
+        buildBossSection(selectedBoss);
+    else
+        local hasRaidGroups = bossToRaid and next(bossToRaid);
+        if hasRaidGroups then
+            local raidOrder, raidBosses, ungrouped = self:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId);
+
+            for _, raidName in ipairs(raidOrder) do
+                addRaidLabel(raidName);
+                for _, bossName in ipairs(raidBosses[raidName]) do
+                    buildBossSection(bossName);
+                end
+            end
+
+            if #ungrouped > 0 then
+                addRaidLabel("Other");
+                for _, bossName in ipairs(ungrouped) do
+                    buildBossSection(bossName);
+                end
+            end
+        else
+            for _, bossName in ipairs(bossOrder) do
+                buildBossSection(bossName);
+            end
+        end
+    end
+
+    -- Append obtained items at bottom if showing
+    if not hideObtained then
+        local obtainedItems = self:CollectObtainedItems();
+        if #obtainedItems > 0 then
+            local sepFrame = CreateFrame("Frame", nil, scrollChild);
+            sepFrame:SetHeight(24);
+            local sepLine = sepFrame:CreateTexture(nil, "ARTWORK");
+            sepLine:SetTexture("Interface\\Buttons\\WHITE8x8");
+            sepLine:SetVertexColor(0.25, 0.25, 0.3, 0.3);
+            sepLine:SetHeight(1);
+            sepLine:SetPoint("TOPLEFT", sepFrame, "TOPLEFT", 10, -4);
+            sepLine:SetPoint("RIGHT", sepFrame, "RIGHT", -10, 0);
+            local sepText = sepFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+            sepText:SetPoint("TOPLEFT", sepFrame, "TOPLEFT", 10, -10);
+            sepText:SetText("|cff888888Obtained (" .. #obtainedItems .. ")|r");
+            table.insert(container.guildSections, { obtainedSeparator = sepFrame });
+
+            local obtRows = {};
+            local maxRows = 50;
+            for i, record in ipairs(obtainedItems) do
+                if i > maxRows then break end
+                local row = self:CreateLootHistoryRow(scrollChild, true);
+                self:PopulateLootHistoryRow(row, record);
+                row:SetAlpha(0.5);
+                table.insert(obtRows, row);
+            end
+            table.insert(container.guildSections, { obtainedRows = obtRows });
+        end
+    end
+
+    self:RelayoutGuildContent(container);
+end
+
+function GoWWishlists:CollectObtainedItems(characterName, realmName)
+    local results = {};
+    local data = self.state.guildWishlistData;
+    if not data or not data.wishlists then return results end
+
+    for _, charEntry in ipairs(data.wishlists) do
+        local match = not characterName or (charEntry.name == characterName and charEntry.realmName == realmName);
+        if match then
+            for _, item in ipairs(charEntry.wishlist) do
+                if item.isObtained then
+                    table.insert(results, {
+                        itemId = item.itemId,
+                        difficulty = item.difficulty,
+                        encounterName = item.sourceBossName or "Unknown",
+                        winner = charEntry.name,
+                        timestamp = item.obtainedOn and math.floor(item.obtainedOn / 1000) or nil,
+                    });
+                end
+            end
+            if characterName then break end
+        end
+    end
+
+    table.sort(results, function(a, b)
+        return (a.timestamp or 0) > (b.timestamp or 0);
+    end);
+
+    return results;
+end
+
+function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberCount, totalItems)
+    local scrollChild = detailPanel.scrollChild;
+    self:ClearChildren(scrollChild);
+    scrollChild:SetWidth(detailPanel.scrollFrame:GetWidth());
+
+    detailPanel.headerText:SetText("LOOT HISTORY");
+
+    local guildHistoryView = detailPanel.guildHistoryView or "date";
+
+    local yOffset = 8;
+
+    local guildText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge");
+    guildText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
+    guildText:SetText("|cff00ff00" .. guildName .. "|r");
+    yOffset = yOffset + 22;
+
+    local statsText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    statsText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
+    statsText:SetText("|cff888888" .. memberCount .. " members  Â·  " .. totalItems .. " items|r");
+    yOffset = yOffset + 20;
+
+    -- Date / Character toggle buttons
+    local dateBtn = self:CreateSubFilterBtn(scrollChild, "Date", 50);
+    dateBtn:SetHeight(14);
+    dateBtn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
+
+    local charBtn = self:CreateSubFilterBtn(scrollChild, "Character", 70);
+    charBtn:SetHeight(14);
+    charBtn:SetPoint("LEFT", dateBtn, "RIGHT", 4, 0);
+
+    local function updateViewToggle()
+        if guildHistoryView == "date" then
+            dateBtn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
+            dateBtn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
+            charBtn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
+            charBtn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
+        else
+            charBtn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
+            charBtn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
+            dateBtn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
+            dateBtn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
+        end
+    end
+
+    local function setView(view)
+        guildHistoryView = view;
+        detailPanel.guildHistoryView = view;
+        self:PopulateGuildDetailDefault(detailPanel, guildName, memberCount, totalItems);
+    end
+
+    dateBtn:SetScript("OnClick", function() setView("date") end);
+    charBtn:SetScript("OnClick", function() setView("character") end);
+    updateViewToggle();
+    yOffset = yOffset + 20;
+
+    -- Guild obtained items from wishlists
+    local obtainedItems = self:CollectObtainedItems();
+    if #obtainedItems == 0 then
+        local emptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        emptyText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
+        emptyText:SetPoint("RIGHT", scrollChild, "RIGHT", -10, 0);
+        emptyText:SetWordWrap(true);
+        emptyText:SetText("|cff666666No obtained items yet.\nItems will appear here as guild members obtain their wishlist drops.|r");
+        yOffset = yOffset + 40;
+        scrollChild:SetHeight(yOffset);
+        return;
+    end
+
+    if guildHistoryView == "character" then
+        -- Group by character, enrich with class info
+        local charMap = {};
+        local charOrder = {};
+        for _, record in ipairs(obtainedItems) do
+            local name = record.winner;
+            if not charMap[name] then
+                charMap[name] = { count = 0, classId = nil, realmName = nil };
+                table.insert(charOrder, name);
+            end
+            charMap[name].count = charMap[name].count + 1;
+        end
+
+        -- Enrich with classId/realmName from guild data
+        local guildData = self.state.guildWishlistData;
+        if guildData and guildData.wishlists then
+            for _, charEntry in ipairs(guildData.wishlists) do
+                if charMap[charEntry.name] then
+                    charMap[charEntry.name].classId = charEntry.classId;
+                    charMap[charEntry.name].realmName = charEntry.realmName;
+                end
+            end
+        end
+
+        -- Sort by count DESC
+        table.sort(charOrder, function(a, b) return charMap[a].count > charMap[b].count end);
+
+        local sectionHeader = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        sectionHeader:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
+        sectionHeader:SetText("|cff888888Characters (" .. #charOrder .. ")|r");
+        yOffset = yOffset + 16;
+
+        local guildRealm = guildData and guildData.guildRealm;
+
+        for _, charName in ipairs(charOrder) do
+            local info = charMap[charName];
+            local classColor = self:GetClassColor(info.classId);
+            local colorHex = self:ClassColorToHex(classColor);
+
+            local charRow = CreateFrame("Button", nil, scrollChild, "BackdropTemplate");
+            charRow:SetHeight(22);
+            charRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+            charRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+            self:ApplyBackdrop(charRow, 0.1, 0.1, 0.13, 0.5, 0, 0, 0, 0);
+
+            local nameText = charRow:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+            nameText:SetPoint("LEFT", charRow, "LEFT", 12, 0);
+            nameText:SetText("|cff" .. colorHex .. charName .. "|r");
+
+            local countText = charRow:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+            countText:SetPoint("RIGHT", charRow, "RIGHT", -12, 0);
+            countText:SetText("|cff888888" .. info.count .. " items|r");
+
+            -- Hover highlight
+            local hl = charRow:CreateTexture(nil, "BACKGROUND");
+            hl:SetTexture("Interface\\Buttons\\WHITE8x8");
+            hl:SetAllPoints();
+            hl:SetVertexColor(1, 1, 1, 0.04);
+            hl:Hide();
+            charRow:SetScript("OnEnter", function() hl:Show() end);
+            charRow:SetScript("OnLeave", function() hl:Hide() end);
+
+            -- Click â†’ navigate to player detail
+            charRow:SetScript("OnClick", function()
+                GoWWishlists:PopulateGuildPlayerDetail(detailPanel, {
+                    characterName = charName,
+                    realmName = info.realmName,
+                    classId = info.classId,
+                }, guildRealm);
+            end);
+
+            charRow:Show();
+            yOffset = yOffset + 22;
+        end
+    else
+        -- Date view (default) â€” chronological obtained items
+        local sectionHeader = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        sectionHeader:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
+        sectionHeader:SetText("|cff888888Obtained Items (" .. #obtainedItems .. ")|r");
+        yOffset = yOffset + 16;
+
+        local maxRows = 50;
+        for i, record in ipairs(obtainedItems) do
+            if i > maxRows then break end
+
+            local row = self:CreateLootHistoryRow(scrollChild, true);
+            self:PopulateLootHistoryRow(row, record);
+
+            row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+            row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+            row:Show();
+            yOffset = yOffset + self.constants.LOOT_ROW_HEIGHT;
+        end
+    end
+
+    scrollChild:SetHeight(yOffset + 8);
+end
+
+function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
+    local scrollChild = detailPanel.scrollChild;
+    self:ClearChildren(scrollChild);
+    scrollChild:SetWidth(detailPanel.scrollFrame:GetWidth());
+
+    local classColor = self:GetClassColor(member.classId);
+    local colorHex = self:ClassColorToHex(classColor);
+
+    local displayName = member.characterName;
+    if guildRealm and member.realmName and member.realmName ~= guildRealm then
+        displayName = displayName .. "-" .. member.realmName;
+    end
+
+    detailPanel.headerText:SetText("|cff" .. colorHex .. displayName .. "|r");
+
+    local guildPlayerSortMode = detailPanel.guildPlayerSortMode or "upgrade";
+    local guildPlayerSlotFilter = detailPanel.guildPlayerSlotFilter or "All";
+    local SLOT_LABELS = self.constants.SLOT_LABELS;
+    local SLOT_ORDER = self.constants.SLOT_ORDER;
+
+    local yOffset = 4;
+
+    -- Back button
+    local backBtn = CreateFrame("Button", nil, scrollChild, "BackdropTemplate");
+    backBtn:SetSize(16, 16);
+    backBtn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 6, -yOffset);
+    local backText = backBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    backText:SetAllPoints();
+    backText:SetText("|cff888888< Back|r");
+    backBtn:SetWidth(40);
+    backBtn:SetScript("OnClick", function()
+        local guildName = GoWWishlists.state.guildWishlistData and GoWWishlists.state.guildWishlistData.guild or "Guild";
+        GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, 0, 0);
+    end);
+    backBtn:SetScript("OnEnter", function(self)
+        backText:SetText("|cffffff00< Back|r");
+    end);
+    backBtn:SetScript("OnLeave", function(self)
+        backText:SetText("|cff888888< Back|r");
+    end);
+    yOffset = yOffset + 22;
+
+    -- Collect member's wishlist items
+    local allMemberItems = {};
+    if self.state.guildWishlistData and self.state.guildWishlistData.wishlists then
+        for _, charEntry in ipairs(self.state.guildWishlistData.wishlists) do
+            if charEntry.name == member.characterName and charEntry.realmName == member.realmName then
+                for _, item in ipairs(charEntry.wishlist) do
+                    if not item.isObtained then
+                        table.insert(allMemberItems, item);
+                    end
+                end
+                break;
+            end
+        end
+    end
+
+    -- Apply slot filter
+    local memberItems = {};
+    local seenSlots = {};
+    for _, entry in ipairs(allMemberItems) do
+        local _, _, _, equipLoc = C_Item.GetItemInfoInstant(entry.itemId);
+        if equipLoc and equipLoc ~= "" then
+            seenSlots[equipLoc] = true;
+        end
+        if guildPlayerSlotFilter == "All" or equipLoc == guildPlayerSlotFilter then
+            table.insert(memberItems, entry);
+        end
+    end
+
+    -- Sort
+    local PLAYER_SORT_LABELS = { upgrade = "Upgrade", name = "Name", slot = "Slot" };
+    if guildPlayerSortMode == "name" then
+        table.sort(memberItems, function(a, b)
+            local aName = C_Item.GetItemInfo(a.itemId) or "";
+            local bName = C_Item.GetItemInfo(b.itemId) or "";
+            return aName < bName;
+        end);
+    elseif guildPlayerSortMode == "slot" then
+        table.sort(memberItems, function(a, b)
+            local _, _, _, aLoc = C_Item.GetItemInfoInstant(a.itemId);
+            local _, _, _, bLoc = C_Item.GetItemInfoInstant(b.itemId);
+            local aSlot = SLOT_LABELS[aLoc] or "zzz";
+            local bSlot = SLOT_LABELS[bLoc] or "zzz";
+            if aSlot ~= bSlot then return aSlot < bSlot end
+            local aName = C_Item.GetItemInfo(a.itemId) or "";
+            local bName = C_Item.GetItemInfo(b.itemId) or "";
+            return aName < bName;
+        end);
+    else
+        -- Default: upgrade (gain% DESC)
+        table.sort(memberItems, function(a, b)
+            local aGain = (a.gain and a.gain.percent) or 0;
+            local bGain = (b.gain and b.gain.percent) or 0;
+            return aGain > bGain;
+        end);
+    end
+
+    -- Sort / Slot filter buttons
+    local popupMenu = self:GetOrCreatePopupMenu();
+    local showPopup = popupMenu.showPopup;
+
+    local sortBtn = self:CreateSubFilterBtn(scrollChild, "Sort: " .. (PLAYER_SORT_LABELS[guildPlayerSortMode] or guildPlayerSortMode), 90);
+    sortBtn:SetHeight(14);
+    sortBtn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
+
+    local slotBtn = self:CreateSubFilterBtn(scrollChild, "Slot: " .. (SLOT_LABELS[guildPlayerSlotFilter] or guildPlayerSlotFilter), 80);
+    slotBtn:SetHeight(14);
+    slotBtn:SetPoint("LEFT", sortBtn, "RIGHT", 4, 0);
+
+    local function rebuild()
+        self:PopulateGuildPlayerDetail(detailPanel, member, guildRealm);
+    end
+
+    sortBtn:SetScript("OnClick", function()
+        if popupMenu.popup:IsShown() and popupMenu.popup.owner == "playerSort" then
+            popupMenu.clearPopup();
+            return;
+        end
+        local sortOptions = {
+            { key = "upgrade", label = "Upgrade" },
+            { key = "name",    label = "Name" },
+            { key = "slot",    label = "Slot" },
+        };
+        popupMenu.popup.owner = "playerSort";
+        showPopup(sortBtn, sortOptions, guildPlayerSortMode, function(key)
+            detailPanel.guildPlayerSortMode = key;
+            rebuild();
+        end);
+    end);
+
+    slotBtn:SetScript("OnClick", function()
+        if popupMenu.popup:IsShown() and popupMenu.popup.owner == "playerSlot" then
+            popupMenu.clearPopup();
+            return;
+        end
+        local slotOptions = { { key = "All", label = "All Slots" } };
+        for _, slotKey in ipairs(SLOT_ORDER) do
+            if seenSlots[slotKey] then
+                table.insert(slotOptions, { key = slotKey, label = SLOT_LABELS[slotKey] or slotKey });
+            end
+        end
+        popupMenu.popup.owner = "playerSlot";
+        showPopup(slotBtn, slotOptions, guildPlayerSlotFilter, function(key)
+            detailPanel.guildPlayerSlotFilter = key;
+            rebuild();
+        end);
+    end);
+
+    yOffset = yOffset + 20;
+
+    -- Item count
+    local countText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    countText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
+    countText:SetText("|cff888888" .. #memberItems .. " wishlist items|r");
+    yOffset = yOffset + 16;
+
+    -- Wishlist items
+    for _, entry in ipairs(memberItems) do
+        local row = self:CreateItemRow(scrollChild);
+        row.showSource = true;
+        self:PopulateItemRow(row, entry);
+
+        row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+        row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+        row:Show();
+        yOffset = yOffset + self.constants.BROWSER_ITEM_HEIGHT;
+    end
+
+    if #memberItems == 0 then
+        local emptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+        emptyText:SetPoint("TOP", scrollChild, "TOP", 0, -(yOffset + 20));
+        emptyText:SetText("|cff888888No wishlist items.|r");
+        yOffset = yOffset + 60;
+    end
+
+    -- Obtained items for this member
+    local memberObtained = self:CollectObtainedItems(member.characterName, member.realmName);
+    if #memberObtained > 0 then
+        -- Section separator
+        local sep = scrollChild:CreateTexture(nil, "ARTWORK");
+        sep:SetTexture("Interface\\Buttons\\WHITE8x8");
+        sep:SetVertexColor(0.25, 0.25, 0.3, 0.3);
+        sep:SetHeight(1);
+        sep:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
+        sep:SetPoint("RIGHT", scrollChild, "RIGHT", -10, 0);
+        yOffset = yOffset + 8;
+
+        local lootHeader = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        lootHeader:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
+        lootHeader:SetText("|cff888888Obtained Items (" .. #memberObtained .. ")|r");
+        yOffset = yOffset + 16;
+
+        -- Already sorted most-recent-first, cap at 20
+        for i, record in ipairs(memberObtained) do
+            if i > 20 then break end
+
+            local row = self:CreateLootHistoryRow(scrollChild, false);
+            self:PopulateLootHistoryRow(row, record);
+
+            row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+            row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+            row:Show();
+            yOffset = yOffset + self.constants.LOOT_ROW_HEIGHT;
+        end
+    end
+
+    scrollChild:SetHeight(yOffset + 8);
+end

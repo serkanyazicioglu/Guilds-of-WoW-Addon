@@ -1,0 +1,360 @@
+local GOW = GuildsOfWow;
+local GoWWishlists = GOW.Wishlists;
+
+function GoWWishlists:PopulatePersonalWishlistView(frame)
+    local panel3 = frame.wishlist3Panel;
+    if not panel3 then return end
+
+    local sourcePanel = panel3.sourcePanel;
+    local lootPanel = panel3.lootPanel;
+    local detailPanel = panel3.detailPanel;
+
+    local charName = self.state.currentCharInfo and self.state.currentCharInfo.name or UnitName("player");
+    local charRealm = self.state.currentCharInfo and self.state.currentCharInfo.realmNormalized or GetNormalizedRealmName();
+    local filter = frame.personalDifficultyFilter or "All";
+
+    sourcePanel.headerText:SetText("SOURCE");
+    lootPanel.headerText:SetText("LOOT DROPS");
+    detailPanel.headerText:SetText("WISHLIST");
+
+    local currentBoss = nil; -- nil = All Bosses
+
+    local bossGroups, bossOrder, unknownItems, bossToRaid, bossToJournalId; 
+    local populateLootPanel;
+    local populateDetailPanel;
+
+    local function rebuildPersonalView()
+        filter = frame.personalDifficultyFilter or "All";
+        bossGroups, bossOrder, unknownItems, bossToRaid, bossToJournalId = self:CollectWishlistForCharacter(filter);
+
+        local totalCount = 0;
+        local bossCounts = {};
+        for _, bossName in ipairs(bossOrder) do
+            local count = #bossGroups[bossName];
+            bossCounts[bossName] = count;
+            totalCount = totalCount + count;
+        end
+        if #unknownItems > 0 then
+            table.insert(bossOrder, "Unknown Boss");
+            bossGroups["Unknown Boss"] = unknownItems;
+            bossCounts["Unknown Boss"] = #unknownItems;
+            totalCount = totalCount + #unknownItems;
+        end
+
+        local subtitleStr = charName .. "-" .. charRealm .. "  |  " .. totalCount .. " items remaining";
+        frame.subtitleText:SetText(subtitleStr);
+        frame.wishlistSubtitle = subtitleStr;
+
+        -- Populate source panel
+        self:PopulateSourcePanel(sourcePanel, bossOrder, bossCounts, function(selectedBoss)
+            currentBoss = selectedBoss;
+            populateLootPanel(currentBoss);
+        end, bossToRaid, bossToJournalId);
+
+        -- Populate loot + detail
+        currentBoss = nil;
+        populateLootPanel(nil);
+        populateDetailPanel();
+    end
+
+    -- Populate loot (center) panel for selected boss
+    populateLootPanel = function(selectedBoss)
+        local scrollChild = lootPanel.scrollChild;
+        self:ClearChildren(scrollChild);
+        scrollChild:SetWidth(lootPanel.scrollFrame:GetWidth());
+
+        local container = { sections = {}, scrollChild = scrollChild };
+
+        if selectedBoss then
+            -- Show only the selected boss's items (expanded)
+            local items = bossGroups[selectedBoss];
+            if items and #items > 0 then
+                local header = self:CreateBossHeader(scrollChild, selectedBoss, #items);
+                header.isCollapsed = false;
+                self:UpdateBossHeaderArrow(header);
+
+                header.itemRows = {};
+                for _, entry in ipairs(items) do
+                    local row = self:CreateItemRow(scrollChild);
+                    self:PopulateItemRow(row, entry);
+                    table.insert(header.itemRows, row);
+                end
+
+                header:SetScript("OnClick", function(h)
+                    h.isCollapsed = not h.isCollapsed;
+                    GoWWishlists:UpdateBossHeaderArrow(h);
+                    GoWWishlists:RelayoutBrowserContent(container);
+                end);
+
+                table.insert(container.sections, { header = header });
+            end
+        else
+            -- Show all bosses (collapsed by default)
+            self:BuildSections(container, scrollChild, bossGroups, bossOrder, unknownItems, bossToRaid, bossToJournalId);
+        end
+
+        self:RelayoutBrowserContent(container);
+    end
+
+    -- Populate detail (right) panel â€” personal wishlist with sort/filter
+    local detailSortMode = frame.detailSortMode or "upgrade";
+    local detailSlotFilter = frame.detailSlotFilter or "All";
+    local detailHideObtained = frame.detailHideObtained;
+    if detailHideObtained == nil then detailHideObtained = true end
+
+    populateDetailPanel = function()
+        local scrollChild = detailPanel.scrollChild;
+        self:ClearChildren(scrollChild);
+        scrollChild:SetWidth(detailPanel.scrollFrame:GetWidth());
+
+        -- Collect items matching filter
+        local currentFilter = frame.personalDifficultyFilter or "All";
+        local sortedItems = {};
+        local obtainedItems = {};
+        for _, entry in ipairs(self.state.allItems) do
+            local passFilter = (currentFilter == "All") or (entry.difficulty == currentFilter);
+            if passFilter and detailSlotFilter ~= "All" then
+                local _, _, _, equipLoc = C_Item.GetItemInfoInstant(entry.itemId);
+                if equipLoc ~= detailSlotFilter then
+                    passFilter = false;
+                end
+            end
+            if passFilter then
+                if entry.isObtained then
+                    if not detailHideObtained then
+                        table.insert(obtainedItems, entry);
+                    end
+                else
+                    table.insert(sortedItems, entry);
+                end
+            end
+        end
+
+        -- Sort based on mode
+        local SLOT_LABELS = self.constants.SLOT_LABELS;
+        if detailSortMode == "name" then
+            table.sort(sortedItems, function(a, b)
+                local aName = C_Item.GetItemInfo(a.itemId) or "";
+                local bName = C_Item.GetItemInfo(b.itemId) or "";
+                return aName < bName;
+            end);
+        elseif detailSortMode == "boss" then
+            -- Build boss index from bossOrder
+            local bossIdx = {};
+            for i, name in ipairs(bossOrder) do bossIdx[name] = i end
+            table.sort(sortedItems, function(a, b)
+                local ai = bossIdx[a.sourceBossName] or 999;
+                local bi = bossIdx[b.sourceBossName] or 999;
+                if ai ~= bi then return ai < bi end
+                local aName = C_Item.GetItemInfo(a.itemId) or "";
+                local bName = C_Item.GetItemInfo(b.itemId) or "";
+                return aName < bName;
+            end);
+        elseif detailSortMode == "slot" then
+            table.sort(sortedItems, function(a, b)
+                local _, _, _, aLoc = C_Item.GetItemInfoInstant(a.itemId);
+                local _, _, _, bLoc = C_Item.GetItemInfoInstant(b.itemId);
+                local aSlot = SLOT_LABELS[aLoc] or "zzz";
+                local bSlot = SLOT_LABELS[bLoc] or "zzz";
+                if aSlot ~= bSlot then return aSlot < bSlot end
+                local aName = C_Item.GetItemInfo(a.itemId) or "";
+                local bName = C_Item.GetItemInfo(b.itemId) or "";
+                return aName < bName;
+            end);
+        else -- "upgrade"
+            table.sort(sortedItems, function(a, b)
+                local aGain = (a.gain and a.gain.percent) or 0;
+                local bGain = (b.gain and b.gain.percent) or 0;
+                return aGain > bGain;
+            end);
+        end
+
+        local yOffset = 0;
+
+        -- Item count header
+        local countText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        countText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 8, -yOffset);
+        countText:SetText("|cff888888" .. #sortedItems .. " items|r");
+        yOffset = yOffset + 16;
+
+        for _, entry in ipairs(sortedItems) do
+            local row = self:CreateItemRow(scrollChild);
+            row.showSource = true;
+            self:PopulateItemRow(row, entry);
+
+            row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+            row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+            row:Show();
+            yOffset = yOffset + self.constants.BROWSER_ITEM_HEIGHT;
+        end
+
+        if #sortedItems == 0 and #obtainedItems == 0 then
+            local emptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+            emptyText:SetPoint("TOP", scrollChild, "TOP", 0, -30);
+            emptyText:SetText("|cff888888No items remaining.|r");
+            yOffset = 80;
+        end
+
+        -- Obtained items at bottom (when toggle is off)
+        if #obtainedItems > 0 then
+            -- Separator
+            local sep = scrollChild:CreateTexture(nil, "ARTWORK");
+            sep:SetTexture("Interface\\Buttons\\WHITE8x8");
+            sep:SetVertexColor(0.25, 0.25, 0.3, 0.3);
+            sep:SetHeight(1);
+            sep:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
+            sep:SetPoint("RIGHT", scrollChild, "RIGHT", -10, 0);
+            yOffset = yOffset + 8;
+
+            local obtHeader = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+            obtHeader:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 8, -yOffset);
+            obtHeader:SetText("|cff888888Obtained (" .. #obtainedItems .. ")|r");
+            yOffset = yOffset + 16;
+
+            for _, entry in ipairs(obtainedItems) do
+                local row = self:CreateItemRow(scrollChild);
+                row.showSource = true;
+                self:PopulateItemRow(row, entry);
+
+                row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+                row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+                row:SetAlpha(0.5);
+                row:Show();
+                yOffset = yOffset + self.constants.BROWSER_ITEM_HEIGHT;
+            end
+        end
+
+        scrollChild:SetHeight(yOffset + 8);
+    end
+
+    -- Sort/filter dropdown menus in detail panel header (created once)
+    if not detailPanel.sortBtn then
+        local headerBar = detailPanel.headerBar;
+        local popupMenu = self:GetOrCreatePopupMenu();
+        local showPopup = popupMenu.showPopup;
+        local SLOT_LABELS = self.constants.SLOT_LABELS;
+
+        local SORT_LABELS = {
+            upgrade = "Upgrade",
+            name = "Name",
+            boss = "Boss",
+            slot = "Slot",
+        };
+
+        -- Sort trigger button
+        local sortBtn = self:CreateSubFilterBtn(detailPanel, "Sort: Upgrade", 90);
+        sortBtn:SetHeight(14);
+        sortBtn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
+        detailPanel.sortBtn = sortBtn;
+
+        -- Slot trigger button
+        local slotBtn = self:CreateSubFilterBtn(detailPanel, "Slot: All", 80);
+        slotBtn:SetHeight(14);
+        slotBtn:SetPoint("LEFT", sortBtn, "RIGHT", 4, 0);
+        detailPanel.slotBtn = slotBtn;
+
+        local function updateSortLabel()
+            sortBtn.btnText:SetText("Sort: " .. (SORT_LABELS[detailSortMode] or detailSortMode));
+        end
+
+        local function updateSlotLabel()
+            slotBtn.btnText:SetText("Slot: " .. (SLOT_LABELS[detailSlotFilter] or detailSlotFilter));
+        end
+
+        sortBtn:SetScript("OnClick", function()
+            if popupMenu.popup:IsShown() and popupMenu.popup.owner == "sort" then
+                popupMenu.clearPopup();
+                return;
+            end
+            local sortOptions = {
+                { key = "upgrade", label = "Upgrade" },
+                { key = "name",    label = "Name" },
+                { key = "boss",    label = "Boss" },
+                { key = "slot",    label = "Slot" },
+            };
+            popupMenu.popup.owner = "sort";
+            showPopup(sortBtn, sortOptions, detailSortMode, function(key)
+                detailSortMode = key;
+                frame.detailSortMode = key;
+                updateSortLabel();
+                populateDetailPanel();
+            end);
+        end);
+
+        slotBtn:SetScript("OnClick", function()
+            if popupMenu.popup:IsShown() and popupMenu.popup.owner == "slot" then
+                popupMenu.clearPopup();
+                return;
+            end
+            local seenSlots = {};
+            for _, entry in ipairs(self.state.allItems) do
+                if not entry.isObtained then
+                    local _, _, _, equipLoc = C_Item.GetItemInfoInstant(entry.itemId);
+                    if equipLoc and equipLoc ~= "" then
+                        seenSlots[equipLoc] = true;
+                    end
+                end
+            end
+            local slotOptions = { { key = "All", label = "All Slots" } };
+            for _, slotKey in ipairs(self.constants.SLOT_ORDER) do
+                if seenSlots[slotKey] then
+                    table.insert(slotOptions, { key = slotKey, label = SLOT_LABELS[slotKey] or slotKey });
+                end
+            end
+            popupMenu.popup.owner = "slot";
+            showPopup(slotBtn, slotOptions, detailSlotFilter, function(key)
+                detailSlotFilter = key;
+                frame.detailSlotFilter = key;
+                updateSlotLabel();
+                populateDetailPanel();
+            end);
+        end);
+
+        detailPanel.updateSortLabel = updateSortLabel;
+        detailPanel.updateSlotLabel = updateSlotLabel;
+
+        -- Obtained toggle button
+        local obtainedBtn = self:CreateSubFilterBtn(detailPanel, "Obtained: Hidden", 100);
+        obtainedBtn:SetHeight(14);
+        obtainedBtn:SetPoint("LEFT", slotBtn, "RIGHT", 4, 0);
+        detailPanel.obtainedBtn = obtainedBtn;
+
+        local function updateObtainedBtn()
+            if detailHideObtained then
+                obtainedBtn.btnText:SetText("Obtained: Hidden");
+                obtainedBtn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
+                obtainedBtn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
+            else
+                obtainedBtn.btnText:SetText("Obtained: Shown");
+                obtainedBtn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
+                obtainedBtn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
+            end
+        end
+
+        obtainedBtn:SetScript("OnClick", function()
+            detailHideObtained = not detailHideObtained;
+            frame.detailHideObtained = detailHideObtained;
+            updateObtainedBtn();
+            populateDetailPanel();
+        end);
+
+        detailPanel.updateObtainedBtn = updateObtainedBtn;
+
+        detailPanel.scrollFrame:SetPoint("TOPLEFT", sortBtn, "BOTTOMLEFT", -4, -4);
+    end
+
+    -- Apply initial label states
+    detailPanel.updateSortLabel();
+    detailPanel.updateSlotLabel();
+    detailPanel.updateObtainedBtn();
+
+    self:SetupDifficultyFilterButtons(sourcePanel, function(diff)
+        frame.personalDifficultyFilter = diff;
+        self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, diff);
+        rebuildPersonalView();
+    end);
+
+    self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, filter);
+
+    rebuildPersonalView();
+end
