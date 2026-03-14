@@ -19,6 +19,7 @@ GOW.defaults = {
 		reduceEventNotifications = false,
 		warnNewEvents = true,
 		hideInCombat = true,
+		showLootAlerts = true,
 		lootHistory = {},
 		allLootHistory = {},
 		wishlistInfoFramePos = nil,

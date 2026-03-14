@@ -62,6 +62,17 @@ local optionsTable = {
                     set = function(info, value)
                         GOW.DB.profile.hideInCombat = value;
                     end,
+                },
+                ShowLootAlerts = {
+                    type = "toggle",
+                    order = 5,
+                    name = "Show loot notifications",
+                    desc = "Show a popup alert when a wishlist item drops in a raid.",
+                    width = "full",
+                    get = function(info) return GOW.DB.profile.showLootAlerts end,
+                    set = function(info, value)
+                        GOW.DB.profile.showLootAlerts = value;
+                    end,
                 }
             }
         }

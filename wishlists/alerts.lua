@@ -319,6 +319,10 @@ function GoWWishlists:ShowWishlistInfoFrame(match, itemLink)
 end
 
 function GoWWishlists:OnStartLootRoll(rollID)
+    if GOW.DB and GOW.DB.profile and not GOW.DB.profile.showLootAlerts then
+        return;
+    end
+
     local inInstance, instanceType = IsInInstance();
     if not inInstance or instanceType ~= "raid" then
         return;
