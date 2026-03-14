@@ -275,7 +275,7 @@ function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
         row.noteIcon:Hide();
     end
 
-    if member.officerNotes and member.officerNotes ~= "" then
+    if member.officerNotes and member.officerNotes ~= "" and GoWWishlists:HasGuildWishlistData() then
         row.officerNoteIcon.noteText = member.officerNotes;
         row.officerNoteIcon:Show();
     else
@@ -421,14 +421,14 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         local showPopup = popupMenu.showPopup;
 
         local GUILD_SORT_LABELS = {
-            boss = "Boss",
+            boss = "Boss Order",
             mostwanted = "Most Wanted",
             avggain = "Avg. Gain",
             name = "Name",
             slot = "Slot",
         };
 
-        local sortBtn = self:CreateSubFilterBtn(lootPanel, "Sort: Boss", 100);
+        local sortBtn = self:CreateSubFilterBtn(lootPanel, "Sort: Boss Order", 110);
         sortBtn:SetHeight(14);
         sortBtn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
         lootPanel.guildSortBtn = sortBtn;
@@ -460,7 +460,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
                 return;
             end
             local sortOptions = {
-                { key = "boss",       label = "Boss" },
+                { key = "boss",       label = "Boss Order" },
                 { key = "mostwanted", label = "Most Wanted" },
                 { key = "avggain",    label = "Avg. Gain" },
                 { key = "name",       label = "Name" },

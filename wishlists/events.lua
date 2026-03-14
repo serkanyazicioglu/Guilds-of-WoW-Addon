@@ -266,10 +266,10 @@ end
 function GoWWishlists:HandleGuildSlashCommand()
     local frame = self:CreateWishlistBrowserFrame();
 
-    -- Show guild tab and switch to it
+    -- Show roster tab and switch to it
     frame.guildWishlistTab:Show();
 
-    frame.SetActiveTab(3);
+    frame.SetActiveTab(2);
     frame:Show();
 end
 

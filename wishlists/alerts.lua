@@ -50,6 +50,25 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     infoText:SetWordWrap(false);
     row.infoText = infoText;
 
+    -- Hover zone for info line tooltip (difficulty)
+    local infoHover = CreateFrame("Frame", nil, inner);
+    infoHover:SetPoint("TOPLEFT", infoText, "TOPLEFT", 0, 2);
+    infoHover:SetPoint("BOTTOMRIGHT", infoText, "BOTTOMRIGHT", 0, -2);
+    infoHover:EnableMouse(true);
+    infoHover:SetScript("OnEnter", function(self)
+        row.highlight:Show();
+        if self.tipText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    infoHover:SetScript("OnLeave", function()
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+    row.infoHover = infoHover;
+
     -- Line 3: tag + gain + notes
     local detailText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     detailText:SetPoint("TOPLEFT", infoText, "BOTTOMLEFT", 0, -2);
@@ -57,6 +76,26 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     detailText:SetJustifyH("LEFT");
     detailText:SetWordWrap(false);
     row.detailText = detailText;
+
+    -- Hover zone for detail line tooltip (tag)
+    local detailHover = CreateFrame("Frame", nil, inner);
+    detailHover:SetPoint("TOPLEFT", detailText, "TOPLEFT", 0, 2);
+    detailHover:SetPoint("BOTTOMRIGHT", detailText, "BOTTOMRIGHT", 0, -2);
+    detailHover:EnableMouse(true);
+    detailHover:SetScript("OnEnter", function(self)
+        row.highlight:Show();
+        if self.tipText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Priority", 0, 1, 0);
+            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    detailHover:SetScript("OnLeave", function()
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+    row.detailHover = detailHover;
 
     local gainBadge = self:CreateGainBadge(inner);
     gainBadge:SetPoint("BOTTOMRIGHT", inner, "BOTTOMRIGHT", -8, 0);
@@ -134,6 +173,21 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
 
     row.infoText:SetText(self:BuildInfoLine(match));
     row.detailText:SetText(self:BuildDetailLine(match));
+
+    -- Set tooltip text for info line (source + difficulty)
+    local infoParts = {};
+    if match.sourceBossName then table.insert(infoParts, "Source: " .. match.sourceBossName) end
+    if match.difficulty then table.insert(infoParts, "Difficulty: " .. match.difficulty) end
+    if #infoParts > 0 then row.infoHover.tipText = table.concat(infoParts, "\n") end
+
+    -- Set tooltip text for detail line (tag/priority)
+    if match.tag then
+        local tagInfo = self.constants.TAG_DISPLAY[match.tag];
+        if tagInfo then
+            row.detailHover.tipText = tagInfo.tip;
+        end
+    end
+
     self:ApplyNoteIcon(row, match.notes);
     self:ApplyGainBadge(row.gainBadge, match.gain);
 

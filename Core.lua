@@ -76,9 +76,7 @@ local tabs = {
 	{ value = "events",          text = "Events" },
 	{ value = "teams",           text = "Teams" },
 	{ value = "recruitmentApps", text = "Recruitment" },
-	{ value = "wishlist",        text = "Wishlist" },
-	{ value = "guildWishlists",  text = "Guild Wishlists" },
-	{ value = "lootHistory",     text = "Loot History" },
+	{ value = "wishlists",       text = "Wishlists" },
 };
 
 local LibQTip = LibStub('LibQTip-1.0');
@@ -104,12 +102,6 @@ function GOW:OnInitialize()
 		elseif (msg == "loot") then
 			if GOW.Wishlists then
 				GOW.Wishlists:HandleSlashCommand();
-			else
-				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
-			end
-		elseif (msg == "gloot") then
-			if GOW.Wishlists then
-				GOW.Wishlists:HandleGuildSlashCommand();
 			else
 				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
 			end
@@ -647,36 +639,13 @@ function Core:RefreshApplication()
 	elseif (selectedTab == "recruitmentApps") then
 		containerScrollFrame.frame:Show();
 		Core:CreateRecruitmentApplications();
-	elseif (selectedTab == "wishlist") then
+	elseif (selectedTab == "wishlists") then
 		containerScrollFrame.frame:Hide();
 		if GOW.Wishlists then
-			GOW.Wishlists:ShowCoreWishlistTab(containerTabs.content, function(text)
+			GOW.Wishlists:ShowCoreWishlistsTab(containerTabs.content, function(text)
 				containerFrame:SetStatusText(text);
 			end);
-		else
-			containerScrollFrame.frame:Show();
-			containerScrollFrame:ReleaseChildren();
-			Core:AppendMessage("Wishlist module not loaded.", true);
-		end
-		isPropogatingUpdate = false;
-	elseif (selectedTab == "lootHistory") then
-		containerScrollFrame.frame:Hide();
-		if GOW.Wishlists then
-			GOW.Wishlists:ShowCoreLootHistoryTab(containerTabs.content, function(text)
-				containerFrame:SetStatusText(text);
-			end);
-		else
-			containerScrollFrame.frame:Show();
-			containerScrollFrame:ReleaseChildren();
-			Core:AppendMessage("Wishlist module not loaded.", true);
-		end
-		isPropogatingUpdate = false;
-	elseif (selectedTab == "guildWishlists") then
-		containerScrollFrame.frame:Hide();
-		if GOW.Wishlists then
-			GOW.Wishlists:ShowCoreGuildWishlistTab(containerTabs.content, function(text)
-				containerFrame:SetStatusText(text);
-			end);
+			containerFrame:SetStatusText("Type /gow loot for quick access");
 		else
 			containerScrollFrame.frame:Show();
 			containerScrollFrame:ReleaseChildren();

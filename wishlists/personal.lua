@@ -237,7 +237,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         local SORT_LABELS = {
             upgrade = "Upgrade",
             name = "Name",
-            boss = "Boss",
+            boss = "Boss Order",
             slot = "Slot",
         };
 
@@ -269,7 +269,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
             local sortOptions = {
                 { key = "upgrade", label = "Upgrade" },
                 { key = "name",    label = "Name" },
-                { key = "boss",    label = "Boss" },
+                { key = "boss",    label = "Boss Order" },
                 { key = "slot",    label = "Slot" },
             };
             popupMenu.popup.owner = "sort";
