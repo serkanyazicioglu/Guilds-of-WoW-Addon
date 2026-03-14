@@ -86,6 +86,9 @@ function GoWWishlists:CreateGuildItemRow(parent)
     infoText:SetJustifyH("LEFT");
     row.infoText = infoText;
 
+    -- Hover zone for info line tooltip (difficulty)
+    row.infoHover = self:CreateTextHoverTooltip(row, infoText, row);
+
     local gainBadge = self:CreateGainBadge(row);
     gainBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
     row.gainBadge = gainBadge;
@@ -134,6 +137,9 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
     table.insert(parts, "|cff888888" .. memberCount .. (memberCount == 1 and " wants" or " want") .. "|r");
     row.infoText:SetText(table.concat(parts, "  "));
 
+    -- Set tooltip text for info line (full difficulty name)
+    row.infoHover.tipText = itemData.difficulty and ("Difficulty: " .. itemData.difficulty) or nil;
+
     local totalPercent, gainCount, avgMetric = 0, 0, nil;
     for _, m in ipairs(itemData.members) do
         if m.gain and m.gain.percent and m.gain.percent > 0 then
@@ -180,6 +186,9 @@ function GoWWishlists:CreateGuildMemberRow(parent)
     tagText:SetPoint("LEFT", nameText, "RIGHT", 8, 0);
     tagText:SetJustifyH("LEFT");
     row.tagText = tagText;
+
+    -- Hover zone for tag tooltip (priority)
+    row.tagHover = self:CreateTextHoverTooltip(row, tagText, row, "Priority", 0, 1, 0);
 
     local gainBadge = self:CreateGainBadge(row);
     gainBadge:SetPoint("LEFT", tagText, "RIGHT", 8, 0);
@@ -264,6 +273,15 @@ function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
 
     local tagLabel = self:FormatTag(member.tag);
     row.tagText:SetText(tagLabel or "");
+
+    -- Set tooltip text for tag (priority)
+    row.tagHover.tipText = nil;
+    if member.tag then
+        local tagInfo = self.constants.TAG_DISPLAY[member.tag];
+        if tagInfo then
+            row.tagHover.tipText = tagInfo.tip;
+        end
+    end
 
     self:ApplyGainBadge(row.gainBadge, member.gain);
 

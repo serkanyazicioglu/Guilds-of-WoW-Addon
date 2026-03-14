@@ -473,6 +473,29 @@ function GoWWishlists:FormatDifficultyTag(difficulty)
     return abbrev;
 end
 
+function GoWWishlists:CreateTextHoverTooltip(parent, anchor, row, header, headerR, headerG, headerB)
+    local hover = CreateFrame("Frame", nil, parent);
+    hover:SetPoint("TOPLEFT", anchor, "TOPLEFT", 0, 2);
+    hover:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", 0, -2);
+    hover:EnableMouse(true);
+    hover:SetScript("OnEnter", function(self)
+        row.highlight:Show();
+        if self.tipText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            if header then
+                GameTooltip:AddLine(header, headerR or 1, headerG or 1, headerB or 1);
+            end
+            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    hover:SetScript("OnLeave", function()
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+    return hover;
+end
+
 function GoWWishlists:ClearChildren(parent, ...)
     local exclude = {};
     for _, frame in ipairs({ ... }) do

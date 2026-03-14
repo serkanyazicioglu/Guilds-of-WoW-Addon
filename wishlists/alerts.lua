@@ -51,23 +51,7 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     row.infoText = infoText;
 
     -- Hover zone for info line tooltip (difficulty)
-    local infoHover = CreateFrame("Frame", nil, inner);
-    infoHover:SetPoint("TOPLEFT", infoText, "TOPLEFT", 0, 2);
-    infoHover:SetPoint("BOTTOMRIGHT", infoText, "BOTTOMRIGHT", 0, -2);
-    infoHover:EnableMouse(true);
-    infoHover:SetScript("OnEnter", function(self)
-        row.highlight:Show();
-        if self.tipText then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
-            GameTooltip:Show();
-        end
-    end);
-    infoHover:SetScript("OnLeave", function()
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
-    row.infoHover = infoHover;
+    row.infoHover = self:CreateTextHoverTooltip(inner, infoText, row);
 
     -- Line 3: tag + gain + notes
     local detailText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
@@ -78,24 +62,7 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     row.detailText = detailText;
 
     -- Hover zone for detail line tooltip (tag)
-    local detailHover = CreateFrame("Frame", nil, inner);
-    detailHover:SetPoint("TOPLEFT", detailText, "TOPLEFT", 0, 2);
-    detailHover:SetPoint("BOTTOMRIGHT", detailText, "BOTTOMRIGHT", 0, -2);
-    detailHover:EnableMouse(true);
-    detailHover:SetScript("OnEnter", function(self)
-        row.highlight:Show();
-        if self.tipText then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine("Priority", 0, 1, 0);
-            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
-            GameTooltip:Show();
-        end
-    end);
-    detailHover:SetScript("OnLeave", function()
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
-    row.detailHover = detailHover;
+    row.detailHover = self:CreateTextHoverTooltip(inner, detailText, row, "Priority", 0, 1, 0);
 
     local gainBadge = self:CreateGainBadge(inner);
     gainBadge:SetPoint("BOTTOMRIGHT", inner, "BOTTOMRIGHT", -8, 0);

@@ -56,6 +56,9 @@ function GoWWishlists:CreateItemRow(parent)
     infoText:SetWordWrap(false);
     row.infoText = infoText;
 
+    -- Hover zone for info line tooltip (source + difficulty)
+    row.infoHover = self:CreateTextHoverTooltip(inner, infoText, row);
+
     -- Line 3: tag + gain + notes
     local detailText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     detailText:SetPoint("TOPLEFT", infoText, "BOTTOMLEFT", 0, -2);
@@ -63,6 +66,9 @@ function GoWWishlists:CreateItemRow(parent)
     detailText:SetJustifyH("LEFT");
     detailText:SetWordWrap(false);
     row.detailText = detailText;
+
+    -- Hover zone for detail line tooltip (tag/priority)
+    row.detailHover = self:CreateTextHoverTooltip(inner, detailText, row, "Priority", 0, 1, 0);
 
     local gainBadge = self:CreateGainBadge(inner);
     gainBadge:SetPoint("BOTTOMRIGHT", inner, "BOTTOMRIGHT", -8, 0);
@@ -136,6 +142,22 @@ function GoWWishlists:PopulateItemRow(row, entry)
 
     row.infoText:SetText(self:BuildInfoLine(entry, row.showSource));
     row.detailText:SetText(self:BuildDetailLine(entry));
+
+    -- Set tooltip text for info line (source + difficulty)
+    local infoParts = {};
+    if entry.sourceBossName then table.insert(infoParts, "Source: " .. entry.sourceBossName) end
+    if entry.difficulty then table.insert(infoParts, "Difficulty: " .. entry.difficulty) end
+    row.infoHover.tipText = #infoParts > 0 and table.concat(infoParts, "\n") or nil;
+
+    -- Set tooltip text for detail line (tag/priority)
+    row.detailHover.tipText = nil;
+    if entry.tag then
+        local tagInfo = self.constants.TAG_DISPLAY[entry.tag];
+        if tagInfo then
+            row.detailHover.tipText = tagInfo.tip;
+        end
+    end
+
     self:ApplyNoteIcon(row, entry.notes);
     self:ApplyGainBadge(row.gainBadge, entry.gain);
 end
