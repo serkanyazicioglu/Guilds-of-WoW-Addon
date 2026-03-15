@@ -86,13 +86,7 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     noteIcon:Hide();
     row.noteIcon = noteIcon;
 
-    -- Hover highlight
-    local highlight = row:CreateTexture(nil, "BACKGROUND");
-    highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
-    highlight:SetAllPoints();
-    highlight:SetVertexColor(1, 1, 1, 0.04);
-    highlight:Hide();
-    row.highlight = highlight;
+    row.highlight = self:CreateRowHighlight(row);
 
     -- Icon hover zone for item tooltip
     local iconHover = CreateFrame("Frame", nil, row);

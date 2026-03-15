@@ -143,12 +143,7 @@ function GoWWishlists:CreateGuildItemRow(parent)
     gainBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
     row.gainBadge = gainBadge;
 
-    local highlight = row:CreateTexture(nil, "BACKGROUND");
-    highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
-    highlight:SetAllPoints();
-    highlight:SetVertexColor(1, 1, 1, 0.04);
-    highlight:Hide();
-    row.highlight = highlight;
+    row.highlight = self:CreateRowHighlight(row);
 
     -- Icon hover zone for item tooltip
     local iconHover = CreateFrame("Frame", nil, row);
@@ -290,12 +285,7 @@ function GoWWishlists:CreateGuildMemberRow(parent)
     noteIcon:Hide();
     row.noteIcon = noteIcon;
 
-    local highlight = row:CreateTexture(nil, "BACKGROUND");
-    highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
-    highlight:SetAllPoints();
-    highlight:SetVertexColor(1, 1, 1, 0.03);
-    highlight:Hide();
-    row.highlight = highlight;
+    row.highlight = self:CreateRowHighlight(row, 0.03);
 
     row:EnableMouse(true);
     row:SetScript("OnEnter", function(self) self.highlight:Show() end);
@@ -509,13 +499,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
             -- Update button width to fit label
             local textWidth = rosterBtn.btnText:GetStringWidth();
             rosterBtn:SetWidth(math.max(textWidth + 16, 80));
-            if guildRosterFilter == "all" then
-                rosterBtn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
-                rosterBtn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
-            else
-                rosterBtn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
-                rosterBtn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
-            end
+            self:SetButtonActive(rosterBtn, guildRosterFilter ~= "all");
         end
 
         rosterBtn:SetScript("OnClick", function()
@@ -628,15 +612,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         end
 
         local function updateGuildObtainedBtn()
-            if guildHideObtained then
-                eyeTex:SetVertexColor(0.5, 0.5, 0.5, 0.6);
-                obtainedBtn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
-                obtainedBtn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
-            else
-                eyeTex:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 1);
-                obtainedBtn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
-                obtainedBtn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
-            end
+            self:SetButtonActiveWithIcon(obtainedBtn, eyeTex, not guildHideObtained);
         end
 
         sortBtn:SetScript("OnClick", function()
@@ -1000,15 +976,11 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
 
     local function updateViewToggle()
         if guildHistoryView == "date" then
-            dateBtn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
-            dateBtn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
-            charBtn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
-            charBtn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
+            self:SetButtonActive(dateBtn, true);
+            self:SetButtonActive(charBtn, false);
         else
-            charBtn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
-            charBtn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
-            dateBtn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
-            dateBtn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
+            self:SetButtonActive(charBtn, true);
+            self:SetButtonActive(dateBtn, false);
         end
     end
 
@@ -1090,11 +1062,7 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
             countText:SetText("|cff888888" .. info.count .. " items|r");
 
             -- Hover highlight
-            local hl = charRow:CreateTexture(nil, "BACKGROUND");
-            hl:SetTexture("Interface\\Buttons\\WHITE8x8");
-            hl:SetAllPoints();
-            hl:SetVertexColor(1, 1, 1, 0.04);
-            hl:Hide();
+            local hl = self:CreateRowHighlight(charRow);
             charRow:SetScript("OnEnter", function() hl:Show() end);
             charRow:SetScript("OnLeave", function() hl:Hide() end);
 

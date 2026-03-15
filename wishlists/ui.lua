@@ -201,11 +201,7 @@ function GoWWishlists:CreateBossHeader(parent, bossName, itemCount)
     sep:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", -6, 0);
 
     -- Hover highlight
-    local highlight = header:CreateTexture(nil, "BACKGROUND");
-    highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
-    highlight:SetAllPoints();
-    highlight:SetVertexColor(1, 1, 1, 0.04);
-    highlight:Hide();
+    local highlight = self:CreateRowHighlight(header);
     header:SetScript("OnEnter", function(self) highlight:Show() end);
     header:SetScript("OnLeave", function(self) highlight:Hide() end);
 
@@ -352,12 +348,7 @@ function GoWWishlists:CreateBossRow(parent, bossName, itemCount, isAllBosses)
     local row = CreateFrame("Button", nil, parent);
     row:SetHeight(self.constants.BOSS_ROW_HEIGHT);
 
-    local highlight = row:CreateTexture(nil, "BACKGROUND");
-    highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
-    highlight:SetAllPoints();
-    highlight:SetVertexColor(1, 1, 1, 0.04);
-    highlight:Hide();
-    row.highlight = highlight;
+    row.highlight = self:CreateRowHighlight(row);
 
     local activeBar = row:CreateTexture(nil, "ARTWORK", nil, 2);
     activeBar:SetTexture("Interface\\Buttons\\WHITE8x8");
@@ -601,13 +592,7 @@ function GoWWishlists:CreateLootHistoryRow(parent, showWinner)
     sep:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 6, 0);
     sep:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -6, 0);
 
-    -- Hover highlight
-    local highlight = row:CreateTexture(nil, "BACKGROUND");
-    highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
-    highlight:SetAllPoints();
-    highlight:SetVertexColor(1, 1, 1, 0.04);
-    highlight:Hide();
-    row.highlight = highlight;
+    row.highlight = self:CreateRowHighlight(row);
 
     -- Icon hover zone for item tooltip
     local iconHover = CreateFrame("Frame", nil, row);

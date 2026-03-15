@@ -313,22 +313,31 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         detailPanel.updateSortLabel = updateSortLabel;
         detailPanel.updateSlotLabel = updateSlotLabel;
 
-        -- Obtained toggle button
-        local obtainedBtn = self:CreateSubFilterBtn(detailPanel, "Obtained: Hidden", 100);
-        obtainedBtn:SetHeight(14);
+        -- Obtained toggle button (eye icon)
+        local obtainedBtn = CreateFrame("Button", nil, detailPanel, "BackdropTemplate");
+        obtainedBtn:SetSize(18, 14);
         obtainedBtn:SetPoint("LEFT", slotBtn, "RIGHT", 4, 0);
+        self:ApplyBackdrop(obtainedBtn, self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a, 0.3, 0.3, 0.3, 0.4);
+        local eyeTex = obtainedBtn:CreateTexture(nil, "ARTWORK");
+        eyeTex:SetSize(12, 12);
+        eyeTex:SetPoint("CENTER", obtainedBtn, "CENTER", 0, 0);
+        eyeTex:SetTexture("Interface\\Minimap\\Tracking\\None");
+        obtainedBtn.eyeTex = eyeTex;
         detailPanel.obtainedBtn = obtainedBtn;
 
-        local function updateObtainedBtn()
+        obtainedBtn:SetScript("OnEnter", function(btn)
+            GameTooltip:SetOwner(btn, "ANCHOR_TOP");
             if detailHideObtained then
-                obtainedBtn.btnText:SetText("Obtained: Hidden");
-                obtainedBtn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
-                obtainedBtn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
+                GameTooltip:AddLine("Show Obtained Items", 1, 1, 1);
             else
-                obtainedBtn.btnText:SetText("Obtained: Shown");
-                obtainedBtn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
-                obtainedBtn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
+                GameTooltip:AddLine("Hide Obtained Items", 1, 1, 1);
             end
+            GameTooltip:Show();
+        end);
+        obtainedBtn:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+        local function updateObtainedBtn()
+            self:SetButtonActiveWithIcon(obtainedBtn, eyeTex, not detailHideObtained);
         end
 
         obtainedBtn:SetScript("OnClick", function()

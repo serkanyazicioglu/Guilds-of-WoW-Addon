@@ -189,6 +189,12 @@ GoWWishlists.constants.DIFF_ABBREV = {
 GoWWishlists.constants.SUB_ACTIVE_COLOR = { r = GoWWishlists.constants.GOW_ACCENT_COLOR.r, g = GoWWishlists.constants.GOW_ACCENT_COLOR.g, b = GoWWishlists.constants.GOW_ACCENT_COLOR.b, a = 0.3 };
 GoWWishlists.constants.SUB_INACTIVE_COLOR = { r = 0.15, g = 0.15, b = 0.18, a = 0.8 };
 
+GoWWishlists.constants.COLOR_ACCENT = "|cff00ff00";
+GoWWishlists.constants.COLOR_SECONDARY = "|cff888888";
+GoWWishlists.constants.COLOR_DIM = "|cff666666";
+GoWWishlists.constants.COLOR_TIMESTAMP = "|cff555555";
+GoWWishlists.constants.COLOR_CLOSE = "|r";
+
 GoWWishlists.constants.TAG_DISPLAY = {
     BIS      = { label = "BiS",     color = "ff8000", tip = "Best in Slot" },
     NEED     = { label = "Need",    color = "ff0000", tip = "Need" },
@@ -292,13 +298,7 @@ end
 function GoWWishlists:HighlightDifficultyBtn(btns, activeDiff)
     local difficulties = self.constants.DIFFICULTIES;
     for i, btn in ipairs(btns) do
-        if difficulties[i] == activeDiff then
-            btn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
-            btn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
-        else
-            btn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
-            btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
-        end
+        self:SetButtonActive(btn, difficulties[i] == activeDiff);
     end
 end
 
@@ -526,6 +526,36 @@ function GoWWishlists:CreateSubFilterBtn(btnParent, label, width)
     btn.btnText = btnText;
 
     return btn;
+end
+
+function GoWWishlists:SetButtonActive(btn, isActive)
+    if isActive then
+        btn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
+        btn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
+    else
+        btn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
+        btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
+    end
+end
+
+function GoWWishlists:SetButtonActiveWithIcon(btn, iconTex, isActive)
+    self:SetButtonActive(btn, isActive);
+    if iconTex then
+        if isActive then
+            iconTex:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 1);
+        else
+            iconTex:SetVertexColor(0.5, 0.5, 0.5, 0.6);
+        end
+    end
+end
+
+function GoWWishlists:CreateRowHighlight(frame, alpha)
+    local highlight = frame:CreateTexture(nil, "BACKGROUND");
+    highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
+    highlight:SetAllPoints();
+    highlight:SetVertexColor(1, 1, 1, alpha or 0.04);
+    highlight:Hide();
+    return highlight;
 end
 
 function GoWWishlists:SaveFramePosition(frame, profileKey)
