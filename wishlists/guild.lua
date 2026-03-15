@@ -601,10 +601,27 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         sortBtn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
         lootPanel.guildSortBtn = sortBtn;
 
-        local obtainedBtn = self:CreateSubFilterBtn(lootPanel, "Obtained: Hidden", 100);
-        obtainedBtn:SetHeight(14);
+        local obtainedBtn = CreateFrame("Button", nil, lootPanel, "BackdropTemplate");
+        obtainedBtn:SetSize(18, 14);
         obtainedBtn:SetPoint("LEFT", sortBtn, "RIGHT", 4, 0);
+        self:ApplyBackdrop(obtainedBtn, self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a, 0.3, 0.3, 0.3, 0.4);
+        local eyeTex = obtainedBtn:CreateTexture(nil, "ARTWORK");
+        eyeTex:SetSize(12, 12);
+        eyeTex:SetPoint("CENTER", obtainedBtn, "CENTER", 0, 0);
+        eyeTex:SetTexture("Interface\\Minimap\\Tracking\\None");
+        obtainedBtn.eyeTex = eyeTex;
         lootPanel.guildObtainedBtn = obtainedBtn;
+
+        obtainedBtn:SetScript("OnEnter", function(btn)
+            GameTooltip:SetOwner(btn, "ANCHOR_TOP");
+            if guildHideObtained then
+                GameTooltip:AddLine("Show Obtained Items", 1, 1, 1);
+            else
+                GameTooltip:AddLine("Hide Obtained Items", 1, 1, 1);
+            end
+            GameTooltip:Show();
+        end);
+        obtainedBtn:SetScript("OnLeave", function() GameTooltip:Hide() end);
 
         local function updateGuildSortLabel()
             sortBtn.btnText:SetText("Sort: " .. (GUILD_SORT_LABELS[guildLootSortMode] or guildLootSortMode));
@@ -612,11 +629,11 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
 
         local function updateGuildObtainedBtn()
             if guildHideObtained then
-                obtainedBtn.btnText:SetText("Obtained: Hidden");
+                eyeTex:SetVertexColor(0.5, 0.5, 0.5, 0.6);
                 obtainedBtn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
                 obtainedBtn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
             else
-                obtainedBtn.btnText:SetText("Obtained: Shown");
+                eyeTex:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 1);
                 obtainedBtn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
                 obtainedBtn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
             end
@@ -691,18 +708,29 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         end
         local memberCount = 0;
         for _ in pairs(memberSet) do memberCount = memberCount + 1 end
-        frame.subtitleText:SetText(guildName .. "  |  " .. memberCount .. " members  |  " .. totalItems .. " items");
+        -- Derive display name: team name when filtered, guild name otherwise
+        local displayName = guildName;
+        if guildRosterFilter ~= "all" then
+            local teams = self:GetGuildTeams();
+            for _, t in ipairs(teams) do
+                if t.id == guildRosterFilter then
+                    displayName = t.name;
+                    break;
+                end
+            end
+        end
+        frame.subtitleText:SetText(displayName .. "  |  " .. memberCount .. " members  |  " .. totalItems .. " items");
 
         -- Populate source panel boss list
         self:PopulateSourcePanel(sourcePanel, bossOrder, bossCounts, function(selectedBoss)
-            self:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, selectedBoss, guildRealm, detailPanel, bossToRaid, bossToJournalId, guildLootSortMode, guildHideObtained);
+            self:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, selectedBoss, guildRealm, detailPanel, bossToRaid, bossToJournalId, guildLootSortMode, guildHideObtained, rosterMemberSet);
         end, bossToRaid, bossToJournalId);
 
         -- Populate loot panel (all bosses)
-        self:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, nil, guildRealm, detailPanel, bossToRaid, bossToJournalId, guildLootSortMode, guildHideObtained);
+        self:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, nil, guildRealm, detailPanel, bossToRaid, bossToJournalId, guildLootSortMode, guildHideObtained, rosterMemberSet);
 
         -- Reset detail panel
-        self:PopulateGuildDetailDefault(detailPanel, guildName, memberCount, totalItems);
+        self:PopulateGuildDetailDefault(detailPanel, displayName, memberCount, totalItems, rosterMemberSet);
     end
 
     self:SetupDifficultyFilterButtons(sourcePanel, function(diff)
@@ -716,7 +744,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
     rebuildGuildView();
 end
 
-function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, selectedBoss, guildRealm, detailPanel, bossToRaid, bossToJournalId, sortMode, hideObtained)
+function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, selectedBoss, guildRealm, detailPanel, bossToRaid, bossToJournalId, sortMode, hideObtained, rosterMemberSet)
     local scrollChild = lootPanel.scrollChild;
     self:ClearChildren(scrollChild);
     scrollChild:SetWidth(lootPanel.scrollFrame:GetWidth());
@@ -864,7 +892,7 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
 
     -- Append obtained items at bottom if showing
     if not hideObtained then
-        local obtainedItems = self:CollectObtainedItems();
+        local obtainedItems = self:CollectObtainedItems(nil, nil, rosterMemberSet);
         if #obtainedItems > 0 then
             local sepFrame = CreateFrame("Frame", nil, scrollChild);
             sepFrame:SetHeight(24);
@@ -895,27 +923,35 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
     self:RelayoutGuildContent(container);
 end
 
-function GoWWishlists:CollectObtainedItems(characterName, realmName)
+function GoWWishlists:CollectObtainedItems(characterName, realmName, rosterMemberSet)
     local results = {};
     local data = self.state.guildWishlistData;
     if not data or not data.wishlists then return results end
 
     for _, charEntry in ipairs(data.wishlists) do
-        local match = not characterName or (charEntry.name == characterName and charEntry.realmName == realmName);
-        if match then
-            for _, item in ipairs(charEntry.wishlist) do
-                if item.isObtained then
-                    table.insert(results, {
-                        itemId = item.itemId,
-                        difficulty = item.difficulty,
-                        encounterName = item.sourceBossName or "Unknown",
-                        winner = charEntry.name,
-                        winnerClass = charEntry.classId,
-                        timestamp = item.obtainedOn and math.floor(item.obtainedOn / 1000) or nil,
-                    });
+        local passRoster = true;
+        if rosterMemberSet then
+            local charKey = charEntry.name .. "-" .. NormalizeRealm(charEntry.realmName);
+            passRoster = rosterMemberSet[charKey] == true;
+        end
+
+        if passRoster then
+            local match = not characterName or (charEntry.name == characterName and charEntry.realmName == realmName);
+            if match then
+                for _, item in ipairs(charEntry.wishlist) do
+                    if item.isObtained then
+                        table.insert(results, {
+                            itemId = item.itemId,
+                            difficulty = item.difficulty,
+                            encounterName = item.sourceBossName or "Unknown",
+                            winner = charEntry.name,
+                            winnerClass = charEntry.classId,
+                            timestamp = item.obtainedOn and math.floor(item.obtainedOn / 1000) or nil,
+                        });
+                    end
                 end
+                if characterName then break end
             end
-            if characterName then break end
         end
     end
 
@@ -926,12 +962,18 @@ function GoWWishlists:CollectObtainedItems(characterName, realmName)
     return results;
 end
 
-function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberCount, totalItems)
+function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberCount, totalItems, rosterMemberSet)
     local scrollChild = detailPanel.scrollChild;
     self:ClearChildren(scrollChild);
     scrollChild:SetWidth(detailPanel.scrollFrame:GetWidth());
 
     detailPanel.headerText:SetText("LOOT HISTORY");
+
+    -- Store current state on detailPanel so back button can restore it
+    detailPanel._lastGuildName = guildName;
+    detailPanel._lastMemberCount = memberCount;
+    detailPanel._lastTotalItems = totalItems;
+    detailPanel._lastRosterMemberSet = rosterMemberSet;
 
     local guildHistoryView = detailPanel.guildHistoryView or "date";
 
@@ -944,7 +986,7 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
 
     local statsText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     statsText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
-    statsText:SetText("|cff888888" .. memberCount .. " members  Â·  " .. totalItems .. " items|r");
+    statsText:SetText("|cff888888" .. memberCount .. " members  |cff666666||r  |cff888888" .. totalItems .. " items|r");
     yOffset = yOffset + 20;
 
     -- Date / Character toggle buttons
@@ -973,7 +1015,7 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
     local function setView(view)
         guildHistoryView = view;
         detailPanel.guildHistoryView = view;
-        self:PopulateGuildDetailDefault(detailPanel, guildName, memberCount, totalItems);
+        self:PopulateGuildDetailDefault(detailPanel, guildName, memberCount, totalItems, rosterMemberSet);
     end
 
     dateBtn:SetScript("OnClick", function() setView("date") end);
@@ -982,7 +1024,7 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
     yOffset = yOffset + 20;
 
     -- Guild obtained items from wishlists
-    local obtainedItems = self:CollectObtainedItems();
+    local obtainedItems = self:CollectObtainedItems(nil, nil, rosterMemberSet);
     if #obtainedItems == 0 then
         local emptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
         emptyText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
@@ -1123,8 +1165,11 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     backText:SetText("|cff888888< Back|r");
     backBtn:SetWidth(40);
     backBtn:SetScript("OnClick", function()
-        local guildName = GoWWishlists.state.guildWishlistData and GoWWishlists.state.guildWishlistData.guild or "Guild";
-        GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, 0, 0);
+        local name = detailPanel._lastGuildName or (GoWWishlists.state.guildWishlistData and GoWWishlists.state.guildWishlistData.guild or "Guild");
+        local mc = detailPanel._lastMemberCount or 0;
+        local ti = detailPanel._lastTotalItems or 0;
+        local rms = detailPanel._lastRosterMemberSet;
+        GoWWishlists:PopulateGuildDetailDefault(detailPanel, name, mc, ti, rms);
     end);
     backBtn:SetScript("OnEnter", function(self)
         backText:SetText("|cffffff00< Back|r");
