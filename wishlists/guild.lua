@@ -112,17 +112,8 @@ function GoWWishlists:CreateGuildItemRow(parent)
     local row = CreateFrame("Frame", nil, parent);
     row:SetHeight(self.constants.GUILD_ITEM_ROW_HEIGHT);
 
-    local iconBorder = row:CreateTexture(nil, "ARTWORK", nil, 0);
-    iconBorder:SetTexture("Interface\\Buttons\\WHITE8x8");
-    iconBorder:SetSize(22, 22);
-    iconBorder:SetPoint("LEFT", row, "LEFT", 23, 0);
-    iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
+    local iconBorder, icon = self:CreateRowIcon(row, 22, 23);
     row.iconBorder = iconBorder;
-
-    local icon = row:CreateTexture(nil, "ARTWORK", nil, 1);
-    icon:SetSize(20, 20);
-    icon:SetPoint("CENTER", iconBorder, "CENTER", 0, 0);
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
     row.icon = icon;
 
     local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal");
@@ -144,27 +135,7 @@ function GoWWishlists:CreateGuildItemRow(parent)
     row.gainBadge = gainBadge;
 
     row.highlight = self:CreateRowHighlight(row);
-
-    -- Icon hover zone for item tooltip
-    local iconHover = CreateFrame("Frame", nil, row);
-    iconHover:SetAllPoints(iconBorder);
-    iconHover:EnableMouse(true);
-    iconHover:SetScript("OnEnter", function()
-        row.highlight:Show();
-        if row.itemId then
-            GameTooltip:SetOwner(row, "ANCHOR_RIGHT");
-            GameTooltip:SetItemByID(row.itemId);
-            GameTooltip:Show();
-        end
-    end);
-    iconHover:SetScript("OnLeave", function()
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
-
-    row:EnableMouse(true);
-    row:SetScript("OnEnter", function(self) self.highlight:Show() end);
-    row:SetScript("OnLeave", function(self) self.highlight:Hide() end);
+    self:CreateItemTooltipZone(row, iconBorder);
 
     return row;
 end
@@ -962,7 +933,7 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
 
     local statsText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     statsText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
-    statsText:SetText("|cff888888" .. memberCount .. " members  |cff666666||r  |cff888888" .. totalItems .. " items|r");
+    statsText:SetText("|cff888888" .. memberCount .. " members  |cff666666|||r  |cff888888" .. totalItems .. " items|r");
     yOffset = yOffset + 20;
 
     -- Date / Character toggle buttons
@@ -1002,7 +973,7 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
         emptyText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
         emptyText:SetPoint("RIGHT", scrollChild, "RIGHT", -10, 0);
         emptyText:SetWordWrap(true);
-        emptyText:SetText("|cff666666No obtained items yet.\nItems will appear here as guild members obtain their wishlist drops.|r");
+        emptyText:SetText("|cff666666\nItems will appear here as guild members obtain their wishlist drops.|r");
         yOffset = yOffset + 40;
         scrollChild:SetHeight(yOffset);
         return;

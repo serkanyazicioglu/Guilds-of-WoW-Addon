@@ -20,18 +20,8 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     inner:SetHeight(46);
     inner:SetPoint("TOP", row, "TOP", 0, -math.floor((self.constants.ALERT_ITEM_ROW_HEIGHT - 46) / 2));
 
-    -- Icon with quality border (matching browser style)
-    local iconBorder = inner:CreateTexture(nil, "ARTWORK", nil, 0);
-    iconBorder:SetTexture("Interface\\Buttons\\WHITE8x8");
-    iconBorder:SetSize(24, 24);
-    iconBorder:SetPoint("LEFT", inner, "LEFT", 10, 0);
-    iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
+    local iconBorder, icon = self:CreateRowIcon(inner, 24, 10);
     row.iconBorder = iconBorder;
-
-    local icon = inner:CreateTexture(nil, "ARTWORK", nil, 1);
-    icon:SetSize(22, 22);
-    icon:SetPoint("CENTER", iconBorder, "CENTER", 0, 0);
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
     row.icon = icon;
 
     -- Line 1: item name
@@ -69,12 +59,7 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     row.gainBadge = gainBadge;
 
     -- Bottom separator
-    local sep = row:CreateTexture(nil, "ARTWORK");
-    sep:SetTexture("Interface\\Buttons\\WHITE8x8");
-    sep:SetVertexColor(0.25, 0.25, 0.3, 0.15);
-    sep:SetHeight(1);
-    sep:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 6, 0);
-    sep:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -6, 0);
+    self:CreateRowSeparator(row);
 
     -- Note icon: top-right
     local noteIcon = CreateFrame("Button", nil, row);
@@ -87,24 +72,7 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     row.noteIcon = noteIcon;
 
     row.highlight = self:CreateRowHighlight(row);
-
-    -- Icon hover zone for item tooltip
-    local iconHover = CreateFrame("Frame", nil, row);
-    iconHover:SetAllPoints(iconBorder);
-    iconHover:EnableMouse(true);
-    iconHover:SetScript("OnEnter", function()
-        row.highlight:Show();
-        if row.itemId then
-            GameTooltip:SetOwner(row, "ANCHOR_RIGHT");
-            GameTooltip:SetItemByID(row.itemId);
-            GameTooltip:Show();
-        end
-    end);
-    iconHover:SetScript("OnLeave", function()
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
-    row.iconHover = iconHover;
+    row.iconHover = self:CreateItemTooltipZone(row, iconBorder);
 
     noteIcon:SetScript("OnEnter", function(self)
         row.highlight:Show();
@@ -151,11 +119,6 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
 
     self:ApplyNoteIcon(row, match.notes);
     self:ApplyGainBadge(row.gainBadge, match.gain);
-
-    -- Row hover: highlight only (tooltip on icon)
-    row:EnableMouse(true);
-    row:SetScript("OnEnter", function(self) self.highlight:Show() end);
-    row:SetScript("OnLeave", function(self) self.highlight:Hide() end);
 
     return row;
 end

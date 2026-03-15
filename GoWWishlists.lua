@@ -189,6 +189,10 @@ GoWWishlists.constants.DIFF_ABBREV = {
 GoWWishlists.constants.SUB_ACTIVE_COLOR = { r = GoWWishlists.constants.GOW_ACCENT_COLOR.r, g = GoWWishlists.constants.GOW_ACCENT_COLOR.g, b = GoWWishlists.constants.GOW_ACCENT_COLOR.b, a = 0.3 };
 GoWWishlists.constants.SUB_INACTIVE_COLOR = { r = 0.15, g = 0.15, b = 0.18, a = 0.8 };
 
+GoWWishlists.constants.TAB_HEIGHT = 22;
+GoWWishlists.constants.TAB_ACTIVE_COLOR = { r = GoWWishlists.constants.GOW_ACCENT_COLOR.r, g = GoWWishlists.constants.GOW_ACCENT_COLOR.g, b = GoWWishlists.constants.GOW_ACCENT_COLOR.b, a = 0.25 };
+GoWWishlists.constants.TAB_INACTIVE_COLOR = { r = 0.15, g = 0.15, b = 0.18, a = 0.9 };
+
 GoWWishlists.constants.COLOR_ACCENT = "|cff00ff00";
 GoWWishlists.constants.COLOR_SECONDARY = "|cff888888";
 GoWWishlists.constants.COLOR_DIM = "|cff666666";
@@ -556,6 +560,86 @@ function GoWWishlists:CreateRowHighlight(frame, alpha)
     highlight:SetVertexColor(1, 1, 1, alpha or 0.04);
     highlight:Hide();
     return highlight;
+end
+
+function GoWWishlists:CreateRowIcon(parent, borderSize, leftOffset)
+    local iconBorder = parent:CreateTexture(nil, "ARTWORK", nil, 0);
+    iconBorder:SetTexture("Interface\\Buttons\\WHITE8x8");
+    iconBorder:SetSize(borderSize, borderSize);
+    iconBorder:SetPoint("LEFT", parent, "LEFT", leftOffset, 0);
+    iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
+
+    local icon = parent:CreateTexture(nil, "ARTWORK", nil, 1);
+    icon:SetSize(borderSize - 2, borderSize - 2);
+    icon:SetPoint("CENTER", iconBorder, "CENTER", 0, 0);
+    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
+
+    return iconBorder, icon;
+end
+
+function GoWWishlists:CreateRowSeparator(parent)
+    local sep = parent:CreateTexture(nil, "ARTWORK");
+    sep:SetTexture("Interface\\Buttons\\WHITE8x8");
+    sep:SetVertexColor(0.25, 0.25, 0.3, 0.15);
+    sep:SetHeight(1);
+    sep:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 6, 0);
+    sep:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -6, 0);
+    return sep;
+end
+
+function GoWWishlists:CreateItemTooltipZone(row, iconBorder)
+    local iconHover = CreateFrame("Frame", nil, row);
+    iconHover:SetAllPoints(iconBorder);
+    iconHover:EnableMouse(true);
+    iconHover:SetScript("OnEnter", function()
+        row.highlight:Show();
+        if row.itemId then
+            GameTooltip:SetOwner(row, "ANCHOR_RIGHT");
+            GameTooltip:SetItemByID(row.itemId);
+            GameTooltip:Show();
+        end
+    end);
+    iconHover:SetScript("OnLeave", function()
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+
+    row:EnableMouse(true);
+    row:SetScript("OnEnter", function(self) self.highlight:Show() end);
+    row:SetScript("OnLeave", function(self) self.highlight:Hide() end);
+
+    return iconHover;
+end
+
+function GoWWishlists:CreateTabButton(parentFrame, label, tabIndex)
+    local c = self.constants;
+    local tab = CreateFrame("Button", nil, parentFrame, "BackdropTemplate");
+    tab:SetHeight(c.TAB_HEIGHT);
+    tab:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+        insets = { left = 1, right = 1, top = 1, bottom = 0 },
+    });
+
+    local tabText = tab:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    tabText:SetPoint("CENTER", tab, "CENTER", 0, 1);
+    tabText:SetText(label);
+    tab.tabText = tabText;
+    tab.tabIndex = tabIndex;
+
+    tab:SetScript("OnEnter", function(self)
+        if self.tabIndex ~= parentFrame.activeTab then
+            self:SetBackdropColor(0.2, 0.2, 0.25, 0.9);
+        end
+    end);
+    tab:SetScript("OnLeave", function(self)
+        if self.tabIndex ~= parentFrame.activeTab then
+            self:SetBackdropColor(c.TAB_INACTIVE_COLOR.r, c.TAB_INACTIVE_COLOR.g, c.TAB_INACTIVE_COLOR.b, c.TAB_INACTIVE_COLOR.a);
+        end
+    end);
+
+    return tab;
 end
 
 function GoWWishlists:SaveFramePosition(frame, profileKey)

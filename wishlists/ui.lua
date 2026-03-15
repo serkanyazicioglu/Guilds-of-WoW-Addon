@@ -17,17 +17,8 @@ function GoWWishlists:CreateItemRow(parent)
     inner:SetHeight(46); -- ~3 lines of text height + spacing
     inner:SetPoint("TOP", row, "TOP", 0, -math.floor((self.constants.BROWSER_ITEM_HEIGHT - 46) / 2));
 
-    local iconBorder = inner:CreateTexture(nil, "ARTWORK", nil, 0);
-    iconBorder:SetTexture("Interface\\Buttons\\WHITE8x8");
-    iconBorder:SetSize(24, 24);
-    iconBorder:SetPoint("LEFT", inner, "LEFT", 8, 0);
-    iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
+    local iconBorder, icon = self:CreateRowIcon(inner, 24, 8);
     row.iconBorder = iconBorder;
-
-    local icon = inner:CreateTexture(nil, "ARTWORK", nil, 1);
-    icon:SetSize(22, 22);
-    icon:SetPoint("CENTER", iconBorder, "CENTER", 0, 0);
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
     row.icon = icon;
 
     -- Note icon: top-right
@@ -89,40 +80,10 @@ function GoWWishlists:CreateItemRow(parent)
     end);
 
     -- Bottom separator
-    local sep = row:CreateTexture(nil, "ARTWORK");
-    sep:SetTexture("Interface\\Buttons\\WHITE8x8");
-    sep:SetVertexColor(0.25, 0.25, 0.3, 0.15);
-    sep:SetHeight(1);
-    sep:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 6, 0);
-    sep:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -6, 0);
+    self:CreateRowSeparator(row);
 
-    local highlight = row:CreateTexture(nil, "BACKGROUND");
-    highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
-    highlight:SetAllPoints();
-    highlight:SetVertexColor(1, 1, 1, 0.04);
-    highlight:Hide();
-    row.highlight = highlight;
-
-    -- Icon hover zone for item tooltip
-    local iconHover = CreateFrame("Frame", nil, row);
-    iconHover:SetAllPoints(iconBorder);
-    iconHover:EnableMouse(true);
-    iconHover:SetScript("OnEnter", function()
-        row.highlight:Show();
-        if row.itemId then
-            GameTooltip:SetOwner(row, "ANCHOR_RIGHT");
-            GameTooltip:SetItemByID(row.itemId);
-            GameTooltip:Show();
-        end
-    end);
-    iconHover:SetScript("OnLeave", function()
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
-
-    row:EnableMouse(true);
-    row:SetScript("OnEnter", function(self) self.highlight:Show() end);
-    row:SetScript("OnLeave", function(self) self.highlight:Hide() end);
+    row.highlight = self:CreateRowHighlight(row);
+    self:CreateItemTooltipZone(row, iconBorder);
 
     return row;
 end
@@ -551,19 +512,8 @@ function GoWWishlists:CreateLootHistoryRow(parent, showWinner)
     inner:SetHeight(34);
     inner:SetPoint("TOP", row, "TOP", 0, -math.floor((self.constants.LOOT_ROW_HEIGHT - 34) / 2));
 
-    -- Icon border
-    local iconBorder = inner:CreateTexture(nil, "ARTWORK", nil, 0);
-    iconBorder:SetTexture("Interface\\Buttons\\WHITE8x8");
-    iconBorder:SetSize(24, 24);
-    iconBorder:SetPoint("LEFT", inner, "LEFT", 8, 0);
-    iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
+    local iconBorder, icon = self:CreateRowIcon(inner, 24, 8);
     row.iconBorder = iconBorder;
-
-    -- Icon
-    local icon = inner:CreateTexture(nil, "ARTWORK", nil, 1);
-    icon:SetSize(22, 22);
-    icon:SetPoint("CENTER", iconBorder, "CENTER", 0, 0);
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
     row.icon = icon;
 
     -- Line 1: item name
@@ -585,35 +535,10 @@ function GoWWishlists:CreateLootHistoryRow(parent, showWinner)
     row.showWinner = showWinner;
 
     -- Bottom separator
-    local sep = row:CreateTexture(nil, "ARTWORK");
-    sep:SetTexture("Interface\\Buttons\\WHITE8x8");
-    sep:SetVertexColor(0.25, 0.25, 0.3, 0.15);
-    sep:SetHeight(1);
-    sep:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 6, 0);
-    sep:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -6, 0);
+    self:CreateRowSeparator(row);
 
     row.highlight = self:CreateRowHighlight(row);
-
-    -- Icon hover zone for item tooltip
-    local iconHover = CreateFrame("Frame", nil, row);
-    iconHover:SetAllPoints(iconBorder);
-    iconHover:EnableMouse(true);
-    iconHover:SetScript("OnEnter", function()
-        row.highlight:Show();
-        if row.itemId then
-            GameTooltip:SetOwner(row, "ANCHOR_RIGHT");
-            GameTooltip:SetItemByID(row.itemId);
-            GameTooltip:Show();
-        end
-    end);
-    iconHover:SetScript("OnLeave", function()
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
-
-    row:EnableMouse(true);
-    row:SetScript("OnEnter", function(self) self.highlight:Show() end);
-    row:SetScript("OnLeave", function(self) self.highlight:Hide() end);
+    self:CreateItemTooltipZone(row, iconBorder);
 
     return row;
 end

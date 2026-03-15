@@ -48,47 +48,12 @@ function GoWWishlists:CreateWishlistBrowserFrame()
     closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -6);
     closeBtn:SetScript("OnClick", function() frame:Hide() end);
 
-    local TAB_HEIGHT = 22;
-    local TAB_ACTIVE_COLOR = { r = self.constants.GOW_ACCENT_COLOR.r, g = self.constants.GOW_ACCENT_COLOR.g, b = self.constants.GOW_ACCENT_COLOR.b, a = 0.25 };
-    local TAB_INACTIVE_COLOR = { r = 0.15, g = 0.15, b = 0.18, a = 0.9 };
-
-    local function CreateTab(parent, label, tabIndex)
-        local tab = CreateFrame("Button", nil, parent, "BackdropTemplate");
-        tab:SetHeight(TAB_HEIGHT);
-        tab:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8x8",
-            edgeFile = "Interface\\Buttons\\WHITE8x8",
-            edgeSize = 1,
-            insets = { left = 1, right = 1, top = 1, bottom = 0 },
-        });
-
-        local tabText = tab:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-        tabText:SetPoint("CENTER", tab, "CENTER", 0, 1);
-        tabText:SetText(label);
-        tab.tabText = tabText;
-        tab.tabIndex = tabIndex;
-
-        tab:SetScript("OnEnter", function(self)
-            if self.tabIndex ~= parent.activeTab then
-                self:SetBackdropColor(0.2, 0.2, 0.25, 0.9);
-            end
-        end);
-        tab:SetScript("OnLeave", function(self)
-            if self.tabIndex ~= parent.activeTab then
-                self:SetBackdropColor(TAB_INACTIVE_COLOR.r, TAB_INACTIVE_COLOR.g, TAB_INACTIVE_COLOR.b, TAB_INACTIVE_COLOR.a);
-            end
-        end);
-
-        return tab;
-    end
-
-    local wishlistTab = CreateTab(frame, "|cff00ff00PERSONAL|r", 1);
+    local wishlistTab = self:CreateTabButton(frame, "|cff00ff00PERSONAL|r", 1);
     wishlistTab:SetPoint("TOPLEFT", subtitleText, "BOTTOMLEFT", -4, -4);
     wishlistTab:SetWidth(90);
     frame.wishlistTab = wishlistTab;
 
-    -- Roster tab (only shown when guild data exists)
-    local guildWishlistTab = CreateTab(frame, "|cff00ff00ROSTER|r", 2);
+    local guildWishlistTab = self:CreateTabButton(frame, "|cff00ff00ROSTER|r", 2);
     guildWishlistTab:SetPoint("LEFT", wishlistTab, "RIGHT", 4, 0);
     guildWishlistTab:SetWidth(90);
     guildWishlistTab:Hide();
@@ -138,7 +103,7 @@ function GoWWishlists:CreateWishlistBrowserFrame()
         for _, cf in ipairs(allContentFrames) do cf:Hide() end
         for _, tab in ipairs(allTabs) do
             if tab:IsShown() then
-                tab:SetBackdropColor(TAB_INACTIVE_COLOR.r, TAB_INACTIVE_COLOR.g, TAB_INACTIVE_COLOR.b, TAB_INACTIVE_COLOR.a);
+                tab:SetBackdropColor(self.constants.TAB_INACTIVE_COLOR.r, self.constants.TAB_INACTIVE_COLOR.g, self.constants.TAB_INACTIVE_COLOR.b, self.constants.TAB_INACTIVE_COLOR.a);
                 tab:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.5);
             end
         end
@@ -147,7 +112,7 @@ function GoWWishlists:CreateWishlistBrowserFrame()
         local activeTab = allTabs[tabIndex];
         local activeContent = allContentFrames[tabIndex];
         activeContent:Show();
-        activeTab:SetBackdropColor(TAB_ACTIVE_COLOR.r, TAB_ACTIVE_COLOR.g, TAB_ACTIVE_COLOR.b, TAB_ACTIVE_COLOR.a);
+        activeTab:SetBackdropColor(self.constants.TAB_ACTIVE_COLOR.r, self.constants.TAB_ACTIVE_COLOR.g, self.constants.TAB_ACTIVE_COLOR.b, self.constants.TAB_ACTIVE_COLOR.a);
         activeTab:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
         tabIndicator:ClearAllPoints();
         tabIndicator:SetPoint("BOTTOMLEFT", activeTab, "BOTTOMLEFT", 1, 0);
@@ -206,42 +171,11 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
     local container = CreateFrame("Frame", "GoWCoreWishlistsContainer", parent);
     container:SetAllPoints(parent);
 
-    local TAB_HEIGHT = 22;
-    local TAB_ACTIVE_COLOR = { r = self.constants.GOW_ACCENT_COLOR.r, g = self.constants.GOW_ACCENT_COLOR.g, b = self.constants.GOW_ACCENT_COLOR.b, a = 0.25 };
-    local TAB_INACTIVE_COLOR = { r = 0.15, g = 0.15, b = 0.18, a = 0.9 };
-
-    local function CreateTab(par, label, tabIndex)
-        local tab = CreateFrame("Button", nil, par, "BackdropTemplate");
-        tab:SetHeight(TAB_HEIGHT);
-        tab:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8x8",
-            edgeFile = "Interface\\Buttons\\WHITE8x8",
-            edgeSize = 1,
-            insets = { left = 1, right = 1, top = 1, bottom = 0 },
-        });
-        local tabText = tab:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-        tabText:SetPoint("CENTER", tab, "CENTER", 0, 1);
-        tabText:SetText(label);
-        tab.tabText = tabText;
-        tab.tabIndex = tabIndex;
-        tab:SetScript("OnEnter", function(self)
-            if self.tabIndex ~= container.activeTab then
-                self:SetBackdropColor(0.2, 0.2, 0.25, 0.9);
-            end
-        end);
-        tab:SetScript("OnLeave", function(self)
-            if self.tabIndex ~= container.activeTab then
-                self:SetBackdropColor(TAB_INACTIVE_COLOR.r, TAB_INACTIVE_COLOR.g, TAB_INACTIVE_COLOR.b, TAB_INACTIVE_COLOR.a);
-            end
-        end);
-        return tab;
-    end
-
-    local personalTab = CreateTab(container, "|cff00ff00PERSONAL|r", 1);
+    local personalTab = self:CreateTabButton(container, "|cff00ff00PERSONAL|r", 1);
     personalTab:SetPoint("TOPLEFT", container, "TOPLEFT", 4, -4);
     personalTab:SetWidth(90);
 
-    local rosterTab = CreateTab(container, "|cff00ff00ROSTER|r", 2);
+    local rosterTab = self:CreateTabButton(container, "|cff00ff00ROSTER|r", 2);
     rosterTab:SetPoint("LEFT", personalTab, "RIGHT", 4, 0);
     rosterTab:SetWidth(90);
     rosterTab:Hide();
@@ -283,14 +217,14 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
         for _, cf in ipairs(allContentFrames) do cf:Hide() end
         for _, tab in ipairs(allTabs) do
             if tab:IsShown() then
-                tab:SetBackdropColor(TAB_INACTIVE_COLOR.r, TAB_INACTIVE_COLOR.g, TAB_INACTIVE_COLOR.b, TAB_INACTIVE_COLOR.a);
+                tab:SetBackdropColor(self.constants.TAB_INACTIVE_COLOR.r, self.constants.TAB_INACTIVE_COLOR.g, self.constants.TAB_INACTIVE_COLOR.b, self.constants.TAB_INACTIVE_COLOR.a);
                 tab:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.5);
             end
         end
         local activeTab = allTabs[tabIndex];
         local activeContent = allContentFrames[tabIndex];
         activeContent:Show();
-        activeTab:SetBackdropColor(TAB_ACTIVE_COLOR.r, TAB_ACTIVE_COLOR.g, TAB_ACTIVE_COLOR.b, TAB_ACTIVE_COLOR.a);
+        activeTab:SetBackdropColor(self.constants.TAB_ACTIVE_COLOR.r, self.constants.TAB_ACTIVE_COLOR.g, self.constants.TAB_ACTIVE_COLOR.b, self.constants.TAB_ACTIVE_COLOR.a);
         activeTab:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
         tabIndicator:ClearAllPoints();
         tabIndicator:SetPoint("BOTTOMLEFT", activeTab, "BOTTOMLEFT", 1, 0);
