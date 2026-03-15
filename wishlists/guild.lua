@@ -431,7 +431,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
 
     -- Roster selector bar (created once, full-width container above 3-panel layout)
     local guildRosterFilter = frame.guildRosterFilter or (GOW.DB and GOW.DB.profile and GOW.DB.profile.guildRosterFilter) or "all";
-    local rebuildGuildView;
+    frame.guildRosterFilter = guildRosterFilter;
 
     if not panel3.guildRosterBar then
         local rosterParent = panel3:GetParent();
