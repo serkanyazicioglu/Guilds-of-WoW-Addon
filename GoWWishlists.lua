@@ -569,8 +569,9 @@ function GoWWishlists:GetOrCreatePopupMenu()
     local function showPopup(anchor, options, currentValue, onSelect)
         clearPopup();
         local ITEM_HEIGHT = 18;
-        local POPUP_WIDTH = 110;
+        local MIN_POPUP_WIDTH = 110;
         local yOff = 4;
+        local maxTextWidth = 0;
 
         for _, opt in ipairs(options) do
             local item = CreateFrame("Button", nil, popup);
@@ -589,6 +590,9 @@ function GoWWishlists:GetOrCreatePopupMenu()
                 text:SetText("|cffcccccc" .. opt.label .. "|r");
             end
 
+            local tw = text:GetStringWidth();
+            if tw > maxTextWidth then maxTextWidth = tw end
+
             local hl = item:CreateTexture(nil, "BACKGROUND");
             hl:SetTexture("Interface\\Buttons\\WHITE8x8");
             hl:SetAllPoints();
@@ -606,7 +610,8 @@ function GoWWishlists:GetOrCreatePopupMenu()
             yOff = yOff + ITEM_HEIGHT;
         end
 
-        popup:SetSize(POPUP_WIDTH, yOff + 4);
+        local popupWidth = math.max(MIN_POPUP_WIDTH, maxTextWidth + 24);
+        popup:SetSize(popupWidth, yOff + 4);
         popup:ClearAllPoints();
         popup:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2);
         popup:Show();

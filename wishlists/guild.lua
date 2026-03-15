@@ -1,13 +1,54 @@
 local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
+local ns = select(2, ...);
 
 GoWWishlists.constants.GUILD_ITEM_ROW_HEIGHT = 28;
 GoWWishlists.constants.GUILD_MEMBER_ROW_HEIGHT = 22;
 GoWWishlists.constants.GUILD_FILTER_HEIGHT = 26;
 
+local function NormalizeRealm(realmName)
+    if not realmName then return "" end
+    return realmName:gsub("%s", "");
+end
+
+-- Returns an array of {id, name} for teams matching the current guild.
+function GoWWishlists:GetGuildTeams()
+    local teams = {};
+    if not ns.TEAMS or not ns.TEAMS.teams then return teams end
+    local guildData = self.state.guildWishlistData;
+    if not guildData then return teams end
+
+    local guildName = guildData.guild;
+    local guildRealm = guildData.guildRealmNormalized and guildData.guildRealmNormalized:lower() or "";
+
+    for _, team in ipairs(ns.TEAMS.teams) do
+        local teamRealm = team.guildRealmNormalized and team.guildRealmNormalized:lower() or "";
+        if team.guild == guildName and teamRealm == guildRealm then
+            table.insert(teams, { id = team.id, name = team.name or team.title });
+        end
+    end
+    return teams;
+end
+
+-- Builds a name-realmNormalized lookup set for a given team id.
+function GoWWishlists:BuildRosterMemberSet(teamId)
+    if not ns.TEAMS or not ns.TEAMS.teams then return nil end
+    for _, team in ipairs(ns.TEAMS.teams) do
+        if team.id == teamId then
+            local memberSet = {};
+            for _, member in ipairs(team.members or {}) do
+                local key = member.name .. "-" .. (member.realmNormalized or "");
+                memberSet[key] = true;
+            end
+            return memberSet;
+        end
+    end
+    return nil;
+end
+
 -- Collects guild wishlist data grouped by boss, then by item, then by member.
 -- Returns: bossGroups = { bossName = { items = {key = itemData}, itemOrder = {keys} } }, bossOrder = {bossNames}
-function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter)
+function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberSet)
     if not self.state.guildWishlistData or not self.state.guildWishlistData.wishlists then return {}, {}, {}, {} end
 
     local bossGroups = {};
@@ -16,40 +57,49 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter)
     local bossToJournalId = {};
 
     for _, charEntry in ipairs(self.state.guildWishlistData.wishlists) do
-        for _, item in ipairs(charEntry.wishlist) do
-            if not item.isObtained then
-                local passFilter = (difficultyFilter == "All") or (item.difficulty == difficultyFilter);
-                if passFilter then
-                    local bossName = item.sourceBossName or "Unknown Boss";
-                    if not bossGroups[bossName] then
-                        bossGroups[bossName] = { items = {}, itemOrder = {} };
-                        table.insert(bossOrder, bossName);
-                        if item.sourceJournalId then
-                            bossToRaid[bossName] = self:GetRaidNameForEncounter(item.sourceJournalId);
-                            bossToJournalId[bossName] = item.sourceJournalId;
+        -- Filter by roster if a team is selected
+        local passRoster = true;
+        if rosterMemberSet then
+            local charKey = charEntry.name .. "-" .. NormalizeRealm(charEntry.realmName);
+            passRoster = rosterMemberSet[charKey] == true;
+        end
+
+        if passRoster then
+            for _, item in ipairs(charEntry.wishlist) do
+                if not item.isObtained then
+                    local passFilter = (difficultyFilter == "All") or (item.difficulty == difficultyFilter);
+                    if passFilter then
+                        local bossName = item.sourceBossName or "Unknown Boss";
+                        if not bossGroups[bossName] then
+                            bossGroups[bossName] = { items = {}, itemOrder = {} };
+                            table.insert(bossOrder, bossName);
+                            if item.sourceJournalId then
+                                bossToRaid[bossName] = self:GetRaidNameForEncounter(item.sourceJournalId);
+                                bossToJournalId[bossName] = item.sourceJournalId;
+                            end
                         end
-                    end
 
-                    local boss = bossGroups[bossName];
-                    local itemKey = item.itemId .. "-" .. (item.difficulty or "");
-                    if not boss.items[itemKey] then
-                        boss.items[itemKey] = {
-                            itemId = item.itemId,
-                            difficulty = item.difficulty,
-                            members = {},
-                        };
-                        table.insert(boss.itemOrder, itemKey);
-                    end
+                        local boss = bossGroups[bossName];
+                        local itemKey = item.itemId .. "-" .. (item.difficulty or "");
+                        if not boss.items[itemKey] then
+                            boss.items[itemKey] = {
+                                itemId = item.itemId,
+                                difficulty = item.difficulty,
+                                members = {},
+                            };
+                            table.insert(boss.itemOrder, itemKey);
+                        end
 
-                    table.insert(boss.items[itemKey].members, {
-                        characterName = charEntry.name,
-                        realmName = charEntry.realmName,
-                        classId = charEntry.classId,
-                        tag = item.tag,
-                        notes = item.notes,
-                        officerNotes = item.officerNotes,
-                        gain = item.gain,
-                    });
+                        table.insert(boss.items[itemKey].members, {
+                            characterName = charEntry.name,
+                            realmName = charEntry.realmName,
+                            classId = charEntry.classId,
+                            tag = item.tag,
+                            notes = item.notes,
+                            officerNotes = item.officerNotes,
+                            gain = item.gain,
+                        });
+                    end
                 end
             end
         end
@@ -418,6 +468,107 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
     local guildRealm = self.state.guildWishlistData.guildRealm;
     local filter = frame.guildDifficultyFilter or "All";
 
+    -- Roster selector bar (created once, full-width container above 3-panel layout)
+    local guildRosterFilter = frame.guildRosterFilter or (GOW.DB and GOW.DB.profile and GOW.DB.profile.guildRosterFilter) or "all";
+    local rebuildGuildView;
+
+    if not panel3.guildRosterBar then
+        local rosterParent = panel3:GetParent();
+        local rosterBar = CreateFrame("Frame", nil, rosterParent, "BackdropTemplate");
+        rosterBar:SetHeight(22);
+        rosterBar:SetPoint("TOPLEFT", rosterParent, "TOPLEFT", 0, 0);
+        rosterBar:SetPoint("TOPRIGHT", rosterParent, "TOPRIGHT", 0, 0);
+        self:ApplyBackdrop(rosterBar, 0.06, 0.06, 0.08, 0.9, 0.2, 0.2, 0.2, 0.4);
+        panel3.guildRosterBar = rosterBar;
+
+        local rosterLabel = rosterBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        rosterLabel:SetPoint("LEFT", rosterBar, "LEFT", 6, 0);
+        rosterLabel:SetText("|cff888888Roster:|r");
+        rosterBar.rosterLabel = rosterLabel;
+
+        local rosterBtn = self:CreateSubFilterBtn(rosterBar, "All Members", 120);
+        rosterBtn:SetHeight(14);
+        rosterBtn:SetPoint("LEFT", rosterLabel, "RIGHT", 4, 0);
+        rosterBar.rosterBtn = rosterBtn;
+
+        local popupMenu = self:GetOrCreatePopupMenu();
+        local showPopup = popupMenu.showPopup;
+
+        local function updateRosterLabel()
+            local label = "All Members";
+            if guildRosterFilter ~= "all" then
+                local teams = self:GetGuildTeams();
+                for _, t in ipairs(teams) do
+                    if t.id == guildRosterFilter then
+                        label = t.name;
+                        break;
+                    end
+                end
+            end
+            rosterBtn.btnText:SetText(label);
+            -- Update button width to fit label
+            local textWidth = rosterBtn.btnText:GetStringWidth();
+            rosterBtn:SetWidth(math.max(textWidth + 16, 80));
+            if guildRosterFilter == "all" then
+                rosterBtn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
+                rosterBtn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
+            else
+                rosterBtn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
+                rosterBtn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
+            end
+        end
+
+        rosterBtn:SetScript("OnClick", function()
+            if popupMenu.popup:IsShown() and popupMenu.popup.owner == "guildroster" then
+                popupMenu.clearPopup();
+                return;
+            end
+            local options = { { key = "all", label = "All Members" } };
+            local teams = self:GetGuildTeams();
+            for _, t in ipairs(teams) do
+                table.insert(options, { key = t.id, label = t.name });
+            end
+            popupMenu.popup.owner = "guildroster";
+            showPopup(rosterBtn, options, guildRosterFilter, function(key)
+                guildRosterFilter = key;
+                frame.guildRosterFilter = key;
+                if GOW.DB and GOW.DB.profile then
+                    GOW.DB.profile.guildRosterFilter = key;
+                end
+                updateRosterLabel();
+                rebuildGuildView();
+            end);
+        end);
+
+        rosterBar.updateRosterLabel = updateRosterLabel;
+
+        -- Re-anchor the 3-panel layout below the roster bar
+        panel3:ClearAllPoints();
+        panel3:SetPoint("TOPLEFT", rosterBar, "BOTTOMLEFT", 0, -2);
+        panel3:SetPoint("BOTTOMRIGHT", rosterParent, "BOTTOMRIGHT", 0, 0);
+    end
+
+    -- Validate saved roster filter (team may no longer exist)
+    if guildRosterFilter ~= "all" then
+        local validTeam = false;
+        local teams = self:GetGuildTeams();
+        for _, t in ipairs(teams) do
+            if t.id == guildRosterFilter then
+                validTeam = true;
+                break;
+            end
+        end
+        if not validTeam then
+            guildRosterFilter = "all";
+            frame.guildRosterFilter = "all";
+            if GOW.DB and GOW.DB.profile then
+                GOW.DB.profile.guildRosterFilter = "all";
+            end
+        end
+    end
+
+    panel3.guildRosterBar.updateRosterLabel();
+
     -- Source panel header
     sourcePanel.headerText:SetText("SOURCE");
 
@@ -431,7 +582,6 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
     local guildLootSortMode = frame.guildLootSortMode or "boss";
     local guildHideObtained = frame.guildHideObtained;
     if guildHideObtained == nil then guildHideObtained = true end
-    local rebuildGuildView;
 
     if not lootPanel.guildSortBtn then
         local headerBar = lootPanel.headerBar;
@@ -515,7 +665,14 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         guildLootSortMode = frame.guildLootSortMode or "boss";
         guildHideObtained = frame.guildHideObtained;
         if guildHideObtained == nil then guildHideObtained = true end
-        local bossGroups, bossOrder, bossToRaid, bossToJournalId = self:CollectGuildWishlistByBoss(filter);
+        guildRosterFilter = frame.guildRosterFilter or "all";
+
+        local rosterMemberSet = nil;
+        if guildRosterFilter ~= "all" then
+            rosterMemberSet = self:BuildRosterMemberSet(guildRosterFilter);
+        end
+
+        local bossGroups, bossOrder, bossToRaid, bossToJournalId = self:CollectGuildWishlistByBoss(filter, rosterMemberSet);
 
         -- Compute boss counts and totals
         local bossCounts = {};
@@ -753,6 +910,7 @@ function GoWWishlists:CollectObtainedItems(characterName, realmName)
                         difficulty = item.difficulty,
                         encounterName = item.sourceBossName or "Unknown",
                         winner = charEntry.name,
+                        winnerClass = charEntry.classId,
                         timestamp = item.obtainedOn and math.floor(item.obtainedOn / 1000) or nil,
                     });
                 end

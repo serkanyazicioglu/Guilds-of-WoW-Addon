@@ -655,7 +655,14 @@ function GoWWishlists:PopulateLootHistoryRow(row, record)
         table.insert(infoParts, "|cff888888" .. record.encounterName .. "|r");
     end
     if row.showWinner and record.winner then
-        table.insert(infoParts, "|cff66ccff" .. record.winner .. "|r");
+        local winnerHex = "66ccff";
+        if record.winnerClass then
+            local classColor = self:GetClassColor(record.winnerClass);
+            if classColor then
+                winnerHex = self:ClassColorToHex(classColor);
+            end
+        end
+        table.insert(infoParts, "|cff" .. winnerHex .. record.winner .. "|r");
     end
     if record.timestamp then
         table.insert(infoParts, "|cff555555" .. date("%m/%d %H:%M", record.timestamp) .. "|r");
