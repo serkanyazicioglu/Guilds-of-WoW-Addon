@@ -10,11 +10,15 @@ if not RCVotingFrame then return end
 
 local GoWVotingColumn = RCGoW:NewModule("GoWVotingColumn", "AceTimer-3.0", "AceEvent-3.0");
 
-local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:16:16|t";
+local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:20:20|t";
 
 local TAG_RANK = { BIS = 1, NEED = 2, GREED = 3, MINOR = 4, OFFSPEC = 5, TRANSMOG = 6 };
 
 local activeSession = 1;
+
+local function GetDisplayMode()
+    return (GOW.DB and GOW.DB.profile.rclcDisplayMode) or "percent";
+end
 
 local function GetActiveItemId()
     local lootTable = RCLootCouncil:GetLootTable();
@@ -51,12 +55,16 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
         return;
     end
 
-    -- Build display string: tag + gain%
-    local display = GoWWishlists:FormatTag(wish.tag) or "";
-    if wish.gain and wish.gain.percent and wish.gain.percent > 0 then
-        display = display .. " " .. string.format("|cff00ff00+%.1f%%|r", wish.gain.percent);
+    -- Build display string based on current toggle mode
+    local display = "";
+    if GetDisplayMode() == "percent" then
+        if wish.gain and wish.gain.percent and wish.gain.percent > 0 then
+            display = string.format("|cff00ff00%.1f%%|r", wish.gain.percent);
+        end
+    else
+        display = GoWWishlists:FormatTag(wish.tag) or "";
     end
-    cellFrame.text:SetText(display ~= "" and display or "|cff666666?|r");
+    cellFrame.text:SetText(display);
 
     -- Build tooltip content
     local tipLines = {};
@@ -70,10 +78,10 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
     if wish.gain then
         local metric = (wish.gain.metric and wish.gain.metric ~= "") and wish.gain.metric or "DPS";
         if wish.gain.percent and wish.gain.percent > 0 then
-            tinsert(tipLines, string.format("+%.1f%% %s", wish.gain.percent, metric));
+            tinsert(tipLines, string.format("%.1f%% %s", wish.gain.percent, metric));
         end
         if wish.gain.stat and wish.gain.stat > 0 then
-            tinsert(tipLines, string.format("+%d %s (raw)", wish.gain.stat, metric));
+            tinsert(tipLines, string.format("%d %s (raw)", wish.gain.stat, metric));
         end
     end
     if wish.notes and wish.notes ~= "" then
@@ -128,6 +136,13 @@ local function CompareByPriority(st, rowa, rowb, sortbycol)
     return gainA > gainB;
 end
 
+local function FindInsertPosition()
+    for i, col in ipairs(RCVotingFrame.scrollCols) do
+        if col.colName == "roll" then return i + 1 end
+    end
+    return #RCVotingFrame.scrollCols + 1;
+end
+
 local function InsertGoWColumn()
     if not RCVotingFrame.scrollCols then return end
 
@@ -136,7 +151,8 @@ local function InsertGoWColumn()
         if col.colName == "gow" then return end
     end
 
-    tinsert(RCVotingFrame.scrollCols, 8, {
+    local pos = FindInsertPosition();
+    tinsert(RCVotingFrame.scrollCols, pos, {
         name = GOW_ICON,
         colName = "gow",
         width = 80,
@@ -175,10 +191,46 @@ function GoWVotingColumn:OnInitialize()
     end
 
     self:RegisterMessage("RCSessionChangedPre", "OnSessionChanged");
+
+    self:AddToggleButton();
 end
 
 function GoWVotingColumn:OnSessionChanged(_, session)
     activeSession = session or 1;
+end
+
+local function RefreshScrollTable()
+    if RCVotingFrame.frame and RCVotingFrame.frame.st then
+        RCVotingFrame.frame.st:Refresh();
+    end
+end
+
+function GoWVotingColumn:AddToggleButton()
+    local frame = RCVotingFrame.frame;
+    if not frame or frame._gowToggleBtn then return end
+
+    local btn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate");
+    btn:SetSize(20, 20);
+    btn:SetPoint("TOP", frame, "TOP", 0, -2);
+    btn:SetNormalTexture("Interface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png");
+    btn:SetHighlightTexture("Interface\\BUTTONS\\UI-Common-MouseHilight", "ADD");
+
+    btn:SetScript("OnClick", function()
+        local current = GetDisplayMode();
+        local next = (current == "percent") and "tag" or "percent";
+        if GOW.DB then GOW.DB.profile.rclcDisplayMode = next end
+        RefreshScrollTable();
+    end);
+
+    btn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+        GameTooltip:AddLine("Guilds of WoW", 0.1, 0.8, 0.3);
+        GameTooltip:AddLine("Click to toggle between % gain and tag.", 1, 1, 1, true);
+        GameTooltip:Show();
+    end);
+    btn:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+    frame._gowToggleBtn = btn;
 end
 
 -- Fallback: re-check on voting frame show

@@ -73,6 +73,17 @@ local optionsTable = {
                     set = function(info, value)
                         GOW.DB.profile.showLootAlerts = value;
                     end,
+                },
+                ShowRCLCWishlist = {
+                    type = "toggle",
+                    order = 6,
+                    name = "Show wishlists in RCLootCouncil",
+                    desc = "Display wishlist information in the RCLootCouncil voting and loot frames. Requires /reload to take effect.",
+                    width = "full",
+                    get = function(info) return GOW.DB.profile.showRCLCWishlist end,
+                    set = function(info, value)
+                        GOW.DB.profile.showRCLCWishlist = value;
+                    end,
                 }
             }
         }

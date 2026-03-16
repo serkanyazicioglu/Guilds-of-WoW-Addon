@@ -10,12 +10,13 @@ if not RCLootFrame then return end
 local EntryManager = RCLootFrame.EntryManager;
 if not EntryManager then return end
 
-local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:12:12|t";
+local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:16:16|t";
 
 local hookedEntries = {};
 local insideHook = false;
 
 local function OnEntryRefreshed(entry)
+    if GOW.DB and GOW.DB.profile.showRCLCWishlist == false then return end
     if not entry.itemLvl then return end
 
     local session = entry.item and entry.item.sessions and entry.item.sessions[1];
@@ -39,7 +40,7 @@ local function OnEntryRefreshed(entry)
 
     local label = GoWWishlists:FormatTag(wish.tag) or "Wish";
     if wish.gain and wish.gain.percent and wish.gain.percent > 0 then
-        label = label .. string.format(" |cff00ff00+%.1f%%|r", wish.gain.percent);
+        label = label .. string.format(" |cff00ff00%.1f%%|r", wish.gain.percent);
     end
 
     local original = entry.itemLvl:GetText() or "";

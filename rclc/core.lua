@@ -26,6 +26,8 @@ local function SplitFullName(fullName)
 end
 
 function RCGoW:GetPlayerWish(itemId, playerFullName)
+    if GOW.DB and GOW.DB.profile.showRCLCWishlist == false then return nil end
+
     local data = GoWWishlists.state.guildWishlistData;
     if not data or not data.wishlists then return nil end
 
