@@ -5,7 +5,7 @@
 ## Author: Nhea
 ## Version: 1.10.10
 ## SavedVariables: GoWDB
-## OptionalDeps: AstralKeys
+## OptionalDeps: AstralKeys, RCLootCouncil
 ## AddonCompartmentFunc: GuildsOfWow_OnAddonButtonClick
 ## IconTexture: Interface\Addons\GuildsOfWoW\icons\guilds-of-wow-logo-flag-plain.png
 
@@ -15,6 +15,7 @@ Core.lua
 Helper.lua
 GoWWishlists.lua
 wishlists\load.xml
+rclc\load.xml
 GoWTeams.lua
 GoWEventDetails.lua
 GoWComm.lua
