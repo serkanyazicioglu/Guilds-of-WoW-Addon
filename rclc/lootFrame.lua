@@ -10,7 +10,7 @@ if not RCLootFrame then return end
 local EntryManager = RCLootFrame.EntryManager;
 if not EntryManager then return end
 
-local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain:12:12|t";
+local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:12:12|t";
 
 local hookedEntries = {};
 local insideHook = false;

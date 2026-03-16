@@ -10,7 +10,7 @@ if not RCVotingFrame then return end
 
 local GoWVotingColumn = RCGoW:NewModule("GoWVotingColumn", "AceTimer-3.0", "AceEvent-3.0");
 
-local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain:16:16|t";
+local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:16:16|t";
 
 local TAG_RANK = { BIS = 1, NEED = 2, GREED = 3, MINOR = 4, OFFSPEC = 5, TRANSMOG = 6 };
 
@@ -67,9 +67,14 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
     if wish.difficulty then
         tinsert(tipLines, "Difficulty: " .. wish.difficulty);
     end
-    if wish.gain and wish.gain.percent and wish.gain.percent > 0 then
+    if wish.gain then
         local metric = (wish.gain.metric and wish.gain.metric ~= "") and wish.gain.metric or "DPS";
-        tinsert(tipLines, string.format("+%.1f%% %s", wish.gain.percent, metric));
+        if wish.gain.percent and wish.gain.percent > 0 then
+            tinsert(tipLines, string.format("+%.1f%% %s", wish.gain.percent, metric));
+        end
+        if wish.gain.stat and wish.gain.stat > 0 then
+            tinsert(tipLines, string.format("+%d %s (raw)", wish.gain.stat, metric));
+        end
     end
     if wish.notes and wish.notes ~= "" then
         tinsert(tipLines, " ");
