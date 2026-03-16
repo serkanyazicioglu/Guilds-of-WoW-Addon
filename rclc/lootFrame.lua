@@ -49,6 +49,9 @@ local function OnEntryRefreshed(entry)
     local label = GoWWishlists:FormatTag(wish.tag) or "Wish";
     if wish.gain and wish.gain.percent and wish.gain.percent > 0 then
         label = label .. string.format(" |cff00ff00%.1f%%|r", wish.gain.percent);
+        if wish.gain.stat then
+            label = label .. string.format(" |cff00ff00(%d %s)|r", wish.gain.stat, wish.gain.metric or "");
+        end
     end
 
     entry.itemLvl:SetText(entry._gowBaseText .. "  " .. GOW_ICON .. " " .. label);

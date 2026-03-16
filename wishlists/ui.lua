@@ -12,7 +12,7 @@ function GoWWishlists:CreateItemRow(parent)
     local inner = CreateFrame("Frame", nil, row);
     inner:SetPoint("LEFT", row, "LEFT", 0, 0);
     inner:SetPoint("RIGHT", row, "RIGHT", 0, 0);
-    inner:SetHeight(46); -- ~3 lines of text height + spacing
+    inner:SetHeight(46);
     inner:SetPoint("TOP", row, "TOP", 0, -math.floor((self.constants.BROWSER_ITEM_HEIGHT - 46) / 2));
 
     local iconBorder, icon = self:CreateRowIcon(inner, 24, 8);

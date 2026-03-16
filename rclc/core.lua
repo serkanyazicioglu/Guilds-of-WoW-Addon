@@ -7,7 +7,7 @@ local GoWWishlists = GOW.Wishlists;
 local RCGoW = RCLootCouncil:NewModule("RCGoW", "AceTimer-3.0", "AceEvent-3.0");
 GOW.RCGoW = RCGoW;
 
-local DEBUG_TAGS = { "BIS", "Upgrade", "Sidegrade", "Off-spec" };
+local DEBUG_TAGS = { "BIS", "NEED", "MINOR", "OFFSPEC", "GREED", "TRANSMOG" };
 local function GetDebugWish()
     local tag = DEBUG_TAGS[math.random(#DEBUG_TAGS)];
     local pct = math.random(1, 250) / 10;
