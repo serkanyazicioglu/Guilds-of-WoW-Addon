@@ -152,12 +152,10 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, diff
     local winner = dropInfo.winner;
     local winnerName = winner and (winner.name or winner.playerName) or nil;
 
-    -- Record to all-loot history for any winner
     if winnerName and not self:IsAllLootAlreadyRecorded(itemId, encounterName, winnerName) then
         self:RecordAllLootDrop(itemId, itemLink, encounterName, difficulty, winnerName);
     end
 
-    -- Personal loot history + wishlist tracking only for self
     if winner and winner.isSelf then
         GOW.Logger:Debug(string.format("Player won item %s (%d) from %s", itemLink, itemId, encounterName));
 
@@ -266,7 +264,6 @@ end
 function GoWWishlists:HandleGuildSlashCommand()
     local frame = self:CreateWishlistBrowserFrame();
 
-    -- Show roster tab and switch to it
     frame.guildWishlistTab:Show();
 
     frame.SetActiveTab(2);
@@ -279,7 +276,6 @@ function GoWWishlists:SimulateLootDrops(count)
         return;
     end
 
-    -- Collect all non-obtained items from every wishlist source
     local pool = {};
     local personalLists = ns.WISHLISTS.personalWishlists;
     if personalLists then
@@ -311,7 +307,6 @@ function GoWWishlists:SimulateLootDrops(count)
 
     count = math.min(count, #pool);
 
-    -- Shuffle and pick `count` unique items
     for i = #pool, 2, -1 do
         local j = math.random(1, i);
         pool[i], pool[j] = pool[j], pool[i];

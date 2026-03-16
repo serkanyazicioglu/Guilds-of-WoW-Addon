@@ -65,8 +65,7 @@ function GoWWishlists:CreateWishlistBrowserFrame()
     tabIndicator:SetHeight(2);
     frame.tabIndicator = tabIndicator;
 
-    -- Content area starts below tabs
-    local contentTop = wishlistTab; -- tabs are the top anchor
+    local contentTop = wishlistTab;
 
     local wishlistContainer = CreateFrame("Frame", "GoWWishlistContainer", frame);
     wishlistContainer:SetPoint("TOPLEFT", contentTop, "BOTTOMLEFT", -4, -8);
@@ -75,7 +74,6 @@ function GoWWishlists:CreateWishlistBrowserFrame()
 
     local wishlist3Panel = self:Create3PanelLayout(wishlistContainer);
     frame.wishlist3Panel = wishlist3Panel;
-    -- Alias for backward compat with relayout methods
     frame.scrollChild = wishlist3Panel.lootPanel.scrollChild;
     frame.scrollFrame = wishlist3Panel.lootPanel.scrollFrame;
 
@@ -86,7 +84,6 @@ function GoWWishlists:CreateWishlistBrowserFrame()
 
     local guild3Panel = self:Create3PanelLayout(guildContainer);
     frame.guild3Panel = guild3Panel;
-    -- Aliases for backward compat
     frame.guildScrollChild = guild3Panel.lootPanel.scrollChild;
     frame.guildScrollFrame = guild3Panel.lootPanel.scrollFrame;
     frame.guildDifficultyFilter = "All";
@@ -100,7 +97,6 @@ function GoWWishlists:CreateWishlistBrowserFrame()
         frame.activeTab = tabIndex;
         if GOW.DB and GOW.DB.profile then GOW.DB.profile.wishlistActiveTab = tabIndex end
 
-        -- Hide all content frames, deactivate all tabs
         for _, cf in ipairs(allContentFrames) do cf:Hide() end
         for _, tab in ipairs(allTabs) do
             if tab:IsShown() then
@@ -109,7 +105,6 @@ function GoWWishlists:CreateWishlistBrowserFrame()
             end
         end
 
-        -- Activate selected tab
         local activeTab = allTabs[tabIndex];
         local activeContent = allContentFrames[tabIndex];
         activeContent:Show();
@@ -135,10 +130,8 @@ function GoWWishlists:CreateWishlistBrowserFrame()
     guildWishlistTab:SetScript("OnClick", function() SetActiveTab(2) end);
     frame.SetActiveTab = SetActiveTab;
 
-    -- ESC to close
     table.insert(UISpecialFrames, "GoWWishlistBrowserFrame");
 
-    -- Start on wishlist tab
     SetActiveTab(1);
 
     frame:Hide();
@@ -149,14 +142,12 @@ end
 function GoWWishlists:ShowWishlistBrowserFrame()
     local frame = self:CreateWishlistBrowserFrame();
 
-    -- Show roster tab if guild data exists
     if self:HasGuildWishlistData() then
         frame.guildWishlistTab:Show();
     else
         frame.guildWishlistTab:Hide();
     end
 
-    -- Restore last active tab (fallback to PERSONAL if ROSTER unavailable)
     local savedTab = GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistActiveTab or 1;
     if savedTab == 2 and not frame.guildWishlistTab:IsShown() then savedTab = 1 end
     frame.SetActiveTab(savedTab);
@@ -188,7 +179,6 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
     tabIndicator:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.9);
     tabIndicator:SetHeight(2);
 
-    -- Personal content
     local personalContainer = CreateFrame("Frame", nil, container);
     personalContainer:SetPoint("TOPLEFT", personalTab, "BOTTOMLEFT", -4, -6);
     personalContainer:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0);
@@ -198,7 +188,6 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
     container.scrollChild = personalPanel.lootPanel.scrollChild;
     container.scrollFrame = personalPanel.lootPanel.scrollFrame;
 
-    -- Guild content
     local guildContent = CreateFrame("Frame", nil, container);
     guildContent:SetPoint("TOPLEFT", personalTab, "BOTTOMLEFT", -4, -6);
     guildContent:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0);
@@ -250,14 +239,12 @@ function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
 
     local subtitleProxy = { SetText = function(_, text) if setStatusFn then setStatusFn(text) end end };
 
-    -- Show roster tab if guild data exists
     if self:HasGuildWishlistData() then
         container.rosterTab:Show();
     else
         container.rosterTab:Hide();
     end
 
-    -- Populate personal view
     local personalFrame = {
         wishlist3Panel = container.wishlist3Panel,
         subtitleText = subtitleProxy,
@@ -265,7 +252,6 @@ function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
     };
     self:PopulatePersonalWishlistView(personalFrame);
 
-    -- Populate guild view if data exists
     if self:HasGuildWishlistData() then
         local guildFrame = {
             guild3Panel = container.guild3Panel,

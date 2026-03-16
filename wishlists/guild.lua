@@ -57,7 +57,6 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
     local bossToJournalId = {};
 
     for _, charEntry in ipairs(self.state.guildWishlistData.wishlists) do
-        -- Filter by roster if a team is selected
         local passRoster = true;
         if rosterMemberSet then
             local charKey = charEntry.name .. "-" .. NormalizeRealm(charEntry.realmName);
@@ -127,7 +126,6 @@ function GoWWishlists:CreateGuildItemRow(parent)
     infoText:SetJustifyH("LEFT");
     row.infoText = infoText;
 
-    -- Hover zone for info line tooltip (difficulty)
     row.infoHover = self:CreateTextHoverTooltip(row, infoText, row);
 
     local gainBadge = self:CreateGainBadge(row);
@@ -153,7 +151,6 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
     table.insert(parts, "|cff888888" .. memberCount .. (memberCount == 1 and " wants" or " want") .. "|r");
     row.infoText:SetText(table.concat(parts, "  "));
 
-    -- Set tooltip text for info line (full difficulty name)
     row.infoHover.tipText = itemData.difficulty and ("Difficulty: " .. itemData.difficulty) or nil;
 
     local totalPercent, gainCount, avgMetric = 0, 0, nil;
@@ -185,7 +182,6 @@ function GoWWishlists:CreateGuildMemberRow(parent)
     local row = CreateFrame("Button", nil, parent);
     row:SetHeight(self.constants.GUILD_MEMBER_ROW_HEIGHT);
 
-    -- Class color accent bar
     local classBar = row:CreateTexture(nil, "ARTWORK");
     classBar:SetTexture("Interface\\Buttons\\WHITE8x8");
     classBar:SetSize(2, 14);
@@ -203,14 +199,12 @@ function GoWWishlists:CreateGuildMemberRow(parent)
     tagText:SetJustifyH("LEFT");
     row.tagText = tagText;
 
-    -- Hover zone for tag tooltip (priority)
     row.tagHover = self:CreateTextHoverTooltip(row, tagText, row, "Priority", 0, 1, 0);
 
     local gainBadge = self:CreateGainBadge(row);
     gainBadge:SetPoint("LEFT", tagText, "RIGHT", 8, 0);
     row.gainBadge = gainBadge;
 
-    -- Officer note icon (rightmost)
     local officerNoteIcon = CreateFrame("Button", nil, row);
     officerNoteIcon:SetSize(14, 14);
     officerNoteIcon:SetPoint("RIGHT", row, "RIGHT", -8, 0);
@@ -233,7 +227,6 @@ function GoWWishlists:CreateGuildMemberRow(parent)
     officerNoteIcon:Hide();
     row.officerNoteIcon = officerNoteIcon;
 
-    -- Player note icon (left of officer note)
     local noteIcon = CreateFrame("Button", nil, row);
     noteIcon:SetSize(14, 14);
     noteIcon:SetPoint("RIGHT", officerNoteIcon, "LEFT", -4, 0);
@@ -266,7 +259,6 @@ function GoWWishlists:CreateGuildMemberRow(parent)
 end
 
 function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
-    -- Class-colored name, with realm suffix if cross-realm
     local classColor = self:GetClassColor(member.classId);
     local colorHex = self:ClassColorToHex(classColor);
     local displayName = member.characterName;
@@ -275,7 +267,6 @@ function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
     end
     row.nameText:SetText("|cff" .. colorHex .. displayName .. "|r");
 
-    -- Class color accent bar
     if classColor then
         row.classBar:SetVertexColor(classColor.r, classColor.g, classColor.b, 0.8);
     else
@@ -285,7 +276,6 @@ function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
     local tagLabel = self:FormatTag(member.tag);
     row.tagText:SetText(tagLabel or "");
 
-    -- Set tooltip text for tag (priority)
     row.tagHover.tipText = nil;
     if member.tag then
         local tagInfo = self.constants.TAG_DISPLAY[member.tag];
@@ -375,7 +365,6 @@ function GoWWishlists:RelayoutGuildContent(frame)
 
             yOffset = yOffset + 4;
         elseif section.items then
-            -- Flat list (no header) â€” used for non-boss sorts
             for _, itemGroup in ipairs(section.items) do
                 local itemRow = itemGroup.row;
                 itemRow:ClearAllPoints();
@@ -414,7 +403,6 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         else
             msg = "No guild wishlist data found for " .. playerGuild .. ".";
         end
-        -- Show empty in loot panel
         local sc = lootPanel.scrollChild;
         self:ClearChildren(sc);
         local emptyText = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal");
@@ -430,7 +418,6 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
     local filter = frame.guildDifficultyFilter or (GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistGuildDifficulty) or "All";
     frame.guildDifficultyFilter = filter;
 
-    -- Roster selector bar (created once, full-width container above 3-panel layout)
     local guildRosterFilter = frame.guildRosterFilter or (GOW.DB and GOW.DB.profile and GOW.DB.profile.guildRosterFilter) or "all";
     frame.guildRosterFilter = guildRosterFilter;
 
@@ -468,7 +455,6 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
                 end
             end
             rosterBtn.btnText:SetText(label);
-            -- Update button width to fit label
             local textWidth = rosterBtn.btnText:GetStringWidth();
             rosterBtn:SetWidth(math.max(textWidth + 16, 80));
             self:SetButtonActive(rosterBtn, guildRosterFilter ~= "all");
@@ -498,7 +484,6 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
 
         rosterBar.updateRosterLabel = updateRosterLabel;
 
-        -- Re-anchor the 3-panel layout below the roster bar
         panel3:ClearAllPoints();
         panel3:SetPoint("TOPLEFT", rosterBar, "BOTTOMLEFT", 0, -2);
         panel3:SetPoint("BOTTOMRIGHT", rosterParent, "BOTTOMRIGHT", 0, 0);
@@ -525,16 +510,10 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
 
     panel3.guildRosterBar.updateRosterLabel();
 
-    -- Source panel header
     sourcePanel.headerText:SetText("SOURCE");
-
-    -- Loot panel header
     lootPanel.headerText:SetText("LOOT");
-
-    -- Detail panel header
     detailPanel.headerText:SetText("WISHLIST");
 
-    -- Guild loot sort/obtained buttons (created once)
     local guildLootSortMode = frame.guildLootSortMode or "boss";
     local guildHideObtained = frame.guildHideObtained;
     if guildHideObtained == nil then guildHideObtained = true end
@@ -624,7 +603,6 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
     lootPanel.updateGuildSortLabel();
     lootPanel.updateGuildObtainedBtn();
 
-    -- Setup difficulty filter in source panel (above boss list)
     rebuildGuildView = function()
         filter = frame.guildDifficultyFilter or "All";
         guildLootSortMode = frame.guildLootSortMode or "boss";
@@ -639,7 +617,6 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
 
         local bossGroups, bossOrder, bossToRaid, bossToJournalId = self:CollectGuildWishlistByBoss(filter, rosterMemberSet);
 
-        -- Compute boss counts and totals
         local bossCounts = {};
         local totalItems = 0;
         local memberSet = {};
@@ -656,7 +633,6 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         end
         local memberCount = 0;
         for _ in pairs(memberSet) do memberCount = memberCount + 1 end
-        -- Derive display name: team name when filtered, guild name otherwise
         local displayName = guildName;
         if guildRosterFilter ~= "all" then
             local teams = self:GetGuildTeams();
@@ -669,15 +645,12 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         end
         frame.subtitleText:SetText(displayName .. "  |  " .. memberCount .. " members  |  " .. totalItems .. " items");
 
-        -- Populate source panel boss list
         self:PopulateSourcePanel(sourcePanel, bossOrder, bossCounts, function(selectedBoss)
             self:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, selectedBoss, guildRealm, detailPanel, bossToRaid, bossToJournalId, guildLootSortMode, guildHideObtained, rosterMemberSet);
         end, bossToRaid, bossToJournalId);
 
-        -- Populate loot panel (all bosses)
         self:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, nil, guildRealm, detailPanel, bossToRaid, bossToJournalId, guildLootSortMode, guildHideObtained, rosterMemberSet);
 
-        -- Reset detail panel
         self:PopulateGuildDetailDefault(detailPanel, displayName, memberCount, totalItems, rosterMemberSet);
     end
 
@@ -703,7 +676,6 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
 
     local container = { guildSections = {}, guildScrollChild = scrollChild };
 
-    -- Helper to build item+member rows for a single itemData entry
     local function buildItemWithMembers(itemData)
         table.sort(itemData.members, function(a, b)
             local aGain = (a.gain and a.gain.percent) or 0;
@@ -759,7 +731,6 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
         table.insert(container.guildSections, { raidLabel = label });
     end
 
-    -- Build flat item list for non-boss sorts
     local function buildFlatList(sortKey)
         local flatItems = {};
         for _, bossName in ipairs(bossOrder) do
@@ -839,7 +810,6 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
         end
     end
 
-    -- Append obtained items at bottom if showing
     if not hideObtained then
         local obtainedItems = self:CollectObtainedItems(nil, nil, rosterMemberSet);
         if #obtainedItems > 0 then
@@ -918,7 +888,6 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
 
     detailPanel.headerText:SetText("LOOT HISTORY");
 
-    -- Store current state on detailPanel so back button can restore it
     detailPanel._lastGuildName = guildName;
     detailPanel._lastMemberCount = memberCount;
     detailPanel._lastTotalItems = totalItems;
@@ -938,7 +907,6 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
     statsText:SetText("|cff888888" .. memberCount .. " members  |cff666666|||r  |cff888888" .. totalItems .. " items|r");
     yOffset = yOffset + 20;
 
-    -- Date / Character toggle buttons
     local dateBtn = self:CreateSubFilterBtn(scrollChild, "Date", 50);
     dateBtn:SetHeight(14);
     dateBtn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
@@ -968,7 +936,6 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
     updateViewToggle();
     yOffset = yOffset + 20;
 
-    -- Guild obtained items from wishlists
     local obtainedItems = self:CollectObtainedItems(nil, nil, rosterMemberSet);
     if #obtainedItems == 0 then
         local emptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
@@ -982,7 +949,6 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
     end
 
     if guildHistoryView == "character" then
-        -- Group by character, enrich with class info
         local charMap = {};
         local charOrder = {};
         for _, record in ipairs(obtainedItems) do
@@ -994,7 +960,6 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
             charMap[name].count = charMap[name].count + 1;
         end
 
-        -- Enrich with classId/realmName from guild data
         local guildData = self.state.guildWishlistData;
         if guildData and guildData.wishlists then
             for _, charEntry in ipairs(guildData.wishlists) do
@@ -1005,7 +970,6 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
             end
         end
 
-        -- Sort by count DESC
         table.sort(charOrder, function(a, b) return charMap[a].count > charMap[b].count end);
 
         local sectionHeader = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
@@ -1034,12 +998,10 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
             countText:SetPoint("RIGHT", charRow, "RIGHT", -12, 0);
             countText:SetText("|cff888888" .. info.count .. " items|r");
 
-            -- Hover highlight
             local hl = self:CreateRowHighlight(charRow);
             charRow:SetScript("OnEnter", function() hl:Show() end);
             charRow:SetScript("OnLeave", function() hl:Hide() end);
 
-            -- Click â†’ navigate to player detail
             charRow:SetScript("OnClick", function()
                 GoWWishlists:PopulateGuildPlayerDetail(detailPanel, {
                     characterName = charName,
@@ -1052,7 +1014,6 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
             yOffset = yOffset + 22;
         end
     else
-        -- Date view (default) â€” chronological obtained items
         local sectionHeader = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
         sectionHeader:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
         sectionHeader:SetText("|cff888888Obtained Items (" .. #obtainedItems .. ")|r");
@@ -1097,7 +1058,6 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
 
     local yOffset = 4;
 
-    -- Back button
     local backBtn = CreateFrame("Button", nil, scrollChild, "BackdropTemplate");
     backBtn:SetSize(16, 16);
     backBtn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 6, -yOffset);
@@ -1120,7 +1080,6 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     end);
     yOffset = yOffset + 22;
 
-    -- Collect member's wishlist items
     local allMemberItems = {};
     if self.state.guildWishlistData and self.state.guildWishlistData.wishlists then
         for _, charEntry in ipairs(self.state.guildWishlistData.wishlists) do
@@ -1135,7 +1094,6 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
         end
     end
 
-    -- Apply slot filter
     local memberItems = {};
     local seenSlots = {};
     for _, entry in ipairs(allMemberItems) do
@@ -1148,7 +1106,6 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
         end
     end
 
-    -- Sort
     local PLAYER_SORT_LABELS = { upgrade = "Upgrade", name = "Name", slot = "Slot" };
     if guildPlayerSortMode == "name" then
         table.sort(memberItems, function(a, b)
@@ -1168,7 +1125,6 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
             return aName < bName;
         end);
     else
-        -- Default: upgrade (gain% DESC)
         table.sort(memberItems, function(a, b)
             local aGain = (a.gain and a.gain.percent) or 0;
             local bGain = (b.gain and b.gain.percent) or 0;
@@ -1176,7 +1132,6 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
         end);
     end
 
-    -- Sort / Slot filter buttons
     local popupMenu = self:GetOrCreatePopupMenu();
     local showPopup = popupMenu.showPopup;
 
@@ -1229,13 +1184,11 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
 
     yOffset = yOffset + 20;
 
-    -- Item count
     local countText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     countText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
     countText:SetText("|cff888888" .. #memberItems .. " wishlist items|r");
     yOffset = yOffset + 16;
 
-    -- Wishlist items
     for _, entry in ipairs(memberItems) do
         local row = self:CreateItemRow(scrollChild);
         row.showSource = true;
@@ -1254,10 +1207,8 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
         yOffset = yOffset + 60;
     end
 
-    -- Obtained items for this member
     local memberObtained = self:CollectObtainedItems(member.characterName, member.realmName);
     if #memberObtained > 0 then
-        -- Section separator
         local sep = scrollChild:CreateTexture(nil, "ARTWORK");
         sep:SetTexture("Interface\\Buttons\\WHITE8x8");
         sep:SetVertexColor(0.25, 0.25, 0.3, 0.3);
@@ -1271,7 +1222,6 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
         lootHeader:SetText("|cff888888Obtained Items (" .. #memberObtained .. ")|r");
         yOffset = yOffset + 16;
 
-        -- Already sorted most-recent-first, cap at 20
         for i, record in ipairs(memberObtained) do
             if i > 20 then break end
 

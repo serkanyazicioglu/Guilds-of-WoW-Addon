@@ -46,18 +46,15 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         frame.subtitleText:SetText(subtitleStr);
         frame.wishlistSubtitle = subtitleStr;
 
-        -- Populate source panel
         self:PopulateSourcePanel(sourcePanel, bossOrder, bossCounts, function(selectedBoss)
             currentBoss = selectedBoss;
             if GOW.DB and GOW.DB.profile then GOW.DB.profile.wishlistSelectedBoss = selectedBoss end
             populateLootPanel(currentBoss);
         end, bossToRaid, bossToJournalId);
 
-        -- Restore saved boss selection if it exists in the current boss list
         local savedBoss = GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistSelectedBoss or nil;
         if savedBoss and bossGroups[savedBoss] then
             currentBoss = savedBoss;
-            -- Find and click the saved boss row in the source panel
             if sourcePanel.bossRows then
                 for i, entry in ipairs(sourcePanel.bossRows) do
                     if entry.bossName == savedBoss then
@@ -73,7 +70,6 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         populateDetailPanel();
     end
 
-    -- Populate loot (center) panel for selected boss
     populateLootPanel = function(selectedBoss)
         local scrollChild = lootPanel.scrollChild;
         self:ClearChildren(scrollChild);
@@ -82,7 +78,6 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         local container = { sections = {}, scrollChild = scrollChild };
 
         if selectedBoss then
-            -- Show only the selected boss's items (expanded)
             local items = bossGroups[selectedBoss];
             if items and #items > 0 then
                 local header = self:CreateBossHeader(scrollChild, selectedBoss, #items);
@@ -105,14 +100,13 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
                 table.insert(container.sections, { header = header });
             end
         else
-            -- Show all bosses (collapsed by default)
             self:BuildSections(container, scrollChild, bossGroups, bossOrder, unknownItems, bossToRaid, bossToJournalId);
         end
 
         self:RelayoutBrowserContent(container);
     end
 
-    -- Populate detail (right) panel â€” personal wishlist with sort/filter
+
     local detailSortMode = frame.detailSortMode or "upgrade";
     local detailSlotFilter = frame.detailSlotFilter or "All";
     local detailHideObtained = frame.detailHideObtained;
@@ -123,7 +117,6 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         self:ClearChildren(scrollChild);
         scrollChild:SetWidth(detailPanel.scrollFrame:GetWidth());
 
-        -- Collect items matching filter
         local currentFilter = frame.personalDifficultyFilter or "All";
         local sortedItems = {};
         local obtainedItems = {};
@@ -146,7 +139,6 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
             end
         end
 
-        -- Sort based on mode
         local SLOT_LABELS = self.constants.SLOT_LABELS;
         if detailSortMode == "name" then
             table.sort(sortedItems, function(a, b)
@@ -155,7 +147,6 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
                 return aName < bName;
             end);
         elseif detailSortMode == "boss" then
-            -- Build boss index from bossOrder
             local bossIdx = {};
             for i, name in ipairs(bossOrder) do bossIdx[name] = i end
             table.sort(sortedItems, function(a, b)
@@ -187,7 +178,6 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
 
         local yOffset = 0;
 
-        -- Item count header
         local countText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
         countText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 8, -yOffset);
         countText:SetText("|cff888888" .. #sortedItems .. " items|r");
@@ -207,13 +197,11 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         if #sortedItems == 0 and #obtainedItems == 0 then
             local emptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
             emptyText:SetPoint("TOP", scrollChild, "TOP", 0, -30);
-            emptyText:SetText("|cff888888No items remaining.|r");
+            emptyText:SetText("|cff888888No items.|r");
             yOffset = 80;
         end
 
-        -- Obtained items at bottom (when toggle is off)
         if #obtainedItems > 0 then
-            -- Separator
             local sep = scrollChild:CreateTexture(nil, "ARTWORK");
             sep:SetTexture("Interface\\Buttons\\WHITE8x8");
             sep:SetVertexColor(0.25, 0.25, 0.3, 0.3);
@@ -243,7 +231,6 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         scrollChild:SetHeight(yOffset + 8);
     end
 
-    -- Sort/filter dropdown menus in detail panel header (created once)
     if not detailPanel.sortBtn then
         local headerBar = detailPanel.headerBar;
         local popupMenu = self:GetOrCreatePopupMenu();
@@ -257,13 +244,11 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
             slot = "Slot",
         };
 
-        -- Sort trigger button
         local sortBtn = self:CreateSubFilterBtn(detailPanel, "Sort: Upgrade", 90);
         sortBtn:SetHeight(14);
         sortBtn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
         detailPanel.sortBtn = sortBtn;
 
-        -- Slot trigger button
         local slotBtn = self:CreateSubFilterBtn(detailPanel, "Slot: All", 80);
         slotBtn:SetHeight(14);
         slotBtn:SetPoint("LEFT", sortBtn, "RIGHT", 4, 0);
@@ -329,7 +314,6 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         detailPanel.updateSortLabel = updateSortLabel;
         detailPanel.updateSlotLabel = updateSlotLabel;
 
-        -- Obtained toggle button (eye icon)
         local obtainedBtn = CreateFrame("Button", nil, detailPanel, "BackdropTemplate");
         obtainedBtn:SetSize(18, 14);
         obtainedBtn:SetPoint("LEFT", slotBtn, "RIGHT", 4, 0);
@@ -368,7 +352,6 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         detailPanel.scrollFrame:SetPoint("TOPLEFT", sortBtn, "BOTTOMLEFT", -4, -4);
     end
 
-    -- Apply initial label states
     detailPanel.updateSortLabel();
     detailPanel.updateSlotLabel();
     detailPanel.updateObtainedBtn();

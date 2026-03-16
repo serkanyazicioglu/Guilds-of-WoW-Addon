@@ -5,7 +5,6 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     local row = CreateFrame("Frame", nil, parent);
     row:SetHeight(self.constants.ALERT_ITEM_ROW_HEIGHT);
 
-    -- Green accent sidebar
     local sideBar = row:CreateTexture(nil, "ARTWORK", nil, 2);
     sideBar:SetTexture("Interface\\Buttons\\WHITE8x8");
     sideBar:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.8);
@@ -13,7 +12,6 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     sideBar:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0);
     sideBar:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0);
 
-    -- Inner frame for vertical centering
     local inner = CreateFrame("Frame", nil, row);
     inner:SetPoint("LEFT", row, "LEFT", 0, 0);
     inner:SetPoint("RIGHT", row, "RIGHT", 0, 0);
@@ -24,7 +22,6 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     row.iconBorder = iconBorder;
     row.icon = icon;
 
-    -- Line 1: item name
     local nameText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     nameText:SetPoint("TOPLEFT", iconBorder, "TOPRIGHT", 6, 2);
     nameText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
@@ -32,7 +29,6 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     nameText:SetWordWrap(false);
     row.nameText = nameText;
 
-    -- Line 2: source + difficulty
     local infoText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     infoText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -3);
     infoText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
@@ -40,10 +36,8 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     infoText:SetWordWrap(false);
     row.infoText = infoText;
 
-    -- Hover zone for info line tooltip (difficulty)
     row.infoHover = self:CreateTextHoverTooltip(inner, infoText, row);
 
-    -- Line 3: tag + gain + notes
     local detailText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     detailText:SetPoint("TOPLEFT", infoText, "BOTTOMLEFT", 0, -2);
     detailText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
@@ -51,17 +45,14 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     detailText:SetWordWrap(false);
     row.detailText = detailText;
 
-    -- Hover zone for detail line tooltip (tag)
     row.detailHover = self:CreateTextHoverTooltip(inner, detailText, row, "Priority", 0, 1, 0);
 
     local gainBadge = self:CreateGainBadge(inner);
     gainBadge:SetPoint("BOTTOMRIGHT", inner, "BOTTOMRIGHT", -8, 0);
     row.gainBadge = gainBadge;
 
-    -- Bottom separator
     self:CreateRowSeparator(row);
 
-    -- Note icon: top-right
     local noteIcon = CreateFrame("Button", nil, row);
     noteIcon:SetSize(14, 14);
     noteIcon:SetPoint("TOPRIGHT", row, "TOPRIGHT", -8, -6);
@@ -88,7 +79,6 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
         GameTooltip:Hide();
     end);
 
-    -- Populate: icon + name (Line 1)
     row.itemId = match.itemId;
     local itemName = self:SetItemIconAndName(row, match.itemId, itemLink);
 
@@ -103,13 +93,11 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     row.infoText:SetText(self:BuildInfoLine(match));
     row.detailText:SetText(self:BuildDetailLine(match));
 
-    -- Set tooltip text for info line (source + difficulty)
     local infoParts = {};
     if match.sourceBossName then table.insert(infoParts, "Source: " .. match.sourceBossName) end
     if match.difficulty then table.insert(infoParts, "Difficulty: " .. match.difficulty) end
     if #infoParts > 0 then row.infoHover.tipText = table.concat(infoParts, "\n") end
 
-    -- Set tooltip text for detail line (tag/priority)
     if match.tag then
         local tagInfo = self.constants.TAG_DISPLAY[match.tag];
         if tagInfo then
@@ -183,7 +171,6 @@ function GoWWishlists:CreateWishlistAlertContainer()
         frame.itemRows = {};
     end);
 
-    -- Fade-in animation
     local fadeInGroup = frame:CreateAnimationGroup();
     local fadeInAnim = fadeInGroup:CreateAnimation("Alpha");
     fadeInAnim:SetFromAlpha(0);
@@ -195,7 +182,6 @@ function GoWWishlists:CreateWishlistAlertContainer()
     end);
     frame.fadeIn = fadeInGroup;
 
-    -- Fade-out animation group
     local fadeOut = frame:CreateAnimationGroup();
     local fadeAnim = fadeOut:CreateAnimation("Alpha");
     fadeAnim:SetFromAlpha(1);
@@ -205,7 +191,6 @@ function GoWWishlists:CreateWishlistAlertContainer()
     fadeOut:SetScript("OnFinished", function()
         frame:Hide();
         frame:SetAlpha(1);
-        -- Clear item rows when fully dismissed
         for _, row in ipairs(frame.itemRows or {}) do
             row:Hide();
             row:SetParent(nil);
@@ -214,7 +199,6 @@ function GoWWishlists:CreateWishlistAlertContainer()
     end);
     frame.fadeOut = fadeOut;
 
-    -- Right-click to dismiss
     frame:SetScript("OnMouseUp", function(self, button)
         if button == "RightButton" then
             self:Hide();

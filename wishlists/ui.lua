@@ -1,7 +1,6 @@
 local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
 
--- Wishlist Browser Frame
 GoWWishlists.constants.BROWSER_ITEM_HEIGHT = 58;
 GoWWishlists.constants.BROWSER_BOSS_HEADER_HEIGHT = 24;
 GoWWishlists.constants.RAID_HEADER_HEIGHT = 18;
@@ -10,7 +9,6 @@ function GoWWishlists:CreateItemRow(parent)
     local row = CreateFrame("Frame", nil, parent);
     row:SetHeight(self.constants.BROWSER_ITEM_HEIGHT);
 
-    -- Inner anchor for vertical centering: icon + text block
     local inner = CreateFrame("Frame", nil, row);
     inner:SetPoint("LEFT", row, "LEFT", 0, 0);
     inner:SetPoint("RIGHT", row, "RIGHT", 0, 0);
@@ -21,7 +19,6 @@ function GoWWishlists:CreateItemRow(parent)
     row.iconBorder = iconBorder;
     row.icon = icon;
 
-    -- Note icon: top-right
     local noteIcon = CreateFrame("Button", nil, row);
     noteIcon:SetSize(14, 14);
     noteIcon:SetPoint("TOPRIGHT", row, "TOPRIGHT", -8, -6);
@@ -31,7 +28,6 @@ function GoWWishlists:CreateItemRow(parent)
     noteIcon:Hide();
     row.noteIcon = noteIcon;
 
-    -- Line 1: item name
     local nameText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     nameText:SetPoint("TOPLEFT", iconBorder, "TOPRIGHT", 6, 2);
     nameText:SetPoint("RIGHT", row, "RIGHT", -26, 0);
@@ -39,7 +35,6 @@ function GoWWishlists:CreateItemRow(parent)
     nameText:SetWordWrap(false);
     row.nameText = nameText;
 
-    -- Line 2: source + difficulty
     local infoText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     infoText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -3);
     infoText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
@@ -47,10 +42,8 @@ function GoWWishlists:CreateItemRow(parent)
     infoText:SetWordWrap(false);
     row.infoText = infoText;
 
-    -- Hover zone for info line tooltip (source + difficulty)
     row.infoHover = self:CreateTextHoverTooltip(inner, infoText, row);
 
-    -- Line 3: tag + gain + notes
     local detailText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     detailText:SetPoint("TOPLEFT", infoText, "BOTTOMLEFT", 0, -2);
     detailText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
@@ -58,7 +51,6 @@ function GoWWishlists:CreateItemRow(parent)
     detailText:SetWordWrap(false);
     row.detailText = detailText;
 
-    -- Hover zone for detail line tooltip (tag/priority)
     row.detailHover = self:CreateTextHoverTooltip(inner, detailText, row, "Priority", 0, 1, 0);
 
     local gainBadge = self:CreateGainBadge(inner);
@@ -104,13 +96,11 @@ function GoWWishlists:PopulateItemRow(row, entry)
     row.infoText:SetText(self:BuildInfoLine(entry, row.showSource));
     row.detailText:SetText(self:BuildDetailLine(entry));
 
-    -- Set tooltip text for info line (source + difficulty)
     local infoParts = {};
     if entry.sourceBossName then table.insert(infoParts, "Source: " .. entry.sourceBossName) end
     if entry.difficulty then table.insert(infoParts, "Difficulty: " .. entry.difficulty) end
     row.infoHover.tipText = #infoParts > 0 and table.concat(infoParts, "\n") or nil;
 
-    -- Set tooltip text for detail line (tag/priority)
     row.detailHover.tipText = nil;
     if entry.tag then
         local tagInfo = self.constants.TAG_DISPLAY[entry.tag];
@@ -129,31 +119,26 @@ function GoWWishlists:CreateBossHeader(parent, bossName, itemCount)
     header.isCollapsed = true;
     header.itemRows = {};
 
-    -- Collapse/expand arrow
     local arrow = header:CreateTexture(nil, "OVERLAY");
     arrow:SetSize(12, 12);
     arrow:SetPoint("LEFT", header, "LEFT", 6, 0);
     arrow:SetTexture("Interface\\Buttons\\UI-PlusButton-UP");
     header.arrow = arrow;
 
-    -- Left accent bar
     local bar = header:CreateTexture(nil, "ARTWORK");
     bar:SetTexture("Interface\\Buttons\\WHITE8x8");
     bar:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.6);
     bar:SetSize(3, 16);
     bar:SetPoint("LEFT", arrow, "RIGHT", 4, 0);
 
-    -- Boss name
     local nameText = header:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     nameText:SetPoint("LEFT", bar, "RIGHT", 6, 0);
     nameText:SetText("|cffcc00cc" .. bossName .. "|r");
 
-    -- Item count
     local countText = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     countText:SetPoint("LEFT", nameText, "RIGHT", 8, 0);
     countText:SetText("|cff888888(" .. itemCount .. ")|r");
 
-    -- Separator line
     local sep = header:CreateTexture(nil, "ARTWORK");
     sep:SetTexture("Interface\\Buttons\\WHITE8x8");
     sep:SetVertexColor(0.3, 0.3, 0.3, 0.3);
@@ -161,7 +146,6 @@ function GoWWishlists:CreateBossHeader(parent, bossName, itemCount)
     sep:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT", 6, 0);
     sep:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", -6, 0);
 
-    -- Hover highlight
     local highlight = self:CreateRowHighlight(header);
     header:SetScript("OnEnter", function(self) highlight:Show() end);
     header:SetScript("OnLeave", function(self) highlight:Hide() end);
@@ -187,16 +171,13 @@ function GoWWishlists:StyleScrollBar(scrollFrame)
     local scrollBar = scrollFrame.ScrollBar or _G[scrollFrame:GetName() .. "ScrollBar"];
     if not scrollBar then return end
 
-    -- Hide default up/down buttons
     local upBtn = scrollBar.ScrollUpButton or _G[scrollBar:GetName() .. "ScrollUpButton"];
     local downBtn = scrollBar.ScrollDownButton or _G[scrollBar:GetName() .. "ScrollDownButton"];
     if upBtn then upBtn:SetAlpha(0); upBtn:SetSize(1, 1) end
     if downBtn then downBtn:SetAlpha(0); downBtn:SetSize(1, 1) end
 
-    -- Narrow the scrollbar track
     scrollBar:SetWidth(6);
 
-    -- Style the thumb (draggable part)
     local thumb = scrollBar.ThumbTexture or scrollBar:GetThumbTexture();
     if thumb then
         thumb:SetTexture("Interface\\Buttons\\WHITE8x8");
@@ -204,13 +185,11 @@ function GoWWishlists:StyleScrollBar(scrollFrame)
         thumb:SetSize(6, 40);
     end
 
-    -- Add a dark track background
     local track = scrollBar:CreateTexture(nil, "BACKGROUND");
     track:SetTexture("Interface\\Buttons\\WHITE8x8");
     track:SetVertexColor(0.05, 0.05, 0.08, 0.6);
     track:SetAllPoints(scrollBar);
 
-    -- Auto-hide scrollbar when content fits
     local function updateScrollBarVisibility()
         local child = scrollFrame:GetScrollChild();
         if not child then return end
@@ -230,7 +209,6 @@ function GoWWishlists:CreatePanelFrame(parent, name)
     local panel = CreateFrame("Frame", name, parent, "BackdropTemplate");
     self:ApplyBackdrop(panel, 0.06, 0.06, 0.08, 0.95, 0.2, 0.2, 0.25, 0.6);
 
-    -- Panel header bar
     local headerBar = CreateFrame("Frame", nil, panel);
     headerBar:SetHeight(self.constants.PANEL_HEADER_HEIGHT);
     headerBar:SetPoint("TOPLEFT", panel, "TOPLEFT", 1, -1);
@@ -247,7 +225,6 @@ function GoWWishlists:CreatePanelFrame(parent, name)
     panel.headerText = headerText;
     panel.headerBar = headerBar;
 
-    -- Scroll frame for panel content
     local sf = CreateFrame("ScrollFrame", name and (name .. "Scroll") or nil, panel, "UIPanelScrollFrameTemplate");
     sf:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 0, -2);
     sf:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -20, 2);
@@ -258,10 +235,8 @@ function GoWWishlists:CreatePanelFrame(parent, name)
     panel.scrollFrame = sf;
     panel.scrollChild = child;
 
-    -- Style scrollbar to match theme
     self:StyleScrollBar(sf);
 
-    -- Set scroll child width once layout completes (GetWidth() is 0 at creation time)
     sf:HookScript("OnShow", function(self)
         local w = self:GetWidth();
         if w > 0 then child:SetWidth(w) end
@@ -277,7 +252,6 @@ function GoWWishlists:Create3PanelLayout(parent)
     local SOURCE_W = self.constants.SOURCE_PANEL_WIDTH;
     local DETAIL_W = self.constants.DETAIL_PANEL_WIDTH;
 
-    -- Left panel: Source/boss selection
     local sourcePanel = self:CreatePanelFrame(container, "GoWSourcePanel");
     sourcePanel:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0);
     sourcePanel:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0);
@@ -285,7 +259,6 @@ function GoWWishlists:Create3PanelLayout(parent)
     sourcePanel.headerText:SetText("SOURCE");
     container.sourcePanel = sourcePanel;
 
-    -- Right panel: Wishlist / Player detail
     local detailPanel = self:CreatePanelFrame(container, "GoWDetailPanel");
     detailPanel:SetPoint("TOPRIGHT", container, "TOPRIGHT", 0, 0);
     detailPanel:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0);
@@ -293,7 +266,6 @@ function GoWWishlists:Create3PanelLayout(parent)
     detailPanel.headerText:SetText("WISHLIST");
     container.detailPanel = detailPanel;
 
-    -- Center panel: Loot drops / items
     local lootPanel = self:CreatePanelFrame(container, "GoWLootPanel");
     lootPanel:SetPoint("TOPLEFT", sourcePanel, "TOPRIGHT", 2, 0);
     lootPanel:SetPoint("BOTTOMRIGHT", detailPanel, "BOTTOMLEFT", -2, 0);
@@ -380,7 +352,6 @@ function GoWWishlists:PopulateSourcePanel(panel, bossOrder, bossCounts, onBossSe
     local yOffset = 0;
     local bossRows = {};
 
-    -- "All Bosses" row
     local allRow = self:CreateBossRow(scrollChild, "All Bosses", totalCount, true);
     allRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
     allRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
@@ -389,7 +360,6 @@ function GoWWishlists:PopulateSourcePanel(panel, bossOrder, bossCounts, onBossSe
     table.insert(bossRows, { row = allRow, bossName = nil });
     yOffset = yOffset + self.constants.BOSS_ROW_HEIGHT;
 
-    -- Separator after All Bosses
     local sep = scrollChild:CreateTexture(nil, "ARTWORK");
     sep:SetTexture("Interface\\Buttons\\WHITE8x8");
     sep:SetVertexColor(0.25, 0.25, 0.3, 0.4);
@@ -398,7 +368,6 @@ function GoWWishlists:PopulateSourcePanel(panel, bossOrder, bossCounts, onBossSe
     sep:SetPoint("RIGHT", scrollChild, "RIGHT", -6, 0);
     yOffset = yOffset + 4;
 
-    -- Helper to add a boss row
     local function addBossRow(bossName)
         local count = bossCounts[bossName] or 0;
         local bossRow = self:CreateBossRow(scrollChild, bossName, count, false);
@@ -441,7 +410,6 @@ function GoWWishlists:PopulateSourcePanel(panel, bossOrder, bossCounts, onBossSe
             end
         end
     else
-        -- No raid grouping available, flat list
         for _, bossName in ipairs(bossOrder) do
             addBossRow(bossName);
         end
@@ -449,7 +417,6 @@ function GoWWishlists:PopulateSourcePanel(panel, bossOrder, bossCounts, onBossSe
 
     scrollChild:SetHeight(yOffset + 4);
 
-    -- Click handling
     local function selectBoss(selectedIdx)
         for i, entry in ipairs(bossRows) do
             GoWWishlists:SetBossRowActive(entry.row, i == selectedIdx);
@@ -481,7 +448,6 @@ function GoWWishlists:CreateSearchBox(parent)
     searchIcon:SetTexture("Interface\\Common\\UI-Searchbox-Icon");
     searchIcon:SetVertexColor(0.5, 0.5, 0.5, 0.7);
 
-    -- Placeholder text
     local placeholder = search:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     placeholder:SetPoint("LEFT", search, "LEFT", 20, 0);
     placeholder:SetText("|cff555555Search items...|r");
@@ -505,7 +471,6 @@ function GoWWishlists:CreateLootHistoryRow(parent, showWinner)
     local row = CreateFrame("Frame", nil, parent);
     row:SetHeight(self.constants.LOOT_ROW_HEIGHT);
 
-    -- Inner anchor for vertical centering
     local inner = CreateFrame("Frame", nil, row);
     inner:SetPoint("LEFT", row, "LEFT", 0, 0);
     inner:SetPoint("RIGHT", row, "RIGHT", 0, 0);
@@ -516,7 +481,6 @@ function GoWWishlists:CreateLootHistoryRow(parent, showWinner)
     row.iconBorder = iconBorder;
     row.icon = icon;
 
-    -- Line 1: item name
     local nameText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     nameText:SetPoint("TOPLEFT", iconBorder, "TOPRIGHT", 6, 2);
     nameText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
@@ -524,7 +488,6 @@ function GoWWishlists:CreateLootHistoryRow(parent, showWinner)
     nameText:SetWordWrap(false);
     row.nameText = nameText;
 
-    -- Line 2: difficulty + boss + winner + timestamp
     local infoText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     infoText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -3);
     infoText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
@@ -534,7 +497,6 @@ function GoWWishlists:CreateLootHistoryRow(parent, showWinner)
 
     row.showWinner = showWinner;
 
-    -- Bottom separator
     self:CreateRowSeparator(row);
 
     row.highlight = self:CreateRowHighlight(row);
@@ -556,7 +518,6 @@ function GoWWishlists:PopulateLootHistoryRow(row, record)
         end);
     end
 
-    -- Line 2: difficulty + boss + winner + timestamp
     local infoParts = {};
     if record.difficulty then
         table.insert(infoParts, self:FormatDifficultyTag(record.difficulty));
