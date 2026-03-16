@@ -98,6 +98,7 @@ function GoWWishlists:CreateWishlistBrowserFrame()
 
     local function SetActiveTab(tabIndex)
         frame.activeTab = tabIndex;
+        if GOW.DB and GOW.DB.profile then GOW.DB.profile.wishlistActiveTab = tabIndex end
 
         -- Hide all content frames, deactivate all tabs
         for _, cf in ipairs(allContentFrames) do cf:Hide() end
@@ -155,8 +156,10 @@ function GoWWishlists:ShowWishlistBrowserFrame()
         frame.guildWishlistTab:Hide();
     end
 
-    -- Always open on personal tab
-    frame.SetActiveTab(1);
+    -- Restore last active tab (fallback to PERSONAL if ROSTER unavailable)
+    local savedTab = GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistActiveTab or 1;
+    if savedTab == 2 and not frame.guildWishlistTab:IsShown() then savedTab = 1 end
+    frame.SetActiveTab(savedTab);
     frame:Show();
 end
 
@@ -214,6 +217,7 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
 
     local function SetActiveTab(tabIndex)
         container.activeTab = tabIndex;
+        if GOW.DB and GOW.DB.profile then GOW.DB.profile.wishlistActiveTab = tabIndex end
         for _, cf in ipairs(allContentFrames) do cf:Hide() end
         for _, tab in ipairs(allTabs) do
             if tab:IsShown() then
@@ -271,7 +275,9 @@ function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
         self:PopulateGuildWishlistView(guildFrame);
     end
 
-    container.SetActiveTab(container.activeTab or 1);
+    local savedTab = GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistActiveTab or 1;
+    if savedTab == 2 and not container.rosterTab:IsShown() then savedTab = 1 end
+    container.SetActiveTab(savedTab);
     container:Show();
 end
 

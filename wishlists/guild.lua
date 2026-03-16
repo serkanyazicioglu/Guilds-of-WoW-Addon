@@ -427,7 +427,8 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
 
     local guildName = self.state.guildWishlistData.guild or "Guild";
     local guildRealm = self.state.guildWishlistData.guildRealm;
-    local filter = frame.guildDifficultyFilter or "All";
+    local filter = frame.guildDifficultyFilter or (GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistGuildDifficulty) or "All";
+    frame.guildDifficultyFilter = filter;
 
     -- Roster selector bar (created once, full-width container above 3-panel layout)
     local guildRosterFilter = frame.guildRosterFilter or (GOW.DB and GOW.DB.profile and GOW.DB.profile.guildRosterFilter) or "all";
@@ -682,6 +683,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
 
     self:SetupDifficultyFilterButtons(sourcePanel, function(diff)
         frame.guildDifficultyFilter = diff;
+        if GOW.DB and GOW.DB.profile then GOW.DB.profile.wishlistGuildDifficulty = diff end
         self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, diff);
         rebuildGuildView();
     end);

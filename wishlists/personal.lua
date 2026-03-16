@@ -11,7 +11,8 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
 
     local charName = self.state.currentCharInfo and self.state.currentCharInfo.name or UnitName("player");
     local charRealm = self.state.currentCharInfo and self.state.currentCharInfo.realmNormalized or GetNormalizedRealmName();
-    local filter = frame.personalDifficultyFilter or "All";
+    local filter = frame.personalDifficultyFilter or (GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistPersonalDifficulty) or "All";
+    frame.personalDifficultyFilter = filter;
 
     sourcePanel.headerText:SetText("SOURCE");
     lootPanel.headerText:SetText("LOOT DROPS");
@@ -48,12 +49,27 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         -- Populate source panel
         self:PopulateSourcePanel(sourcePanel, bossOrder, bossCounts, function(selectedBoss)
             currentBoss = selectedBoss;
+            if GOW.DB and GOW.DB.profile then GOW.DB.profile.wishlistSelectedBoss = selectedBoss end
             populateLootPanel(currentBoss);
         end, bossToRaid, bossToJournalId);
 
-        -- Populate loot + detail
-        currentBoss = nil;
-        populateLootPanel(nil);
+        -- Restore saved boss selection if it exists in the current boss list
+        local savedBoss = GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistSelectedBoss or nil;
+        if savedBoss and bossGroups[savedBoss] then
+            currentBoss = savedBoss;
+            -- Find and click the saved boss row in the source panel
+            if sourcePanel.bossRows then
+                for i, entry in ipairs(sourcePanel.bossRows) do
+                    if entry.bossName == savedBoss then
+                        sourcePanel.selectBoss(i);
+                        break;
+                    end
+                end
+            end
+        else
+            currentBoss = nil;
+            populateLootPanel(nil);
+        end
         populateDetailPanel();
     end
 
@@ -359,6 +375,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
 
     self:SetupDifficultyFilterButtons(sourcePanel, function(diff)
         frame.personalDifficultyFilter = diff;
+        if GOW.DB and GOW.DB.profile then GOW.DB.profile.wishlistPersonalDifficulty = diff end
         self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, diff);
         rebuildPersonalView();
     end);

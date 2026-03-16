@@ -176,6 +176,11 @@ function GoWWishlists:CreateWishlistAlertContainer()
     closeBtn:SetScript("OnClick", function()
         frame:Hide();
         if frame.dismissTimer then frame.dismissTimer:Cancel(); frame.dismissTimer = nil end
+        for _, row in ipairs(frame.itemRows or {}) do
+            row:Hide();
+            row:SetParent(nil);
+        end
+        frame.itemRows = {};
     end);
 
     -- Fade-in animation
