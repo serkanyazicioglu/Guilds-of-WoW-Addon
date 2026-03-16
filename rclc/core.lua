@@ -7,13 +7,18 @@ local GoWWishlists = GOW.Wishlists;
 local RCGoW = RCLootCouncil:NewModule("RCGoW", "AceTimer-3.0", "AceEvent-3.0");
 GOW.RCGoW = RCGoW;
 
-local DEBUG_WISH = {
-    tag = "BIS",
-    difficulty = "Mythic",
-    notes = "Debug: fake wishlist entry",
-    gain = { percent = 12.5, stat = 350, metric = "DPS" },
-};
-RCGoW.DEBUG_WISH = DEBUG_WISH;
+local DEBUG_TAGS = { "BIS", "Upgrade", "Sidegrade", "Off-spec" };
+local function GetDebugWish()
+    local tag = DEBUG_TAGS[math.random(#DEBUG_TAGS)];
+    local pct = math.random(1, 250) / 10;
+    return {
+        tag = tag,
+        difficulty = "Mythic",
+        notes = "Debug: fake wishlist entry",
+        gain = { percent = pct, stat = math.random(50, 800), metric = "DPS" },
+    };
+end
+RCGoW.GetDebugWish = GetDebugWish;
 
 function RCGoW:OnInitialize()
     GOW.Logger:Debug("RCLootCouncil integration active.");
@@ -51,7 +56,7 @@ function RCGoW:GetPlayerWish(itemId, playerFullName)
     end
 
     if #matches == 0 then
-        if GOW.consts.ENABLE_DEBUGGING then return DEBUG_WISH end
+        if GOW.consts.ENABLE_DEBUGGING then return GetDebugWish() end
         return nil;
     end
 

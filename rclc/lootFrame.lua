@@ -3,38 +3,46 @@ if not RCLootCouncil then return end
 
 local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
+local RCGoW = GOW.RCGoW;
 
 local RCLootFrame = RCLootCouncil:GetModule("RCLootFrame", true);
 if not RCLootFrame then return end
 
-local EntryManager = RCLootFrame.EntryManager;
-if not EntryManager then return end
+local GoWLootFrame = RCGoW:NewModule("GoWLootFrame", "AceTimer-3.0");
 
 local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:16:16|t";
 
-local hookedEntries = {};
 local insideHook = false;
+local hookedFrames = {};
 
 local function OnEntryRefreshed(entry)
     if GOW.DB and GOW.DB.profile.showRCLCWishlist == false then return end
     if not entry.itemLvl then return end
 
-    local session = entry.item and entry.item.sessions and entry.item.sessions[1];
-    if not session then return end
+    local currentText = entry.itemLvl:GetText() or "";
+    if currentText:find(GOW_ICON, 1, true) then return end
+
+    entry._gowBaseText = currentText;
 
     local lootTable = RCLootCouncil:GetLootTable();
-    if not lootTable or not lootTable[session] then return end
+    if not lootTable then return end
 
-    local link = lootTable[session].link;
-    if not link then return end
+    local sessions = entry.item and entry.item.sessions;
+    if not sessions then return end
 
-    local itemId = C_Item.GetItemInfoInstant(link);
+    local itemId;
+    for _, session in ipairs(sessions) do
+        if lootTable[session] and lootTable[session].link then
+            itemId = C_Item.GetItemInfoInstant(lootTable[session].link);
+            if itemId then break end
+        end
+    end
     if not itemId then return end
 
     local wish = GoWWishlists:FindWishlistMatch(itemId);
     if not wish then
         if not GOW.consts.ENABLE_DEBUGGING then return end
-        wish = GOW.RCGoW and GOW.RCGoW.DEBUG_WISH;
+        wish = GOW.RCGoW and GOW.RCGoW.GetDebugWish();
         if not wish then return end
     end
 
@@ -43,24 +51,36 @@ local function OnEntryRefreshed(entry)
         label = label .. string.format(" |cff00ff00%.1f%%|r", wish.gain.percent);
     end
 
-    local original = entry.itemLvl:GetText() or "";
-    if original:find("GoW") then return end
-
-    entry.itemLvl:SetText(original .. "  " .. GOW_ICON .. " " .. label);
+    entry.itemLvl:SetText(entry._gowBaseText .. "  " .. GOW_ICON .. " " .. label);
 end
 
-hooksecurefunc(EntryManager, "GetEntry", function(self, item)
+local function HookGetEntry(self, item)
     if insideHook then return end
     insideHook = true;
 
     local entry = self:GetEntry(item);
-    if entry and not hookedEntries[entry] then
-        hookedEntries[entry] = true;
-        hooksecurefunc(entry, "Update", function(e)
-            OnEntryRefreshed(e);
-        end);
+    if entry then
+        if not hookedFrames[entry] then
+            hookedFrames[entry] = true;
+            hooksecurefunc(entry, "Update", function(e)
+                OnEntryRefreshed(e);
+            end);
+        end
         OnEntryRefreshed(entry);
     end
 
     insideHook = false;
-end);
+end
+
+function GoWLootFrame:OnEnable()
+    self:HookEntryManager();
+end
+
+function GoWLootFrame:HookEntryManager()
+    local EntryManager = RCLootFrame.EntryManager;
+    if not EntryManager then
+        return self:ScheduleTimer("HookEntryManager", 0.5);
+    end
+
+    hooksecurefunc(EntryManager, "GetEntry", HookGetEntry);
+end

@@ -28,8 +28,6 @@ local function GetActiveItemId()
     return C_Item.GetItemInfoInstant(link);
 end
 
---- DoCellUpdate callback — renders wish tag + gain% for each row.
---- Note: param "st" is the lib-st scroll table widget (not Lua's table lib).
 local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, column, fShow, st)
     if not fShow then
         cellFrame.text:SetText("");
@@ -236,12 +234,11 @@ function GoWVotingColumn:AddToggleButton()
     local parent = frame.content or frame.frame or frame;
 
     local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate");
-    btn:SetHeight(25);
+    btn:SetSize(120, 25);
     btn:SetPoint("RIGHT", anchor, "LEFT", -4, 0);
     btn:SetFrameStrata("DIALOG");
 
     UpdateToggleLabel(btn);
-    btn:SetWidth(btn:GetTextWidth() + 24);
 
     btn:SetScript("OnClick", function()
         local current = GetDisplayMode();
@@ -252,7 +249,6 @@ function GoWVotingColumn:AddToggleButton()
         local newMode = DISPLAY_MODES[nextIdx];
         if GOW.DB then GOW.DB.profile.rclcDisplayMode = newMode end
         UpdateToggleLabel(btn);
-        btn:SetWidth(btn:GetTextWidth() + 24);
         RefreshScrollTable();
     end);
 
