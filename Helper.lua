@@ -28,8 +28,6 @@ function Helper:GetGowGameVersionId()
         return 2;
     elseif (WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC) then
         return 4;
-    elseif (WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC) then
-        return 19;
     else
         return 3;
     end
