@@ -44,9 +44,9 @@ local function OnEntryRefreshed(entry)
     end
 
     local original = entry.itemLvl:GetText() or "";
-    if not original:find("GoW") then
-        entry.itemLvl:SetText(original .. "  " .. GOW_ICON .. " " .. label);
-    end
+    if original:find("GoW") then return end
+
+    entry.itemLvl:SetText(original .. "  " .. GOW_ICON .. " " .. label);
 end
 
 hooksecurefunc(EntryManager, "GetEntry", function(self, item)

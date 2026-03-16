@@ -57,9 +57,15 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
 
     -- Build display string based on current toggle mode
     local display = "";
-    if GetDisplayMode() == "percent" then
+    local mode = GetDisplayMode();
+    if mode == "percent" then
         if wish.gain and wish.gain.percent and wish.gain.percent > 0 then
             display = string.format("|cff00ff00%.1f%%|r", wish.gain.percent);
+        end
+    elseif mode == "value" then
+        if wish.gain and wish.gain.stat and wish.gain.stat > 0 then
+            local metric = (wish.gain.metric and wish.gain.metric ~= "") and wish.gain.metric or "DPS";
+            display = string.format("|cff00ff00%d %s|r", wish.gain.stat, metric);
         end
     else
         display = GoWWishlists:FormatTag(wish.tag) or "";
@@ -90,7 +96,6 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
     end
     cellFrame._gowTip = #tipLines > 0 and tipLines or nil;
 
-    -- Attach tooltip handlers once per cell frame
     if not cellFrame._gowTooltip then
         cellFrame:SetScript("OnEnter", function(self)
             if not self._gowTip then return end
@@ -106,7 +111,6 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
     end
 end
 
---- Sort comparator — orders by tag priority then gain%.
 local function CompareByPriority(st, rowa, rowb, sortbycol)
     local a = st:GetRow(rowa);
     local b = st:GetRow(rowb);
@@ -136,13 +140,6 @@ local function CompareByPriority(st, rowa, rowb, sortbycol)
     return gainA > gainB;
 end
 
-local function FindInsertPosition()
-    for i, col in ipairs(RCVotingFrame.scrollCols) do
-        if col.colName == "roll" then return i + 1 end
-    end
-    return #RCVotingFrame.scrollCols + 1;
-end
-
 local function InsertGoWColumn()
     if not RCVotingFrame.scrollCols then return end
 
@@ -151,8 +148,7 @@ local function InsertGoWColumn()
         if col.colName == "gow" then return end
     end
 
-    local pos = FindInsertPosition();
-    tinsert(RCVotingFrame.scrollCols, pos, {
+    tinsert(RCVotingFrame.scrollCols, 8, {
         name = GOW_ICON,
         colName = "gow",
         width = 80,
@@ -191,8 +187,7 @@ function GoWVotingColumn:OnInitialize()
     end
 
     self:RegisterMessage("RCSessionChangedPre", "OnSessionChanged");
-
-    self:AddToggleButton();
+    self:ScheduleTimer("AddToggleButton", 1);
 end
 
 function GoWVotingColumn:OnSessionChanged(_, session)
@@ -205,20 +200,59 @@ local function RefreshScrollTable()
     end
 end
 
+local GOW_ICON_SMALL = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:14:14|t";
+
+local DISPLAY_MODES = { "percent", "value", "tag" };
+local DISPLAY_LABELS = { percent = "Show Value", value = "Show Tag", tag = "Show %" };
+
+local function UpdateToggleLabel(btn)
+    local mode = GetDisplayMode();
+    btn:SetText(GOW_ICON_SMALL .. " " .. (DISPLAY_LABELS[mode] or "Show %"));
+end
+
 function GoWVotingColumn:AddToggleButton()
     local frame = RCVotingFrame.frame;
-    if not frame or frame._gowToggleBtn then return end
+    if not frame then
+        return self:ScheduleTimer("AddToggleButton", 0.5);
+    end
+    if frame._gowToggleBtn then return end
 
-    local btn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate");
-    btn:SetSize(20, 20);
-    btn:SetPoint("TOP", frame, "TOP", 0, -2);
-    btn:SetNormalTexture("Interface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png");
-    btn:SetHighlightTexture("Interface\\BUTTONS\\UI-Common-MouseHilight", "ADD");
+    local rclcBtn = frame.disenchant or frame.filter or frame.abort;
+    if not rclcBtn then
+        return self:ScheduleTimer("AddToggleButton", 0.5);
+    end
+
+    local anchor = rclcBtn;
+    local children = { (frame.content or frame.frame or frame):GetChildren() };
+    for _, child in ipairs(children) do
+        if child ~= rclcBtn and child:IsObjectType("Button") and child:GetNumPoints() > 0 then
+            local point, relativeTo = child:GetPoint(1);
+            if relativeTo == anchor and point == "RIGHT" then
+                anchor = child;
+            end
+        end
+    end
+
+    local parent = frame.content or frame.frame or frame;
+
+    local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate");
+    btn:SetHeight(25);
+    btn:SetPoint("RIGHT", anchor, "LEFT", -4, 0);
+    btn:SetFrameStrata("DIALOG");
+
+    UpdateToggleLabel(btn);
+    btn:SetWidth(btn:GetTextWidth() + 24);
 
     btn:SetScript("OnClick", function()
         local current = GetDisplayMode();
-        local next = (current == "percent") and "tag" or "percent";
-        if GOW.DB then GOW.DB.profile.rclcDisplayMode = next end
+        local nextIdx = 1;
+        for i, m in ipairs(DISPLAY_MODES) do
+            if m == current then nextIdx = (i % #DISPLAY_MODES) + 1; break end
+        end
+        local newMode = DISPLAY_MODES[nextIdx];
+        if GOW.DB then GOW.DB.profile.rclcDisplayMode = newMode end
+        UpdateToggleLabel(btn);
+        btn:SetWidth(btn:GetTextWidth() + 24);
         RefreshScrollTable();
     end);
 
@@ -233,7 +267,6 @@ function GoWVotingColumn:AddToggleButton()
     frame._gowToggleBtn = btn;
 end
 
--- Fallback: re-check on voting frame show
 if RCVotingFrame.frame then
     RCVotingFrame.frame:HookScript("OnShow", InsertGoWColumn);
 end
