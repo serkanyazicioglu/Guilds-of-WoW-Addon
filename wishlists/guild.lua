@@ -1241,7 +1241,7 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
         end
     end
 
-    local PLAYER_SORT_LABELS = { upgrade = "Upgrade", name = "Name", boss = "Boss Order", slot = "Slot" };
+    local SORT_LABELS = self.constants.SORT_LABELS;
     if guildPlayerSortMode == "name" then
         table.sort(memberItems, function(a, b)
             local aName = C_Item.GetItemInfo(a.itemId) or "";
@@ -1279,7 +1279,7 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     local popupMenu = self:GetOrCreatePopupMenu();
     local showPopup = popupMenu.showPopup;
 
-    local sortBtn = self:CreateSubFilterBtn(scrollChild, "Sort: " .. (PLAYER_SORT_LABELS[guildPlayerSortMode] or guildPlayerSortMode), 110);
+    local sortBtn = self:CreateSubFilterBtn(scrollChild, "Sort: " .. (SORT_LABELS[guildPlayerSortMode] or guildPlayerSortMode), 110);
     sortBtn:SetHeight(14);
     sortBtn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
 
@@ -1296,14 +1296,8 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
             popupMenu.clearPopup();
             return;
         end
-        local sortOptions = {
-            { key = "upgrade", label = "Upgrade" },
-            { key = "name",    label = "Name" },
-            { key = "boss",    label = "Boss Order" },
-            { key = "slot",    label = "Slot" },
-        };
         popupMenu.popup.owner = "playerSort";
-        showPopup(sortBtn, sortOptions, guildPlayerSortMode, function(key)
+        showPopup(sortBtn, self.constants.SORT_OPTIONS, guildPlayerSortMode, function(key)
             detailPanel.guildPlayerSortMode = key;
             rebuild();
         end);

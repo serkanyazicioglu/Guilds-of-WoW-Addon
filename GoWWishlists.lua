@@ -256,6 +256,20 @@ GoWWishlists.constants.GUILD_ITEM_ROW_HEIGHT_COMPACT = 28;
 GoWWishlists.constants.ALERT_ITEM_ROW_HEIGHT_CARD = 68;
 GoWWishlists.constants.ALERT_ITEM_ROW_HEIGHT_COMPACT = 58;
 
+GoWWishlists.constants.SORT_LABELS = {
+    upgrade = "Upgrade",
+    name = "Name",
+    boss = "Boss Order",
+    slot = "Slot",
+};
+
+GoWWishlists.constants.SORT_OPTIONS = {
+    { key = "upgrade", label = "Upgrade" },
+    { key = "name",    label = "Name" },
+    { key = "boss",    label = "Boss Order" },
+    { key = "slot",    label = "Slot" },
+};
+
 GoWWishlists.constants.BADGE_COLUMN_WIDTH = 40;
 
 function GoWWishlists:GetItemRowHeight()

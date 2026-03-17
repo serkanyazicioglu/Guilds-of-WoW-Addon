@@ -253,12 +253,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         local showPopup = popupMenu.showPopup;
         local SLOT_LABELS = self.constants.SLOT_LABELS;
 
-        local SORT_LABELS = {
-            upgrade = "Upgrade",
-            name = "Name",
-            boss = "Boss Order",
-            slot = "Slot",
-        };
+        local SORT_LABELS = self.constants.SORT_LABELS;
 
         local sortBtn = self:CreateSubFilterBtn(detailPanel, "Sort: Upgrade", 90);
         sortBtn:SetHeight(14);
@@ -283,14 +278,8 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
                 popupMenu.clearPopup();
                 return;
             end
-            local sortOptions = {
-                { key = "upgrade", label = "Upgrade" },
-                { key = "name",    label = "Name" },
-                { key = "boss",    label = "Boss Order" },
-                { key = "slot",    label = "Slot" },
-            };
             popupMenu.popup.owner = "sort";
-            showPopup(sortBtn, sortOptions, detailSortMode, function(key)
+            showPopup(sortBtn, self.constants.SORT_OPTIONS, detailSortMode, function(key)
                 detailSortMode = key;
                 frame.detailSortMode = key;
                 updateSortLabel();
