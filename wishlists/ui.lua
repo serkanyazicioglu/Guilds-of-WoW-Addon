@@ -79,6 +79,9 @@ function GoWWishlists:CreateWishlistCardRow(parent, options)
     row.noteIcon = self:CreateNoteIconButton(row, row, "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", "Note", 0, 1, 0);
     row.noteIcon:SetPoint("TOPRIGHT", inner, "TOPRIGHT", -4, 0);
 
+    row.tierBadge = self:CreateTierBadge(row);
+    row.tierBadge:SetPoint("RIGHT", row.noteIcon, "LEFT", -2, 0);
+
     self:CreateRowSeparator(row);
     row.highlight = self:CreateRowHighlight(row);
     self:CreateItemTooltipZone(row, iconBorder);
@@ -121,6 +124,7 @@ function GoWWishlists:PopulateItemRow(row, entry, itemLink)
 
     self:UpdateNoteIcon(row.noteIcon, entry.notes);
     self:UpdateGainBadge(row.gainBadge, entry.gain);
+    self:UpdateTierBadge(row.tierBadge, entry.isTierSetPiece);
 end
 
 function GoWWishlists:CreateBossHeader(parent, bossName, itemCount)

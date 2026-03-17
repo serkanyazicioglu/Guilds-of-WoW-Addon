@@ -124,6 +124,7 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
                             boss.items[itemKey] = {
                                 itemId = item.itemId,
                                 difficulty = item.difficulty,
+                                isTierSetPiece = item.isTierSetPiece,
                                 members = {},
                             };
                             table.insert(boss.itemOrder, itemKey);
@@ -180,6 +181,9 @@ function GoWWishlists:CreateGuildItemRow(parent)
     gainBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
     row.gainBadge = gainBadge;
 
+    row.tierBadge = self:CreateTierBadge(row);
+    row.tierBadge:SetPoint("RIGHT", row.gainBadge, "LEFT", -4, 0);
+
     row.highlight = self:CreateRowHighlight(row);
     self:CreateItemTooltipZone(row, iconBorder);
 
@@ -217,6 +221,8 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
     else
         row.gainBadge:Hide();
     end
+
+    self:UpdateTierBadge(row.tierBadge, itemData.isTierSetPiece);
 
     if not itemName then
         self:RegisterPendingItem(itemData.itemId, function()

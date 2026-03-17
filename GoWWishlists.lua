@@ -667,6 +667,40 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix)
     end
 end
 
+function GoWWishlists:CreateTierBadge(parent)
+    local badge = CreateFrame("Frame", nil, parent, "BackdropTemplate");
+    badge:SetSize(16, 16);
+    badge:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+        insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    });
+    badge:SetBackdropColor(0.15, 0.12, 0.02, 0.85);
+    badge:SetBackdropBorderColor(0.9, 0.75, 0.2, 0.6);
+
+    local text = badge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    text:SetPoint("CENTER", badge, "CENTER", 0, 0);
+    text:SetText("|cffffd700T|r");
+    badge.text = text;
+
+    badge:EnableMouse(true);
+    badge:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+        GameTooltip:AddLine("Tier Set Piece", 1, 0.84, 0);
+        GameTooltip:Show();
+    end);
+    badge:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+    badge:Hide();
+    return badge;
+end
+
+function GoWWishlists:UpdateTierBadge(badge, isTierSetPiece)
+    if not badge then return end
+    badge:SetShown(isTierSetPiece == true);
+end
+
 function GoWWishlists:FormatTag(tag)
     if not tag or tag == "" then return nil end
     local info = self.constants.TAG_DISPLAY[tag];
