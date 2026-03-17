@@ -112,7 +112,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
                 emptyText:SetPoint("RIGHT", scrollChild, "RIGHT", -10, 0);
                 emptyText:SetJustifyH("CENTER");
                 emptyText:SetWordWrap(true);
-                emptyText:SetText("|cff888888No synced wishlist data found for this character.|r\n|cff666666" .. self:GetSyncAppInstallHint() .. "|r");
+                emptyText:SetText("|cff888888No synced wishlist data found for this character.|r\n\n|cff666666" .. self:GetSyncAppInstallHint() .. "|r");
                 scrollChild:SetHeight(110);
             else
                 emptyText:SetPoint("TOP", scrollChild, "TOP", 0, -40);
