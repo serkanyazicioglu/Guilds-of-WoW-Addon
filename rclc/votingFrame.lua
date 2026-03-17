@@ -256,7 +256,7 @@ function GoWVotingColumn:AddToggleButton()
     btn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
         GameTooltip:AddLine("Guilds of WoW", 0.1, 0.8, 0.3);
-        GameTooltip:AddLine("Click to toggle between % gain and tag.", 1, 1, 1, true);
+        GameTooltip:AddLine("Click to cycle between % gain, raw value, and tag.", 1, 1, 1, true);
         GameTooltip:Show();
     end);
     btn:SetScript("OnLeave", function() GameTooltip:Hide() end);
