@@ -18,7 +18,16 @@ GOW.defaults = {
 		minimap = { hide = false },
 		reduceEventNotifications = false,
 		warnNewEvents = true,
-		hideInCombat = true
+		hideInCombat = true,
+		showLootAlerts = true,
+		showRCLCWishlist = true,
+		rclcDisplayMode = "percent",
+		lootHistory = {},
+		allLootHistory = {},
+		wishlistInfoFramePos = nil,
+		wishlistBrowserFramePos = nil,
+		wishlistCompactMode = false,
+		guildRosterFilter = "all",
 	}
 }
 
@@ -94,6 +103,19 @@ function GOW:OnInitialize()
 	local consoleCommandFunc = function(msg, editbox)
 		if (msg == "minimap") then
 			Core:ToggleMinimap();
+		elseif (msg == "loot" and GOW.Helper:IsWishlistsEnabled()) then
+			if GOW.Wishlists then
+				GOW.Wishlists:HandleSlashCommand();
+			else
+				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
+			end
+		elseif (msg:match("^testloot") and GOW.Helper:IsWishlistsEnabled() and GOW.consts.ENABLE_DEBUGGING) then
+			local count = tonumber(msg:match("^testloot%s+(%d+)")) or 1;
+			if GOW.Wishlists then
+				GOW.Wishlists:SimulateLootDrops(count);
+			else
+				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
+			end
 		else
 			Core:ToggleWindow();
 		end
@@ -153,6 +175,11 @@ function GOW:OnInitialize()
 	tinsert(UISpecialFrames, FRAME_NAME);
 
 	containerTabs = GOW.GUI:Create("TabGroup");
+
+	if GOW.Helper:IsWishlistsEnabled() then
+		table.insert(tabs, { value = "wishlists", text = "Wishlists" });
+	end
+    
 	containerTabs:SetTabs(tabs);
 	containerTabs:SelectTab(selectedTab);
 	containerTabs:SetCallback("OnGroupSelected", function(frame, event, value) Core:ToggleTabs(value) end);
@@ -435,6 +462,10 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		if (openRaidLib) then
 			openRaidLib.RequestKeystoneDataFromGuild();
 		end
+
+		if GOW.Wishlists then
+			GOW.Wishlists:Initialize();
+		end
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		Core:SetRosterInfo();
 	elseif event == "CALENDAR_ACTION_PENDING" then
@@ -604,12 +635,32 @@ end
 function Core:RefreshApplication()
 	isPropogatingUpdate = true;
 
+	if GOW.Wishlists then
+		GOW.Wishlists:HideCoreFrames();
+	end
+
 	if (selectedTab == "events") then
+		containerScrollFrame.frame:Show();
 		Core:CreateUpcomingEvents();
 	elseif (selectedTab == "teams") then
+		containerScrollFrame.frame:Show();
 		Core:CreateTeams();
 	elseif (selectedTab == "recruitmentApps") then
+		containerScrollFrame.frame:Show();
 		Core:CreateRecruitmentApplications();
+	elseif (selectedTab == "wishlists") then
+		containerScrollFrame.frame:Hide();
+		if GOW.Wishlists then
+			GOW.Wishlists:ShowCoreWishlistsTab(containerTabs.content, function(text)
+				containerFrame:SetStatusText(text);
+			end);
+			containerFrame:SetStatusText("Type /gow loot for quick access");
+		else
+			containerScrollFrame.frame:Show();
+			containerScrollFrame:ReleaseChildren();
+			Core:AppendMessage("Wishlist module not loaded.", true);
+		end
+		isPropogatingUpdate = false;
 	end
 end
 
@@ -702,6 +753,7 @@ function Core:CreateUpcomingEvents()
 		end
 	end
 
+	Core:AppendScrollBottomPadding();
 	isPropogatingUpdate = false;
 end
 
@@ -758,6 +810,7 @@ function Core:CreateTeams()
 		end
 	end
 
+	Core:AppendScrollBottomPadding();
 	isPropogatingUpdate = false;
 end
 
@@ -812,6 +865,7 @@ function Core:CreateRecruitmentApplications()
 		end
 	end
 
+	Core:AppendScrollBottomPadding();
 	isPropogatingUpdate = false;
 end
 
@@ -873,6 +927,15 @@ function Core:searchForEvent(event)
 	end
 
 	return -1
+end
+
+function Core:AppendScrollBottomPadding()
+	if containerScrollFrame then
+		local spacer = GOW.GUI:Create("SimpleGroup");
+		spacer:SetFullWidth(true);
+		spacer:SetHeight(20);
+		containerScrollFrame:AddChild(spacer);
+	end
 end
 
 function Core:AppendMessage(message, appendReloadUIButton)

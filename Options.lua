@@ -62,6 +62,30 @@ local optionsTable = {
                     set = function(info, value)
                         GOW.DB.profile.hideInCombat = value;
                     end,
+                },
+                ShowLootAlerts = {
+                    type = "toggle",
+                    order = 5,
+                    name = "Show loot notifications",
+                    desc = "Show a popup alert when a wishlist item drops in an instance.",
+                    width = "full",
+                    hidden = function() return not GOW.Helper:IsWishlistsEnabled() end,
+                    get = function(info) return GOW.DB.profile.showLootAlerts end,
+                    set = function(info, value)
+                        GOW.DB.profile.showLootAlerts = value;
+                    end,
+                },
+                ShowRCLCWishlist = {
+                    type = "toggle",
+                    order = 6,
+                    name = "Show wishlists in RCLootCouncil",
+                    desc = "Display wishlist information in the RCLootCouncil voting and loot frames. Requires /reload to take effect.",
+                    width = "full",
+                    hidden = function() return not GOW.Helper:IsWishlistsEnabled() end,
+                    get = function(info) return GOW.DB.profile.showRCLCWishlist end,
+                    set = function(info, value)
+                        GOW.DB.profile.showRCLCWishlist = value;
+                    end,
                 }
             }
         }

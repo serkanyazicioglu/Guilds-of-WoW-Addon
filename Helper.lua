@@ -48,6 +48,10 @@ function Helper:GetCurrentRegionByGameVersion()
 end
 
 function Helper:IsInGameCalendarAccessible()
+    return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE or WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC;
+end
+
+function Helper:IsWishlistsEnabled()
     return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
 end
 
