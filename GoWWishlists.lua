@@ -637,7 +637,7 @@ function GoWWishlists:CreateGainBadge(parent)
     return badge;
 end
 
-function GoWWishlists:ApplyGainBadge(badge, gain, prefix)
+function GoWWishlists:UpdateGainBadge(badge, gain, prefix)
     if not badge then return end
     prefix = prefix or "";
 
@@ -677,7 +677,6 @@ function GoWWishlists:FormatTag(tag)
     return tag;
 end
 
--- Class color lookup
 function GoWWishlists:GetClassColor(classId)
     if not classId then return nil end
     local _, classFile = GetClassInfo(classId);

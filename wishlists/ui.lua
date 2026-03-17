@@ -120,7 +120,7 @@ function GoWWishlists:PopulateItemRow(row, entry, itemLink)
     row.infoHover.tipText = #infoParts > 0 and table.concat(infoParts, "\n") or nil;
 
     self:UpdateNoteIcon(row.noteIcon, entry.notes);
-    self:ApplyGainBadge(row.gainBadge, entry.gain);
+    self:UpdateGainBadge(row.gainBadge, entry.gain);
 end
 
 function GoWWishlists:CreateBossHeader(parent, bossName, itemCount)

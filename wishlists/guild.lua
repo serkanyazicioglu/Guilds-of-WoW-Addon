@@ -218,7 +218,7 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
         end
     end
     if gainCount > 0 then
-        self:ApplyGainBadge(row.gainBadge, { percent = totalPercent / gainCount, metric = avgMetric or "DPS" }, "avg ");
+        self:UpdateGainBadge(row.gainBadge, { percent = totalPercent / gainCount, metric = avgMetric or "DPS" }, "avg ");
     else
         row.gainBadge:Hide();
     end
@@ -300,7 +300,7 @@ function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
         end
     end
 
-    self:ApplyGainBadge(row.gainBadge, member.gain);
+    self:UpdateGainBadge(row.gainBadge, member.gain);
 
     self:UpdateNoteIcon(row.noteIcon, member.notes);
     self:UpdateNoteIcon(row.officerNoteIcon, self:HasGuildWishlistData() and member.officerNotes or nil);
