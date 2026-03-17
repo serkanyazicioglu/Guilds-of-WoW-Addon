@@ -5,11 +5,6 @@ local ns = select(2, ...);
 GoWWishlists.constants.GUILD_MEMBER_ROW_HEIGHT = 22;
 GoWWishlists.constants.GUILD_FILTER_HEIGHT = 26;
 
-local function NormalizeRealm(realmName)
-    if not realmName then return "" end
-    return realmName:gsub("%s", "");
-end
-
 local function GetAverageGainFromMembers(members)
     local sum, count = 0, 0;
     for _, member in ipairs(members or {}) do
@@ -104,7 +99,7 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
     for _, charEntry in ipairs(self.state.guildWishlistData.wishlists) do
         local passRoster = true;
         if rosterMemberSet then
-            local charKey = charEntry.name .. "-" .. NormalizeRealm(charEntry.realmName);
+            local charKey = charEntry.name .. "-" .. (charEntry.realmNameNormalized or "");
             passRoster = rosterMemberSet[charKey] == true;
         end
 
@@ -959,7 +954,7 @@ function GoWWishlists:CollectObtainedItems(characterName, realmName, rosterMembe
     for _, charEntry in ipairs(data.wishlists) do
         local passRoster = true;
         if rosterMemberSet then
-            local charKey = charEntry.name .. "-" .. NormalizeRealm(charEntry.realmName);
+            local charKey = charEntry.name .. "-" .. (charEntry.realmNameNormalized or "");
             passRoster = rosterMemberSet[charKey] == true;
         end
 
