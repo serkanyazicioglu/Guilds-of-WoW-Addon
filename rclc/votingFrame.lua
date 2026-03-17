@@ -171,6 +171,8 @@ local function InsertGoWColumn()
 end
 
 function GoWVotingColumn:OnInitialize()
+    if GOW.DB and GOW.DB.profile.showRCLCWishlist == false then return end
+
     if not RCVotingFrame.scrollCols then
         return self:ScheduleTimer("OnInitialize", 0.5);
     end
@@ -212,7 +214,6 @@ local function RefreshScrollTable()
 end
 
 local GOW_ICON_SMALL = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:14:14|t";
-
 local DISPLAY_MODES = { "percent", "value", "tag" };
 local DISPLAY_LABELS = { percent = "Show Value", value = "Show Tag", tag = "Show %" };
 

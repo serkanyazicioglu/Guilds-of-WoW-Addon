@@ -21,6 +21,7 @@ end
 RCGoW.GetDebugWish = GetDebugWish;
 
 function RCGoW:OnInitialize()
+    if GOW.DB and GOW.DB.profile.showRCLCWishlist == false then return end
     GOW.Logger:Debug("RCLootCouncil integration active.");
 end
 
