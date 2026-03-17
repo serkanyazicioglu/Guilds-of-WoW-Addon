@@ -262,15 +262,6 @@ function GoWWishlists:CollectWishlistForCharacter(difficultyFilter)
     return bossGroups, bossOrder, unknownItems, bossToRaid, bossToJournalId;
 end
 
-function GoWWishlists:HandleGuildSlashCommand()
-    local frame = self:CreateWishlistBrowserFrame();
-
-    frame.guildWishlistTab:Show();
-
-    frame.SetActiveTab(2);
-    frame:Show();
-end
-
 function GoWWishlists:SimulateLootDrops(count)
     if not ns.WISHLISTS then
         GOW.Logger:PrintErrorMessage("No wishlist data found.");
