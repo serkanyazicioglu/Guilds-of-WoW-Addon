@@ -41,12 +41,17 @@ local function OnEntryRefreshed(entry)
 
     local wish = GoWWishlists:FindWishlistMatch(itemId);
     if not wish then
-        if not GOW.consts.ENABLE_DEBUGGING then return end
-        wish = GOW.RCGoW and GOW.RCGoW.GetDebugWish();
-        if not wish then return end
+        if GOW.consts.ENABLE_DEBUGGING then
+            wish = GOW.RCGoW and GOW.RCGoW.GetDebugWish();
+        end
+        if not wish then
+            entry.itemLvl:SetText(entry._gowBaseText .. "  " .. GOW_ICON .. " |cff666666—|r");
+            return;
+        end
     end
 
-    local label = GoWWishlists:FormatTag(wish.tag) or "Wish";
+    local tagInfo = wish.tag and GoWWishlists.constants.TAG_DISPLAY[wish.tag];
+    local label = tagInfo and string.format("|cff%s%s|r", tagInfo.color, tagInfo.tip) or "Wish";
     if wish.gain and wish.gain.percent and wish.gain.percent > 0 then
         label = label .. string.format(" |cff00ff00%.1f%%|r", wish.gain.percent);
         if wish.gain.stat then
@@ -55,6 +60,43 @@ local function OnEntryRefreshed(entry)
     end
 
     entry.itemLvl:SetText(entry._gowBaseText .. "  " .. GOW_ICON .. " " .. label);
+
+    -- Add tooltip overlay for GoW wish info
+    if not entry._gowTipFrame then
+        local tipFrame = CreateFrame("Frame", nil, entry);
+        tipFrame:SetPoint("TOPLEFT", entry.itemLvl, "TOPLEFT", 0, 0);
+        tipFrame:SetPoint("BOTTOMRIGHT", entry.itemLvl, "BOTTOMRIGHT", 0, 0);
+        tipFrame:EnableMouse(true);
+        tipFrame:SetScript("OnEnter", function(self)
+            if not self._gowTip then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Guilds of WoW", 0.1, 0.8, 0.3);
+            for _, line in ipairs(self._gowTip) do
+                GameTooltip:AddLine(line, 1, 1, 1, true);
+            end
+            GameTooltip:Show();
+        end);
+        tipFrame:SetScript("OnLeave", function() GameTooltip:Hide() end);
+        entry._gowTipFrame = tipFrame;
+    end
+
+    local tipLines = {};
+    if tagInfo then table.insert(tipLines, "Priority: " .. tagInfo.tip) end
+    if wish.difficulty then table.insert(tipLines, "Difficulty: " .. wish.difficulty) end
+    if wish.gain then
+        local metric = (wish.gain.metric and wish.gain.metric ~= "") and wish.gain.metric or "DPS";
+        if wish.gain.percent and wish.gain.percent > 0 then
+            table.insert(tipLines, string.format("%.1f%% %s", wish.gain.percent, metric));
+        end
+        if wish.gain.stat and wish.gain.stat > 0 then
+            table.insert(tipLines, string.format("%d %s (raw)", wish.gain.stat, metric));
+        end
+    end
+    if wish.notes and wish.notes ~= "" then
+        table.insert(tipLines, " ");
+        table.insert(tipLines, "Note: " .. wish.notes);
+    end
+    entry._gowTipFrame._gowTip = #tipLines > 0 and tipLines or nil;
 end
 
 local function HookGetEntry(self, item)

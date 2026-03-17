@@ -48,7 +48,7 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
 
     local wish = RCGoW:GetPlayerWish(itemId, rowData.name);
     if not wish then
-        cellFrame.text:SetText("");
+        cellFrame.text:SetText("|cff666666—|r");
         cellFrame._gowTip = nil;
         return;
     end
@@ -66,7 +66,8 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
             display = string.format("|cff00ff00%d %s|r", wish.gain.stat, metric);
         end
     else
-        display = GoWWishlists:FormatTag(wish.tag) or "";
+        local tagInfo = wish.tag and GoWWishlists.constants.TAG_DISPLAY[wish.tag];
+        display = tagInfo and string.format("|cff%s%s|r", tagInfo.color, tagInfo.tip) or "";
     end
     cellFrame.text:SetText(display);
 

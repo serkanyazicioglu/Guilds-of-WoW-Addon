@@ -168,7 +168,7 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
 
     local noteIcon = CreateFrame("Button", nil, row);
     noteIcon:SetSize(14, 14);
-    noteIcon:SetPoint("TOPRIGHT", row, "TOPRIGHT", -8, -6);
+    noteIcon:SetPoint("TOPRIGHT", inner, "TOPRIGHT", -4, 0);
     local noteIconTex = noteIcon:CreateTexture(nil, "ARTWORK");
     noteIconTex:SetAllPoints();
     noteIconTex:SetTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up");

@@ -85,10 +85,10 @@ function GoWWishlists:CreateItemRow(parent)
     row.iconBorder = iconBorder;
     row.icon = icon;
 
-    -- Note icons (top-right)
+    -- Note icons (top-right, aligned to inner content area)
     local officerNoteIcon = CreateFrame("Button", nil, row);
     officerNoteIcon:SetSize(14, 14);
-    officerNoteIcon:SetPoint("TOPRIGHT", row, "TOPRIGHT", -8, -6);
+    officerNoteIcon:SetPoint("TOPRIGHT", inner, "TOPRIGHT", -4, 0);
     local officerNoteTex = officerNoteIcon:CreateTexture(nil, "ARTWORK");
     officerNoteTex:SetAllPoints();
     officerNoteTex:SetTexture("Interface\\Buttons\\UI-GuildButton-OfficerNote-Up");
