@@ -10,6 +10,45 @@ local function NormalizeRealm(realmName)
     return realmName:gsub("%s", "");
 end
 
+local function GetAverageGainFromMembers(members)
+    local sum, count = 0, 0;
+    for _, member in ipairs(members or {}) do
+        local gain = member.gain and member.gain.percent;
+        if gain and gain > 0 then
+            sum = sum + gain;
+            count = count + 1;
+        end
+    end
+    return count > 0 and (sum / count) or 0;
+end
+
+local function BuildBossOrderIndex(self, bossNames, bossToRaid, bossToJournalId)
+    local orderedBosses = {};
+    local hasRaidGroups = bossToRaid and next(bossToRaid);
+
+    if hasRaidGroups then
+        local raidOrder, raidBosses, ungrouped = self:GroupAndSortBosses(bossNames, bossToRaid, bossToJournalId);
+        for _, raidName in ipairs(raidOrder) do
+            for _, bossName in ipairs(raidBosses[raidName]) do
+                table.insert(orderedBosses, bossName);
+            end
+        end
+        for _, bossName in ipairs(ungrouped) do
+            table.insert(orderedBosses, bossName);
+        end
+    else
+        for _, bossName in ipairs(bossNames) do
+            table.insert(orderedBosses, bossName);
+        end
+    end
+
+    local bossIndex = {};
+    for index, bossName in ipairs(orderedBosses) do
+        bossIndex[bossName] = index;
+    end
+    return bossIndex;
+end
+
 -- Returns an array of {id, name} for teams matching the current guild.
 function GoWWishlists:GetGuildTeams()
     local teams = {};
@@ -521,6 +560,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
     sourcePanel.headerText:SetText("SOURCE");
     lootPanel.headerText:SetText("LOOT");
     detailPanel.headerText:SetText("WISHLIST");
+    lootPanel.ownerFrame = frame;
 
     local guildLootSortMode = frame.guildLootSortMode or "boss";
     local guildHideObtained = frame.guildHideObtained;
@@ -533,6 +573,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
 
         local GUILD_SORT_LABELS = {
             boss = "Boss Order",
+            bosspriority = "Boss Priority",
             mostwanted = "Most Wanted",
             avggain = "Avg. Gain",
             name = "Name",
@@ -557,7 +598,9 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
 
         obtainedBtn:SetScript("OnEnter", function(btn)
             GameTooltip:SetOwner(btn, "ANCHOR_TOP");
-            if guildHideObtained then
+            local hideObtained = frame.guildHideObtained;
+            if hideObtained == nil then hideObtained = guildHideObtained end
+            if hideObtained then
                 GameTooltip:AddLine("Show Obtained Items", 1, 1, 1);
             else
                 GameTooltip:AddLine("Hide Obtained Items", 1, 1, 1);
@@ -567,11 +610,14 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         obtainedBtn:SetScript("OnLeave", function() GameTooltip:Hide() end);
 
         local function updateGuildSortLabel()
-            sortBtn.btnText:SetText("Sort: " .. (GUILD_SORT_LABELS[guildLootSortMode] or guildLootSortMode));
+            local activeSort = frame.guildLootSortMode or guildLootSortMode or "boss";
+            sortBtn.btnText:SetText("Sort: " .. (GUILD_SORT_LABELS[activeSort] or activeSort));
         end
 
         local function updateGuildObtainedBtn()
-            self:SetButtonActiveWithIcon(obtainedBtn, eyeTex, not guildHideObtained);
+            local hideObtained = frame.guildHideObtained;
+            if hideObtained == nil then hideObtained = guildHideObtained end
+            self:SetButtonActiveWithIcon(obtainedBtn, eyeTex, not hideObtained);
         end
 
         sortBtn:SetScript("OnClick", function()
@@ -581,13 +627,18 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
             end
             local sortOptions = {
                 { key = "boss",       label = "Boss Order" },
-                { key = "mostwanted", label = "Most Wanted" },
-                { key = "avggain",    label = "Avg. Gain" },
-                { key = "name",       label = "Name" },
-                { key = "slot",       label = "Slot" },
             };
+            if lootPanel.allowBossPrioritySort then
+                table.insert(sortOptions, { key = "bosspriority", label = "Boss Priority" });
+            end
+            table.insert(sortOptions, { key = "mostwanted", label = "Most Wanted" });
+            table.insert(sortOptions, { key = "avggain", label = "Avg. Gain" });
+            table.insert(sortOptions, { key = "name", label = "Name" });
+            table.insert(sortOptions, { key = "slot", label = "Slot" });
+
+            local activeSort = frame.guildLootSortMode or guildLootSortMode or "boss";
             popupMenu.popup.owner = "guildsort";
-            showPopup(sortBtn, sortOptions, guildLootSortMode, function(key)
+            showPopup(sortBtn, sortOptions, activeSort, function(key)
                 guildLootSortMode = key;
                 frame.guildLootSortMode = key;
                 updateGuildSortLabel();
@@ -680,6 +731,17 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
 
     sortMode = sortMode or "boss";
     if hideObtained == nil then hideObtained = true end
+    lootPanel.allowBossPrioritySort = selectedBoss == nil;
+
+    if selectedBoss and sortMode == "bosspriority" then
+        sortMode = "boss";
+        if lootPanel.ownerFrame then
+            lootPanel.ownerFrame.guildLootSortMode = sortMode;
+        end
+    end
+    if lootPanel.updateGuildSortLabel then
+        lootPanel.updateGuildSortLabel();
+    end
 
     local container = { guildSections = {}, guildScrollChild = scrollChild };
 
@@ -738,6 +800,8 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
         table.insert(container.guildSections, { raidLabel = label });
     end
 
+    local bossOrderIndex = BuildBossOrderIndex(self, bossOrder, bossToRaid, bossToJournalId);
+
     local function buildFlatList(sortKey)
         local flatItems = {};
         for _, bossName in ipairs(bossOrder) do
@@ -754,12 +818,8 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
             table.sort(flatItems, function(a, b) return #a.members > #b.members end);
         elseif sortKey == "avggain" then
             table.sort(flatItems, function(a, b)
-                local aSum, aCount = 0, 0;
-                for _, m in ipairs(a.members) do aSum = aSum + ((m.gain and m.gain.percent) or 0); aCount = aCount + 1 end
-                local bSum, bCount = 0, 0;
-                for _, m in ipairs(b.members) do bSum = bSum + ((m.gain and m.gain.percent) or 0); bCount = bCount + 1 end
-                local aAvg = aCount > 0 and (aSum / aCount) or 0;
-                local bAvg = bCount > 0 and (bSum / bCount) or 0;
+                local aAvg = GetAverageGainFromMembers(a.members);
+                local bAvg = GetAverageGainFromMembers(b.members);
                 return aAvg > bAvg;
             end);
         elseif sortKey == "name" then
@@ -788,10 +848,48 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
         table.insert(container.guildSections, { items = items });
     end
 
-    if sortMode ~= "boss" then
+    local function buildBossPrioritySections()
+        local prioritizedBosses = {};
+        for _, bossName in ipairs(bossOrder) do
+            local boss = bossGroups[bossName];
+            if boss then
+                local bossGainSum, bossGainCount = 0, 0;
+                for _, itemKey in ipairs(boss.itemOrder) do
+                    for _, member in ipairs(boss.items[itemKey].members) do
+                        local gain = member.gain and member.gain.percent;
+                        if gain and gain > 0 then
+                            bossGainSum = bossGainSum + gain;
+                            bossGainCount = bossGainCount + 1;
+                        end
+                    end
+                end
+
+                table.insert(prioritizedBosses, {
+                    name = bossName,
+                    avgGain = bossGainCount > 0 and (bossGainSum / bossGainCount) or 0,
+                    order = bossOrderIndex[bossName] or math.huge,
+                });
+            end
+        end
+
+        table.sort(prioritizedBosses, function(a, b)
+            if a.avgGain ~= b.avgGain then
+                return a.avgGain > b.avgGain;
+            end
+            return a.order < b.order;
+        end);
+
+        for _, bossInfo in ipairs(prioritizedBosses) do
+            buildBossSection(bossInfo.name);
+        end
+    end
+
+    if sortMode ~= "boss" and sortMode ~= "bosspriority" then
         buildFlatList(sortMode);
     elseif selectedBoss then
         buildBossSection(selectedBoss);
+    elseif sortMode == "bosspriority" then
+        buildBossPrioritySections();
     else
         local hasRaidGroups = bossToRaid and next(bossToRaid);
         if hasRaidGroups then
@@ -1096,18 +1194,34 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     yOffset = yOffset + 22;
 
     local allMemberItems = {};
+    local memberBossNames = {};
+    local memberBossToRaid = {};
+    local memberBossToJournalId = {};
+    local seenBosses = {};
     if self.state.guildWishlistData and self.state.guildWishlistData.wishlists then
         for _, charEntry in ipairs(self.state.guildWishlistData.wishlists) do
             if charEntry.name == member.characterName and charEntry.realmName == member.realmName then
                 for _, item in ipairs(charEntry.wishlist) do
                     if not item.isObtained then
                         table.insert(allMemberItems, item);
+
+                        local bossName = item.sourceBossName or "Unknown Boss";
+                        if not seenBosses[bossName] then
+                            seenBosses[bossName] = true;
+                            table.insert(memberBossNames, bossName);
+                        end
+                        if item.sourceJournalId then
+                            memberBossToRaid[bossName] = self:GetRaidNameForEncounter(item.sourceJournalId);
+                            memberBossToJournalId[bossName] = item.sourceJournalId;
+                        end
                     end
                 end
                 break;
             end
         end
     end
+
+    local memberBossOrderIndex = BuildBossOrderIndex(self, memberBossNames, memberBossToRaid, memberBossToJournalId);
 
     local memberItems = {};
     local seenSlots = {};
@@ -1121,9 +1235,18 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
         end
     end
 
-    local PLAYER_SORT_LABELS = { upgrade = "Upgrade", name = "Name", slot = "Slot" };
+    local PLAYER_SORT_LABELS = { upgrade = "Upgrade", name = "Name", boss = "Boss Order", slot = "Slot" };
     if guildPlayerSortMode == "name" then
         table.sort(memberItems, function(a, b)
+            local aName = C_Item.GetItemInfo(a.itemId) or "";
+            local bName = C_Item.GetItemInfo(b.itemId) or "";
+            return aName < bName;
+        end);
+    elseif guildPlayerSortMode == "boss" then
+        table.sort(memberItems, function(a, b)
+            local aIndex = memberBossOrderIndex[a.sourceBossName or "Unknown Boss"] or math.huge;
+            local bIndex = memberBossOrderIndex[b.sourceBossName or "Unknown Boss"] or math.huge;
+            if aIndex ~= bIndex then return aIndex < bIndex end
             local aName = C_Item.GetItemInfo(a.itemId) or "";
             local bName = C_Item.GetItemInfo(b.itemId) or "";
             return aName < bName;
@@ -1150,7 +1273,7 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     local popupMenu = self:GetOrCreatePopupMenu();
     local showPopup = popupMenu.showPopup;
 
-    local sortBtn = self:CreateSubFilterBtn(scrollChild, "Sort: " .. (PLAYER_SORT_LABELS[guildPlayerSortMode] or guildPlayerSortMode), 90);
+    local sortBtn = self:CreateSubFilterBtn(scrollChild, "Sort: " .. (PLAYER_SORT_LABELS[guildPlayerSortMode] or guildPlayerSortMode), 110);
     sortBtn:SetHeight(14);
     sortBtn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
 
@@ -1170,6 +1293,7 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
         local sortOptions = {
             { key = "upgrade", label = "Upgrade" },
             { key = "name",    label = "Name" },
+            { key = "boss",    label = "Boss Order" },
             { key = "slot",    label = "Slot" },
         };
         popupMenu.popup.owner = "playerSort";
