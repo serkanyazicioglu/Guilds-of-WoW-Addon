@@ -481,7 +481,7 @@ function GoWWishlists:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId)
     end
 
     table.sort(raidOrder, function(a, b)
-        local function getInstanceId(raid, bossList)
+        local function getInstanceId(bossList)
             for _, bName in ipairs(bossList) do
                 local encId = jid[bName];
                 if encId and EJ_GetEncounterInfo then
@@ -491,7 +491,7 @@ function GoWWishlists:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId)
             end
             return 0;
         end
-        return getInstanceId(a, raidBosses[a]) < getInstanceId(b, raidBosses[b]);
+        return getInstanceId(raidBosses[a]) < getInstanceId(raidBosses[b]);
     end);
 
     for _, raidName in ipairs(raidOrder) do
