@@ -177,12 +177,12 @@ function GoWWishlists:CreateGuildItemRow(parent)
 
     row.infoHover = self:CreateTextHoverTooltip(row, infoText, row);
 
+    row.tierBadge = self:CreateTierBadge(row);
+    row.tierBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
+
     local gainBadge = self:CreateGainBadge(row);
     gainBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
     row.gainBadge = gainBadge;
-
-    row.tierBadge = self:CreateTierBadge(row);
-    row.tierBadge:SetPoint("RIGHT", row.gainBadge, "LEFT", -4, 0);
 
     row.highlight = self:CreateRowHighlight(row);
     self:CreateItemTooltipZone(row, iconBorder);
@@ -223,6 +223,13 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
     end
 
     self:UpdateTierBadge(row.tierBadge, itemData.isTierSetPiece);
+
+    row.gainBadge:ClearAllPoints();
+    if row.tierBadge:IsShown() then
+        row.gainBadge:SetPoint("RIGHT", row.tierBadge, "LEFT", -4, 0);
+    else
+        row.gainBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
+    end
 
     if not itemName then
         self:RegisterPendingItem(itemData.itemId, function()
