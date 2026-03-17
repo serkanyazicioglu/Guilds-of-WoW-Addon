@@ -11,6 +11,8 @@
 
 embed.xml
 
+db\wishlists.lua
+
 Core.lua
 Helper.lua
 GoWWishlists.lua
