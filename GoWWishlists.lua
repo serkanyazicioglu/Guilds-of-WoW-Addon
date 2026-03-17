@@ -977,6 +977,7 @@ function GoWWishlists:GetOrCreatePopupMenu()
 
     local popup = CreateFrame("Frame", "GoWDetailPopup", UIParent, "BackdropTemplate");
     popup:SetFrameStrata("TOOLTIP");
+    popup:SetFrameLevel(1);
     self:ApplyBackdrop(popup, 0.1, 0.1, 0.13, 0.96, 0.3, 0.3, 0.35, 0.8);
     popup:Hide();
     popup:SetClampedToScreen(true);

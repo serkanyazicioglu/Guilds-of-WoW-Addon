@@ -40,6 +40,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
             bossGroups["Unknown Boss"] = unknownItems;
             bossCounts["Unknown Boss"] = #unknownItems;
             totalCount = totalCount + #unknownItems;
+            unknownItems = {};
         end
 
         local subtitleStr = charName .. "-" .. charRealm .. "  |  " .. totalCount .. " items remaining";

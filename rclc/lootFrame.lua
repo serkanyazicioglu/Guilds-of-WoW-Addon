@@ -12,7 +12,6 @@ local GoWLootFrame = RCGoW:NewModule("GoWLootFrame", "AceTimer-3.0");
 
 local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:16:16|t";
 
-local insideHook = false;
 local hookedFrames = {};
 
 local function OnEntryRefreshed(entry)
@@ -99,11 +98,7 @@ local function OnEntryRefreshed(entry)
     entry._gowTipFrame._gowTip = #tipLines > 0 and tipLines or nil;
 end
 
-local function HookGetEntry(self, item)
-    if insideHook then return end
-    insideHook = true;
-
-    local entry = self:GetEntry(item);
+local function HookGetEntry(_, entry)
     if entry then
         if not hookedFrames[entry] then
             hookedFrames[entry] = true;
@@ -113,8 +108,6 @@ local function HookGetEntry(self, item)
         end
         OnEntryRefreshed(entry);
     end
-
-    insideHook = false;
 end
 
 function GoWLootFrame:OnEnable()
