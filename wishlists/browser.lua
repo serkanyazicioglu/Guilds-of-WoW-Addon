@@ -143,8 +143,7 @@ local function InitializeWishlistTabHost(self, host, options)
 
         for _, tab in ipairs(allTabs) do
             if tab:IsShown() then
-                tab:SetBackdropColor(self.constants.TAB_INACTIVE_COLOR.r, self.constants.TAB_INACTIVE_COLOR.g, self.constants.TAB_INACTIVE_COLOR.b, self.constants.TAB_INACTIVE_COLOR.a);
-                tab:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.5);
+                self:SetTabActive(tab, false);
             end
         end
 
@@ -154,8 +153,7 @@ local function InitializeWishlistTabHost(self, host, options)
             return;
         end
         activeContent:Show();
-        activeTab:SetBackdropColor(self.constants.TAB_ACTIVE_COLOR.r, self.constants.TAB_ACTIVE_COLOR.g, self.constants.TAB_ACTIVE_COLOR.b, self.constants.TAB_ACTIVE_COLOR.a);
-        activeTab:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
+        self:SetTabActive(activeTab, true);
         tabIndicator:ClearAllPoints();
         tabIndicator:SetPoint("BOTTOMLEFT", activeTab, "BOTTOMLEFT", 1, 0);
         tabIndicator:SetPoint("BOTTOMRIGHT", activeTab, "BOTTOMRIGHT", -1, 0);

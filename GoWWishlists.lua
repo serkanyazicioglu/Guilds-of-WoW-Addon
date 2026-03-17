@@ -790,6 +790,16 @@ function GoWWishlists:SetButtonActiveWithIcon(btn, iconTex, isActive)
     end
 end
 
+function GoWWishlists:SetTabActive(tab, isActive)
+    if isActive then
+        tab:SetBackdropColor(self.constants.TAB_ACTIVE_COLOR.r, self.constants.TAB_ACTIVE_COLOR.g, self.constants.TAB_ACTIVE_COLOR.b, self.constants.TAB_ACTIVE_COLOR.a);
+        tab:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
+    else
+        tab:SetBackdropColor(self.constants.TAB_INACTIVE_COLOR.r, self.constants.TAB_INACTIVE_COLOR.g, self.constants.TAB_INACTIVE_COLOR.b, self.constants.TAB_INACTIVE_COLOR.a);
+        tab:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.5);
+    end
+end
+
 function GoWWishlists:CreateRowHighlight(frame, alpha)
     local highlight = frame:CreateTexture(nil, "BACKGROUND");
     highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
@@ -872,7 +882,7 @@ function GoWWishlists:CreateTabButton(parentFrame, label, tabIndex)
     end);
     tab:SetScript("OnLeave", function(self)
         if self.tabIndex ~= parentFrame.activeTab then
-            self:SetBackdropColor(c.TAB_INACTIVE_COLOR.r, c.TAB_INACTIVE_COLOR.g, c.TAB_INACTIVE_COLOR.b, c.TAB_INACTIVE_COLOR.a);
+            GoWWishlists:SetTabActive(self, false);
         end
     end);
 
