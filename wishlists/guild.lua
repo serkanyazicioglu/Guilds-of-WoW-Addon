@@ -465,7 +465,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         emptyText:SetJustifyH("CENTER");
         emptyText:SetWordWrap(true);
         if playerGuild then
-            emptyText:SetText("|cff888888" .. msg .. "|r\n|cff666666" .. self:GetSyncAppInstallHint() .. "|r");
+            emptyText:SetText("|cff888888" .. msg .. "|r\n\n|cff666666" .. self:GetSyncAppInstallHint() .. "|r");
             sc:SetHeight(110);
         else
             emptyText:SetText("|cff888888" .. msg .. "|r");
