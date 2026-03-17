@@ -121,19 +121,31 @@ local function CompareByPriority(st, rowa, rowb, sortbycol)
     local wishA = RCGoW:GetPlayerWish(itemId, a.name);
     local wishB = RCGoW:GetPlayerWish(itemId, b.name);
 
-    local prioA = wishA and (TAG_RANK[wishA.tag] or 99) or 999;
-    local prioB = wishB and (TAG_RANK[wishB.tag] or 99) or 999;
+    local dir = st.cols[sortbycol].sort or "asc";
+    local asc = dir:lower() == "asc";
+    local mode = GetDisplayMode();
 
-    if prioA ~= prioB then
-        local dir = st.cols[sortbycol].sort or "asc";
-        if dir:lower() == "asc" then
-            return prioA < prioB;
-        else
-            return prioA > prioB;
+    if mode == "percent" then
+        local valA = (wishA and wishA.gain and wishA.gain.percent) or 0;
+        local valB = (wishB and wishB.gain and wishB.gain.percent) or 0;
+        if valA ~= valB then
+            return asc and valA > valB or valA < valB;
+        end
+    elseif mode == "value" then
+        local valA = (wishA and wishA.gain and wishA.gain.stat) or 0;
+        local valB = (wishB and wishB.gain and wishB.gain.stat) or 0;
+        if valA ~= valB then
+            return asc and valA > valB or valA < valB;
+        end
+    else
+        local prioA = wishA and (TAG_RANK[wishA.tag] or 99) or 999;
+        local prioB = wishB and (TAG_RANK[wishB.tag] or 99) or 999;
+        if prioA ~= prioB then
+            return asc and prioA < prioB or prioA > prioB;
         end
     end
 
-    -- Tiebreak: higher gain wins
+    -- Tiebreak: higher gain percent wins
     local gainA = (wishA and wishA.gain and wishA.gain.percent) or 0;
     local gainB = (wishB and wishB.gain and wishB.gain.percent) or 0;
     return gainA > gainB;
