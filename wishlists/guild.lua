@@ -431,6 +431,8 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         return;
     end
 
+    local rebuildGuildView;
+
     local guildName = self.state.guildWishlistData.guild or "Guild";
     local guildRealm = self.state.guildWishlistData.guildRealm;
     local filter = frame.guildDifficultyFilter or (GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistGuildDifficulty) or "All";
