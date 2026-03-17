@@ -749,6 +749,7 @@ function Core:CreateUpcomingEvents()
 		end
 	end
 
+	Core:AppendScrollBottomPadding();
 	isPropogatingUpdate = false;
 end
 
@@ -805,6 +806,7 @@ function Core:CreateTeams()
 		end
 	end
 
+	Core:AppendScrollBottomPadding();
 	isPropogatingUpdate = false;
 end
 
@@ -859,6 +861,7 @@ function Core:CreateRecruitmentApplications()
 		end
 	end
 
+	Core:AppendScrollBottomPadding();
 	isPropogatingUpdate = false;
 end
 
@@ -920,6 +923,15 @@ function Core:searchForEvent(event)
 	end
 
 	return -1
+end
+
+function Core:AppendScrollBottomPadding()
+	if containerScrollFrame then
+		local spacer = GOW.GUI:Create("SimpleGroup");
+		spacer:SetFullWidth(true);
+		spacer:SetHeight(20);
+		containerScrollFrame:AddChild(spacer);
+	end
 end
 
 function Core:AppendMessage(message, appendReloadUIButton)
