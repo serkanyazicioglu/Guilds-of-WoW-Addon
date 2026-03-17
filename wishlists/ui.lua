@@ -63,16 +63,11 @@ function GoWWishlists:CreateWishlistCardRow(parent, options)
     slotText:SetWordWrap(false);
     row.slotText = slotText;
 
-    row.resetTextAnchors = function()
-        infoText:ClearAllPoints();
-        infoText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -2);
-        infoText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    infoText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -2);
+    infoText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
 
-        slotText:ClearAllPoints();
-        slotText:SetPoint("TOPLEFT", infoText, "BOTTOMLEFT", 0, -1);
-        slotText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    end;
-    row.resetTextAnchors();
+    slotText:SetPoint("TOPLEFT", infoText, "BOTTOMLEFT", 0, -1);
+    slotText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
     if isCompact then
         slotText:Hide();
     end
@@ -80,14 +75,6 @@ function GoWWishlists:CreateWishlistCardRow(parent, options)
     row.gainBadge = self:CreateGainBadge(inner);
     row.gainBadge:SetPoint("RIGHT", row, "RIGHT", -8, 0);
     row.gainBadge:SetPoint("TOP", nameText, "TOP", 0, 0);
-
-    row.noteLabel, row.noteHover = self:CreateNoteTooltipWidget(row, row, "Note", 0, 1, 0);
-    row.noteLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    row.noteLabel:SetPoint("TOP", infoText, "TOP", 0, 0);
-
-    row.officerNoteLabel, row.officerNoteHover = self:CreateNoteTooltipWidget(row, row, "Officer Note", 1, 0.5, 0);
-    row.officerNoteLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    row.officerNoteLabel:SetPoint("TOP", slotText, "TOP", 0, 0);
 
     row.noteIcon, row.officerNoteIcon = self:CreateNoteIcons(row, row, inner);
 
@@ -184,7 +171,7 @@ function GoWWishlists:UpdateBossHeaderArrow(header)
 end
 
 GoWWishlists.constants.SOURCE_PANEL_WIDTH = 180;
-GoWWishlists.constants.DETAIL_PANEL_WIDTH = 260;
+GoWWishlists.constants.DETAIL_PANEL_WIDTH = 340;
 GoWWishlists.constants.PANEL_HEADER_HEIGHT = 28;
 GoWWishlists.constants.BOSS_ROW_HEIGHT = 24;
 GoWWishlists.constants.SOURCE_FILTER_HEIGHT = 26;

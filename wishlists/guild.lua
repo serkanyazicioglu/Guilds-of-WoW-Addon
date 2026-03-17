@@ -357,7 +357,6 @@ function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
     end
 end
 
--- guildSections = { { header?, items?, raidLabel?, obtainedSeparator?, obtainedRows? }, ... }
 function GoWWishlists:RelayoutGuildContent(frame)
     local scrollChild = frame.guildScrollChild;
     local yOffset = 0;

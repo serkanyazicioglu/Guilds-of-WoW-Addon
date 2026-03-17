@@ -570,24 +570,6 @@ function GoWWishlists:BuildInfoLine(entry, showSource)
     return table.concat(parts, "  ");
 end
 
-function GoWWishlists:ResetRowTextAnchors(row)
-    if row and row.resetTextAnchors then
-        row.resetTextAnchors();
-    end
-end
-
-function GoWWishlists:CreateNoteTooltipWidget(parent, row, header, headerR, headerG, headerB)
-    local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    label:SetJustifyH("RIGHT");
-    label:SetWordWrap(false);
-    label:Hide();
-
-    local hover = self:CreateTextHoverTooltip(parent, label, row, header, headerR, headerG, headerB);
-    hover:Hide();
-
-    return label, hover;
-end
-
 function GoWWishlists:CreateNoteIconButton(parent, row, texturePath, header, headerR, headerG, headerB)
     local button = CreateFrame("Button", nil, parent);
     button:SetSize(14, 14);
@@ -625,17 +607,6 @@ function GoWWishlists:CreateNoteIcons(parent, row, anchorFrame)
 end
 
 function GoWWishlists:ApplyNoteLabels(row, notes, officerNotes)
-    local rowWidth = row:GetParent() and row:GetParent():GetWidth() or 0;
-    local showInline = rowWidth > 300;
-    local noteW = math.min(math.floor(rowWidth * 0.3), 140);
-    if noteW < 40 then showInline = false end
-
-    self:ResetRowTextAnchors(row);
-
-    if row.noteLabel then row.noteLabel:Hide() end
-    if row.noteHover then row.noteHover:Hide() end
-    if row.officerNoteLabel then row.officerNoteLabel:Hide() end
-    if row.officerNoteHover then row.officerNoteHover:Hide() end
     if row.noteIcon then
         row.noteIcon.noteText = nil;
         row.noteIcon:Hide();
@@ -644,39 +615,15 @@ function GoWWishlists:ApplyNoteLabels(row, notes, officerNotes)
         row.officerNoteIcon.noteText = nil;
         row.officerNoteIcon:Hide();
     end
-    if row.noteHover then row.noteHover.tipText = nil end
-    if row.officerNoteHover then row.officerNoteHover.tipText = nil end
 
-    if notes and notes ~= "" then
-        if showInline and row.noteLabel then
-            local icon = "|TInterface\\Buttons\\UI-GuildButton-PublicNote-Up:12:12|t ";
-            row.noteLabel:SetText("|cff88aa88" .. icon .. notes .. "|r");
-            row.noteLabel:SetWidth(noteW);
-            row.noteLabel:Show();
-            row.noteHover.tipText = notes;
-            row.noteHover:Show();
-            row.infoText:SetPoint("RIGHT", row, "RIGHT", -(noteW + 10), 0);
-        elseif row.noteIcon then
-            row.noteIcon.noteText = notes;
-            row.noteIcon:Show();
-        end
+    if notes and notes ~= "" and row.noteIcon then
+        row.noteIcon.noteText = notes;
+        row.noteIcon:Show();
     end
 
-    if officerNotes and officerNotes ~= "" then
-        if showInline and row.officerNoteLabel then
-            local icon = "|TInterface\\Buttons\\UI-GuildButton-OfficerNote-Up:12:12|t ";
-            row.officerNoteLabel:SetText("|cffcc8844" .. icon .. officerNotes .. "|r");
-            row.officerNoteLabel:SetWidth(noteW);
-            row.officerNoteLabel:Show();
-            row.officerNoteHover.tipText = officerNotes;
-            row.officerNoteHover:Show();
-            if row.slotText then
-                row.slotText:SetPoint("RIGHT", row, "RIGHT", -(noteW + 10), 0);
-            end
-        elseif row.officerNoteIcon then
-            row.officerNoteIcon.noteText = officerNotes;
-            row.officerNoteIcon:Show();
-        end
+    if officerNotes and officerNotes ~= "" and row.officerNoteIcon then
+        row.officerNoteIcon.noteText = officerNotes;
+        row.officerNoteIcon:Show();
     end
 end
 
