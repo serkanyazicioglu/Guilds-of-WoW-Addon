@@ -594,7 +594,7 @@ function GoWWishlists:CreateNoteIconButton(parent, row, texturePath, header, hea
     return button;
 end
 
-function GoWWishlists:ApplyNoteIcon(icon, notes)
+function GoWWishlists:UpdateNoteIcon(icon, notes)
     if not icon then return end
     icon.noteText = nil;
     icon:Hide();

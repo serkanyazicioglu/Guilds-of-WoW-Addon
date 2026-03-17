@@ -302,8 +302,8 @@ function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
 
     self:ApplyGainBadge(row.gainBadge, member.gain);
 
-    self:ApplyNoteIcon(row.noteIcon, member.notes);
-    self:ApplyNoteIcon(row.officerNoteIcon, self:HasGuildWishlistData() and member.officerNotes or nil);
+    self:UpdateNoteIcon(row.noteIcon, member.notes);
+    self:UpdateNoteIcon(row.officerNoteIcon, self:HasGuildWishlistData() and member.officerNotes or nil);
 end
 
 function GoWWishlists:RelayoutGuildContent(frame)
