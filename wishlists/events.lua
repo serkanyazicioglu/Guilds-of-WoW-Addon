@@ -8,7 +8,7 @@ function GoWWishlists:Initialize()
     self.state.compactMode = GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistCompactMode or false;
     self:BuildWishlistIndex();
     self:HandleLootDropEvents();
-    self:HandleLootHistoryEvents();
+    -- self:HandleLootHistoryEvents();
     self:HandleLootInfoEvents();
 
     GOW.Logger:Debug("Wishlist module initialized.");
