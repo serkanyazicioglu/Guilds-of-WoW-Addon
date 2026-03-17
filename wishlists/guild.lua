@@ -2,7 +2,6 @@ local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
 local ns = select(2, ...);
 
-GoWWishlists.constants.GUILD_ITEM_ROW_HEIGHT = 36;
 GoWWishlists.constants.GUILD_MEMBER_ROW_HEIGHT = 22;
 GoWWishlists.constants.GUILD_FILTER_HEIGHT = 26;
 
@@ -113,38 +112,10 @@ function GoWWishlists:CreateGuildItemRow(parent)
     local row = CreateFrame("Frame", nil, parent);
     row:SetHeight(rowHeight);
 
-    -- Small badge column for difficulty
-    local badgeCol = CreateFrame("Frame", nil, row, "BackdropTemplate");
-    badgeCol:SetWidth(30);
-    badgeCol:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0);
-    badgeCol:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0);
-    badgeCol:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" });
-    badgeCol:SetBackdropColor(0.08, 0.08, 0.1, 0.5);
-
-    local diffText = badgeCol:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    diffText:SetPoint("LEFT", badgeCol, "LEFT", 2, 0);
-    diffText:SetPoint("RIGHT", badgeCol, "RIGHT", -2, 0);
-    diffText:SetJustifyH("CENTER");
-    badgeCol.diffText = diffText;
-
-    badgeCol:EnableMouse(true);
-    badgeCol:SetScript("OnEnter", function(self)
-        if self.tipText then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
-            GameTooltip:Show();
-        end
-    end);
-    badgeCol:SetScript("OnLeave", function() GameTooltip:Hide() end);
-
-    local border = badgeCol:CreateTexture(nil, "ARTWORK", nil, 2);
-    border:SetTexture("Interface\\Buttons\\WHITE8x8");
-    border:SetVertexColor(0.25, 0.25, 0.3, 0.3);
-    border:SetWidth(1);
-    border:SetPoint("TOPRIGHT", badgeCol, "TOPRIGHT", 0, 0);
-    border:SetPoint("BOTTOMRIGHT", badgeCol, "BOTTOMRIGHT", 0, 0);
-
-    row.badgeCol = badgeCol;
+    row.badgeCol = self:CreateBadgeColumn(row, {
+        width = 30,
+        difficultyOnly = true,
+    });
 
     local iconSize = isCompact and 20 or 24;
     local iconBorder, icon = self:CreateRowIcon(row, iconSize, 34);
@@ -179,16 +150,8 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
 
     local itemName = self:SetItemIconAndName(row, itemData.itemId);
 
-    -- Badge column: difficulty
     if row.badgeCol then
-        local diffAbbrev = itemData.difficulty and self.constants.DIFF_ABBREV[itemData.difficulty] or "";
-        local dc = itemData.difficulty and self.constants.DIFF_COLORS[itemData.difficulty];
-        if dc then
-            row.badgeCol.diffText:SetText(string.format("|cff%02x%02x%02x%s|r", dc.r * 255, dc.g * 255, dc.b * 255, diffAbbrev));
-        else
-            row.badgeCol.diffText:SetText(diffAbbrev);
-        end
-        row.badgeCol.tipText = itemData.difficulty or nil;
+        self:ApplyBadgeColumnState(row.badgeCol, itemData.difficulty, nil);
     end
 
     local parts = {};
@@ -389,7 +352,7 @@ function GoWWishlists:RelayoutGuildContent(frame)
                     itemRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
                     itemRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
                     itemRow:Show();
-                    yOffset = yOffset + self.constants.GUILD_ITEM_ROW_HEIGHT;
+                    yOffset = yOffset + self:GetGuildItemRowHeight();
 
                     for _, memberRow in ipairs(itemGroup.memberRows or {}) do
                         memberRow:ClearAllPoints();
@@ -416,7 +379,7 @@ function GoWWishlists:RelayoutGuildContent(frame)
                 itemRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
                 itemRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
                 itemRow:Show();
-                yOffset = yOffset + self.constants.GUILD_ITEM_ROW_HEIGHT;
+                yOffset = yOffset + self:GetGuildItemRowHeight();
 
                 for _, memberRow in ipairs(itemGroup.memberRows or {}) do
                     memberRow:ClearAllPoints();
@@ -1249,7 +1212,7 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
         row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
         row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
         row:Show();
-        yOffset = yOffset + self.constants.BROWSER_ITEM_HEIGHT;
+        yOffset = yOffset + self:GetItemRowHeight();
     end
 
     if #memberItems == 0 then

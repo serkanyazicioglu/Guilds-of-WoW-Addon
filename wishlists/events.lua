@@ -5,6 +5,7 @@ local ns = select(2, ...);
 function GoWWishlists:Initialize()
     if not ns.WISHLISTS then GOW.Logger:Debug("No wishlist data found. Skipping wishlist initialization.") return end
 
+    self.state.compactMode = GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistCompactMode or false;
     self:BuildWishlistIndex();
     self:HandleLootDropEvents();
     self:HandleLootHistoryEvents();

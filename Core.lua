@@ -26,6 +26,7 @@ GOW.defaults = {
 		allLootHistory = {},
 		wishlistInfoFramePos = nil,
 		wishlistBrowserFramePos = nil,
+		wishlistCompactMode = false,
 		guildRosterFilter = "all",
 	}
 }

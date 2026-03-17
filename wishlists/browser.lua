@@ -1,6 +1,41 @@
 local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
 
+function GoWWishlists:CreateCompactToggleButton(parent)
+    local compactBtn = CreateFrame("Button", nil, parent, "BackdropTemplate");
+    compactBtn:SetSize(60, 18);
+    self:ApplyBackdrop(compactBtn, self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a, 0.3, 0.3, 0.3, 0.4);
+
+    local compactBtnText = compactBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    compactBtnText:SetPoint("CENTER", compactBtn, "CENTER", 0, 0);
+    compactBtn.btnText = compactBtnText;
+
+    local function updateCompactBtn()
+        if self.state.compactMode then
+            compactBtnText:SetText("|cff00ff00Compact|r");
+            self:SetButtonActive(compactBtn, true);
+        else
+            compactBtnText:SetText("Compact");
+            self:SetButtonActive(compactBtn, false);
+        end
+    end
+
+    compactBtn.UpdateState = updateCompactBtn;
+    compactBtn:SetScript("OnClick", function()
+        self:ToggleCompactMode();
+    end);
+    compactBtn:SetScript("OnEnter", function(btn)
+        GameTooltip:SetOwner(btn, "ANCHOR_BOTTOM");
+        GameTooltip:AddLine("Toggle compact mode", 1, 1, 1);
+        GameTooltip:AddLine("Reduces row height and hides slot and subclass badges", 0.7, 0.7, 0.7);
+        GameTooltip:Show();
+    end);
+    compactBtn:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+    updateCompactBtn();
+    return compactBtn;
+end
+
 function GoWWishlists:CreateWishlistBrowserFrame()
     if self.frames.browserFrame then return self.frames.browserFrame end
 
@@ -48,37 +83,8 @@ function GoWWishlists:CreateWishlistBrowserFrame()
     closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -6);
     closeBtn:SetScript("OnClick", function() frame:Hide() end);
 
-    -- Compact mode toggle button (right-aligned on tab row)
-    local compactBtn = CreateFrame("Button", nil, frame, "BackdropTemplate");
-    compactBtn:SetSize(60, 18);
-    self:ApplyBackdrop(compactBtn, self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a, 0.3, 0.3, 0.3, 0.4);
-    local compactBtnText = compactBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    compactBtnText:SetPoint("CENTER", compactBtn, "CENTER", 0, 0);
-    compactBtn.btnText = compactBtnText;
+    local compactBtn = self:CreateCompactToggleButton(frame);
     frame.compactBtn = compactBtn;
-
-    local function updateCompactBtn()
-        if self.state.compactMode then
-            compactBtnText:SetText("|cff00ff00Compact|r");
-            self:SetButtonActive(compactBtn, true);
-        else
-            compactBtnText:SetText("Compact");
-            self:SetButtonActive(compactBtn, false);
-        end
-    end
-    updateCompactBtn();
-
-    compactBtn:SetScript("OnClick", function()
-        self:ToggleCompactMode();
-        updateCompactBtn();
-    end);
-    compactBtn:SetScript("OnEnter", function(btn)
-        GameTooltip:SetOwner(btn, "ANCHOR_BOTTOM");
-        GameTooltip:AddLine("Toggle compact mode", 1, 1, 1);
-        GameTooltip:AddLine("Reduces row height and hides slot badges", 0.7, 0.7, 0.7);
-        GameTooltip:Show();
-    end);
-    compactBtn:SetScript("OnLeave", function() GameTooltip:Hide() end);
 
     local wishlistTab = self:CreateTabButton(frame, "|cff00ff00PERSONAL|r", 1);
     wishlistTab:SetPoint("TOPLEFT", subtitleText, "BOTTOMLEFT", -4, -4);
@@ -91,7 +97,6 @@ function GoWWishlists:CreateWishlistBrowserFrame()
     guildWishlistTab:Hide();
     frame.guildWishlistTab = guildWishlistTab;
 
-    -- Position compact button on the tab row, right-aligned
     compactBtn:SetPoint("TOP", wishlistTab, "TOP", 0, 0);
     compactBtn:SetPoint("RIGHT", frame, "RIGHT", -8, 0);
 
@@ -205,6 +210,11 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
     personalTab:SetPoint("TOPLEFT", container, "TOPLEFT", 4, -4);
     personalTab:SetWidth(90);
 
+    local compactBtn = self:CreateCompactToggleButton(container);
+    compactBtn:SetPoint("TOP", personalTab, "TOP", 0, 0);
+    compactBtn:SetPoint("RIGHT", container, "RIGHT", -4, 0);
+    container.compactBtn = compactBtn;
+
     local rosterTab = self:CreateTabButton(container, "|cff00ff00ROSTER|r", 2);
     rosterTab:SetPoint("LEFT", personalTab, "RIGHT", 4, 0);
     rosterTab:SetWidth(90);
@@ -274,6 +284,7 @@ function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
     local container = self:CreateCoreWishlistsFrame(parent);
 
     local subtitleProxy = { SetText = function(_, text) if setStatusFn then setStatusFn(text) end end };
+    container.setStatusFn = setStatusFn;
 
     if self:HasGuildWishlistData() then
         container.rosterTab:Show();
@@ -286,16 +297,23 @@ function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
         subtitleText = subtitleProxy,
         wishlistSubtitle = nil,
     };
-    self:PopulatePersonalWishlistView(personalFrame);
+    local guildFrame = {
+        guild3Panel = container.guild3Panel,
+        guildDifficultyFilter = container.guildDifficultyFilter or "All",
+        subtitleText = subtitleProxy,
+    };
+    container.personalFrame = personalFrame;
+    container.guildFrame = guildFrame;
 
-    if self:HasGuildWishlistData() then
-        local guildFrame = {
-            guild3Panel = container.guild3Panel,
-            guildDifficultyFilter = container.guildDifficultyFilter or "All",
-            subtitleText = subtitleProxy,
-        };
-        self:PopulateGuildWishlistView(guildFrame);
+    function container:RefreshContent()
+        GoWWishlists:PopulatePersonalWishlistView(self.personalFrame);
+        if GoWWishlists:HasGuildWishlistData() then
+            self.guildFrame.guildDifficultyFilter = self.guildDifficultyFilter or "All";
+            GoWWishlists:PopulateGuildWishlistView(self.guildFrame);
+        end
     end
+
+    container:RefreshContent();
 
     local savedTab = GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistActiveTab or 1;
     if savedTab == 2 and not container.rosterTab:IsShown() then savedTab = 1 end

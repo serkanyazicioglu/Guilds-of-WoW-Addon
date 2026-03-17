@@ -1,110 +1,50 @@
 local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
 
-GoWWishlists.constants.BROWSER_ITEM_HEIGHT = 68;
 GoWWishlists.constants.BROWSER_BOSS_HEADER_HEIGHT = 24;
 GoWWishlists.constants.RAID_HEADER_HEIGHT = 18;
-
-function GoWWishlists:CreateBadgeColumn(parent, rowHeight)
-    local col = CreateFrame("Frame", nil, parent, "BackdropTemplate");
-    col:SetWidth(self.constants.BADGE_COLUMN_WIDTH);
-    col:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0);
-    col:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0);
-    col:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-    });
-    col:SetBackdropColor(0.08, 0.08, 0.1, 0.5);
-
-    local content = CreateFrame("Frame", nil, col);
-    content:SetWidth(self.constants.BADGE_COLUMN_WIDTH - 4);
-    content:SetHeight(28);
-    content:SetPoint("CENTER", col, "CENTER", 0, 0);
-
-    local diffText = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    diffText:SetPoint("TOP", content, "TOP", 0, 0);
-    diffText:SetWidth(self.constants.BADGE_COLUMN_WIDTH - 4);
-    diffText:SetJustifyH("CENTER");
-    col.diffText = diffText;
-
-    local sep = content:CreateTexture(nil, "ARTWORK");
-    sep:SetTexture("Interface\\Buttons\\WHITE8x8");
-    sep:SetVertexColor(0.3, 0.3, 0.35, 0.3);
-    sep:SetSize(24, 1);
-    sep:SetPoint("TOP", diffText, "BOTTOM", 0, -3);
-    col.sep = sep;
-
-    local tagText = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    tagText:SetPoint("TOP", sep, "BOTTOM", 0, -3);
-    tagText:SetWidth(self.constants.BADGE_COLUMN_WIDTH - 4);
-    tagText:SetJustifyH("CENTER");
-    col.tagText = tagText;
-
-    col:EnableMouse(true);
-    col:SetScript("OnEnter", function(self)
-        if self.tipText then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
-            GameTooltip:Show();
-        end
-    end);
-    col:SetScript("OnLeave", function() GameTooltip:Hide() end);
-
-    -- Right-side border
-    local border = col:CreateTexture(nil, "ARTWORK", nil, 2);
-    border:SetTexture("Interface\\Buttons\\WHITE8x8");
-    border:SetVertexColor(0.25, 0.25, 0.3, 0.3);
-    border:SetWidth(1);
-    border:SetPoint("TOPRIGHT", col, "TOPRIGHT", 0, 0);
-    border:SetPoint("BOTTOMRIGHT", col, "BOTTOMRIGHT", 0, 0);
-
-    return col;
-end
-
-function GoWWishlists:CreateItemRow(parent)
+function GoWWishlists:CreateWishlistCardRow(parent, options)
+    local opts = options or {};
     local isCompact = self.state.compactMode;
-    local rowHeight = self:GetItemRowHeight();
+    local rowHeight = opts.rowHeight or self:GetItemRowHeight();
     local row = CreateFrame("Frame", nil, parent);
     row:SetHeight(rowHeight);
 
-    -- Badge column (left side)
-    local badgeCol = self:CreateBadgeColumn(row, rowHeight);
-    row.badgeCol = badgeCol;
+    local badgeAnchor = nil;
+    if opts.leadingAccent then
+        local sideBar = row:CreateTexture(nil, "ARTWORK", nil, 2);
+        sideBar:SetTexture("Interface\\Buttons\\WHITE8x8");
+        sideBar:SetVertexColor(
+            opts.leadingAccent.r or self.constants.GOW_ACCENT_COLOR.r,
+            opts.leadingAccent.g or self.constants.GOW_ACCENT_COLOR.g,
+            opts.leadingAccent.b or self.constants.GOW_ACCENT_COLOR.b,
+            opts.leadingAccent.a or 0.8
+        );
+        sideBar:SetWidth(opts.leadingAccent.width or 3);
+        sideBar:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0);
+        sideBar:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0);
+        row.sideBar = sideBar;
+        badgeAnchor = sideBar;
+    end
 
-    local BADGE_W = self.constants.BADGE_COLUMN_WIDTH;
-    local iconSize = isCompact and 22 or 32;
+    row.badgeCol = self:CreateBadgeColumn(row, {
+        attachAfter = badgeAnchor,
+        width = self.constants.BADGE_COLUMN_WIDTH,
+    });
 
-    -- Inner content area (right of badge column)
+    local iconSize = isCompact and (opts.compactIconSize or 22) or (opts.cardIconSize or 32);
     local inner = CreateFrame("Frame", nil, row);
-    inner:SetPoint("LEFT", badgeCol, "RIGHT", 4, 0);
+    inner:SetPoint("LEFT", row.badgeCol, "RIGHT", 4, 0);
     inner:SetPoint("RIGHT", row, "RIGHT", 0, 0);
-    local innerHeight = isCompact and 34 or 50;
+    local innerHeight = isCompact and (opts.compactInnerHeight or 34) or (opts.cardInnerHeight or 50);
     inner:SetHeight(innerHeight);
     inner:SetPoint("TOP", row, "TOP", 0, -math.floor((rowHeight - innerHeight) / 2));
+    row.inner = inner;
 
     local iconBorder, icon = self:CreateRowIcon(inner, iconSize, 4);
     row.iconBorder = iconBorder;
     row.icon = icon;
 
-    -- Note icons (top-right, aligned to inner content area)
-    local officerNoteIcon = CreateFrame("Button", nil, row);
-    officerNoteIcon:SetSize(14, 14);
-    officerNoteIcon:SetPoint("TOPRIGHT", inner, "TOPRIGHT", -4, 0);
-    local officerNoteTex = officerNoteIcon:CreateTexture(nil, "ARTWORK");
-    officerNoteTex:SetAllPoints();
-    officerNoteTex:SetTexture("Interface\\Buttons\\UI-GuildButton-OfficerNote-Up");
-    officerNoteIcon:Hide();
-    row.officerNoteIcon = officerNoteIcon;
-
-    local noteIcon = CreateFrame("Button", nil, row);
-    noteIcon:SetSize(14, 14);
-    noteIcon:SetPoint("RIGHT", officerNoteIcon, "LEFT", -2, 0);
-    local noteIconTex = noteIcon:CreateTexture(nil, "ARTWORK");
-    noteIconTex:SetAllPoints();
-    noteIconTex:SetTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up");
-    noteIcon:Hide();
-    row.noteIcon = noteIcon;
-
-    -- Name text (top line)
     local nameText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     nameText:SetPoint("TOPLEFT", iconBorder, "TOPRIGHT", 6, 2);
     nameText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
@@ -112,172 +52,78 @@ function GoWWishlists:CreateItemRow(parent)
     nameText:SetWordWrap(false);
     row.nameText = nameText;
 
-    -- Info text (second line: boss · difficulty)
     local infoText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    infoText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -2);
-    infoText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
     infoText:SetJustifyH("LEFT");
     infoText:SetWordWrap(false);
     row.infoText = infoText;
-
     row.infoHover = self:CreateTextHoverTooltip(inner, infoText, row);
 
-    -- Slot badge text (third line, card mode only)
     local slotText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    slotText:SetPoint("TOPLEFT", infoText, "BOTTOMLEFT", 0, -1);
-    slotText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
     slotText:SetJustifyH("LEFT");
     slotText:SetWordWrap(false);
     row.slotText = slotText;
-    if isCompact then slotText:Hide() end
 
-    -- Gain badge (right of name line)
-    local gainBadge = self:CreateGainBadge(inner);
-    gainBadge:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    gainBadge:SetPoint("TOP", nameText, "TOP", 0, 0);
-    row.gainBadge = gainBadge;
+    row.resetTextAnchors = function()
+        infoText:ClearAllPoints();
+        infoText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -2);
+        infoText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
 
-    -- Note text labels (inline text for wide rows, fall back to icons for narrow)
-    local noteLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    noteLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    noteLabel:SetPoint("TOP", infoText, "TOP", 0, 0);
-    noteLabel:SetJustifyH("RIGHT");
-    noteLabel:SetWordWrap(false);
-    noteLabel:Hide();
-    row.noteLabel = noteLabel;
+        slotText:ClearAllPoints();
+        slotText:SetPoint("TOPLEFT", infoText, "BOTTOMLEFT", 0, -1);
+        slotText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    end;
+    row.resetTextAnchors();
+    if isCompact then
+        slotText:Hide();
+    end
 
-    local noteHover = CreateFrame("Frame", nil, row);
-    noteHover:SetPoint("TOPLEFT", noteLabel, "TOPLEFT", 0, 2);
-    noteHover:SetPoint("BOTTOMRIGHT", noteLabel, "BOTTOMRIGHT", 0, -2);
-    noteHover:EnableMouse(true);
-    noteHover:SetScript("OnEnter", function(self)
-        row.highlight:Show();
-        if self.tipText then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine("Note", 0, 1, 0);
-            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
-            GameTooltip:Show();
-        end
-    end);
-    noteHover:SetScript("OnLeave", function()
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
-    noteHover:Hide();
-    row.noteHover = noteHover;
+    row.gainBadge = self:CreateGainBadge(inner);
+    row.gainBadge:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    row.gainBadge:SetPoint("TOP", nameText, "TOP", 0, 0);
 
-    local officerNoteLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    officerNoteLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    officerNoteLabel:SetPoint("TOP", slotText, "TOP", 0, 0);
-    officerNoteLabel:SetJustifyH("RIGHT");
-    officerNoteLabel:SetWordWrap(false);
-    officerNoteLabel:Hide();
-    row.officerNoteLabel = officerNoteLabel;
+    row.noteLabel, row.noteHover = self:CreateNoteTooltipWidget(row, row, "Note", 0, 1, 0);
+    row.noteLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    row.noteLabel:SetPoint("TOP", infoText, "TOP", 0, 0);
 
-    local officerNoteHover = CreateFrame("Frame", nil, row);
-    officerNoteHover:SetPoint("TOPLEFT", officerNoteLabel, "TOPLEFT", 0, 2);
-    officerNoteHover:SetPoint("BOTTOMRIGHT", officerNoteLabel, "BOTTOMRIGHT", 0, -2);
-    officerNoteHover:EnableMouse(true);
-    officerNoteHover:SetScript("OnEnter", function(self)
-        row.highlight:Show();
-        if self.tipText then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine("Officer Note", 1, 0.5, 0);
-            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
-            GameTooltip:Show();
-        end
-    end);
-    officerNoteHover:SetScript("OnLeave", function()
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
-    officerNoteHover:Hide();
-    row.officerNoteHover = officerNoteHover;
+    row.officerNoteLabel, row.officerNoteHover = self:CreateNoteTooltipWidget(row, row, "Officer Note", 1, 0.5, 0);
+    row.officerNoteLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    row.officerNoteLabel:SetPoint("TOP", slotText, "TOP", 0, 0);
 
-    -- Tooltip scripts for note icons
-    noteIcon:SetScript("OnEnter", function(self)
-        row.highlight:Show();
-        if self.noteText then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine("Note", 0, 1, 0);
-            GameTooltip:AddLine(self.noteText, 1, 1, 1, true);
-            GameTooltip:Show();
-        end
-    end);
-    noteIcon:SetScript("OnLeave", function(self)
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
+    row.noteIcon, row.officerNoteIcon = self:CreateNoteIcons(row, row, inner);
 
-    officerNoteIcon:SetScript("OnEnter", function(self)
-        row.highlight:Show();
-        if self.noteText then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine("Officer Note", 1, 0.5, 0);
-            GameTooltip:AddLine(self.noteText, 1, 1, 1, true);
-            GameTooltip:Show();
-        end
-    end);
-    officerNoteIcon:SetScript("OnLeave", function(self)
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
-
-    -- Bottom separator
     self:CreateRowSeparator(row);
-
     row.highlight = self:CreateRowHighlight(row);
     self:CreateItemTooltipZone(row, iconBorder);
 
     return row;
 end
 
-function GoWWishlists:PopulateItemRow(row, entry)
+function GoWWishlists:CreateItemRow(parent, options)
+    return self:CreateWishlistCardRow(parent, options);
+end
+
+function GoWWishlists:PopulateItemRow(row, entry, itemLink)
     row.itemId = entry.itemId;
 
-    local itemName = self:SetItemIconAndName(row, entry.itemId);
-
+    local itemName = self:SetItemIconAndName(row, entry.itemId, itemLink);
     if not itemName then
         self:RegisterPendingItem(entry.itemId, function()
             if row:GetParent() then
-                self:PopulateItemRow(row, entry);
+                self:PopulateItemRow(row, entry, itemLink);
             end
         end);
     end
 
     row.infoText:SetText(self:BuildInfoLine(entry, row.showSource));
+    self:ApplyBadgeColumnState(row.badgeCol, entry.difficulty, entry.tag);
 
-    -- Badge column: difficulty + tag
-    if row.badgeCol then
-        local diffAbbrev = entry.difficulty and self.constants.DIFF_ABBREV[entry.difficulty] or "";
-        local dc = entry.difficulty and self.constants.DIFF_COLORS[entry.difficulty];
-        if dc then
-            row.badgeCol.diffText:SetText(string.format("|cff%02x%02x%02x%s|r", dc.r * 255, dc.g * 255, dc.b * 255, diffAbbrev));
-        else
-            row.badgeCol.diffText:SetText(diffAbbrev);
-        end
-
-        local tagLabel = self:FormatTag(entry.tag);
-        row.badgeCol.tagText:SetText(tagLabel or "");
-        row.badgeCol.sep:SetShown(diffAbbrev ~= "" and tagLabel ~= nil);
-
-        local tipParts = {};
-        if entry.difficulty then table.insert(tipParts, entry.difficulty) end
-        local tagInfo = entry.tag and self.constants.TAG_DISPLAY[entry.tag];
-        if tagInfo then table.insert(tipParts, tagInfo.tip) end
-        row.badgeCol.tipText = #tipParts > 0 and table.concat(tipParts, "\n") or nil;
-    end
-
-    -- Slot badge (card mode only)
-    if row.slotText then
-        local slotBadge = self:FormatSlotBadge(entry.itemId);
-        if slotBadge and not self.state.compactMode then
-            row.slotText:SetText("|cff888888" .. slotBadge .. "|r");
-            row.slotText:Show();
-        else
-            row.slotText:SetText("");
-            row.slotText:Hide();
-        end
+    local slotBadge = self:FormatSlotBadge(entry.itemId);
+    if slotBadge and not self.state.compactMode then
+        row.slotText:SetText("|cff888888" .. slotBadge .. "|r");
+        row.slotText:Show();
+    else
+        row.slotText:SetText("");
+        row.slotText:Hide();
     end
 
     local infoParts = {};
@@ -741,7 +587,7 @@ function GoWWishlists:RelayoutBrowserContent(frame)
                     row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
                     row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
                     row:Show();
-                    yOffset = yOffset + self.constants.BROWSER_ITEM_HEIGHT;
+                    yOffset = yOffset + self:GetItemRowHeight();
                 end
             else
                 for _, row in ipairs(header.itemRows) do

@@ -198,7 +198,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
             row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
             row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
             row:Show();
-            yOffset = yOffset + self.constants.BROWSER_ITEM_HEIGHT;
+            yOffset = yOffset + self:GetItemRowHeight();
         end
 
         if #sortedItems == 0 and #obtainedItems == 0 then
@@ -231,7 +231,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
                 row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
                 row:SetAlpha(0.5);
                 row:Show();
-                yOffset = yOffset + self.constants.BROWSER_ITEM_HEIGHT;
+                yOffset = yOffset + self:GetItemRowHeight();
             end
         end
 

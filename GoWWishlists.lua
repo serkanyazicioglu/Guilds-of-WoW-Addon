@@ -163,8 +163,6 @@ function GoWWishlists:FindWishlistMatch(itemId)
 end
 
 
--- Wishlist Loot Alert Container Frame
-GoWWishlists.constants.ALERT_ITEM_ROW_HEIGHT = 68;
 GoWWishlists.constants.ALERT_DISPLAY_TIME = 60;
 GoWWishlists.constants.ALERT_FADE_TIME = 1.5;
 
@@ -210,7 +208,6 @@ GoWWishlists.constants.TAG_DISPLAY = {
 };
 
 GoWWishlists.constants.DIFFICULTIES = { "All", "Normal", "Heroic", "Mythic", "LFR" };
-GoWWishlists.constants.DIFFICULTY_LABELS = { "All", "N", "H", "M", "LFR" };
 
 GoWWishlists.constants.STANDARD_BACKDROP = {
     bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -273,6 +270,112 @@ function GoWWishlists:GetAlertItemRowHeight()
     return self.state.compactMode and self.constants.ALERT_ITEM_ROW_HEIGHT_COMPACT or self.constants.ALERT_ITEM_ROW_HEIGHT_CARD;
 end
 
+function GoWWishlists:CreateBadgeColumn(parent, options)
+    local opts = type(options) == "table" and options or {};
+    local col = CreateFrame("Frame", nil, parent, "BackdropTemplate");
+    local width = opts.width or self.constants.BADGE_COLUMN_WIDTH;
+    col:SetWidth(width);
+
+    if opts.attachAfter then
+        col:SetPoint("TOPLEFT", opts.attachAfter, "TOPRIGHT", 0, 0);
+        col:SetPoint("BOTTOMLEFT", opts.attachAfter, "BOTTOMRIGHT", 0, 0);
+    else
+        col:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0);
+        col:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0);
+    end
+
+    col:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" });
+    col:SetBackdropColor(0.08, 0.08, 0.1, 0.5);
+    col.isDifficultyOnly = opts.difficultyOnly == true;
+
+    if col.isDifficultyOnly then
+        local diffText = col:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        diffText:SetPoint("LEFT", col, "LEFT", 2, 0);
+        diffText:SetPoint("RIGHT", col, "RIGHT", -2, 0);
+        diffText:SetJustifyH("CENTER");
+        col.diffText = diffText;
+    else
+        local content = CreateFrame("Frame", nil, col);
+        content:SetWidth(width - 4);
+        content:SetHeight(opts.contentHeight or 28);
+        content:SetPoint("CENTER", col, "CENTER", 0, 0);
+
+        local diffText = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        diffText:SetPoint("TOP", content, "TOP", 0, 0);
+        diffText:SetWidth(width - 4);
+        diffText:SetJustifyH("CENTER");
+        col.diffText = diffText;
+
+        local sep = content:CreateTexture(nil, "ARTWORK");
+        sep:SetTexture("Interface\\Buttons\\WHITE8x8");
+        sep:SetVertexColor(0.3, 0.3, 0.35, 0.3);
+        sep:SetSize(24, 1);
+        sep:SetPoint("TOP", diffText, "BOTTOM", 0, -3);
+        col.sep = sep;
+
+        local tagText = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        tagText:SetPoint("TOP", sep, "BOTTOM", 0, -3);
+        tagText:SetWidth(width - 4);
+        tagText:SetJustifyH("CENTER");
+        col.tagText = tagText;
+    end
+
+    col:EnableMouse(true);
+    col:SetScript("OnEnter", function(self)
+        if self.tipText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    col:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+    local border = col:CreateTexture(nil, "ARTWORK", nil, 2);
+    border:SetTexture("Interface\\Buttons\\WHITE8x8");
+    border:SetVertexColor(0.25, 0.25, 0.3, 0.3);
+    border:SetWidth(1);
+    border:SetPoint("TOPRIGHT", col, "TOPRIGHT", 0, 0);
+    border:SetPoint("BOTTOMRIGHT", col, "BOTTOMRIGHT", 0, 0);
+
+    return col;
+end
+
+function GoWWishlists:ApplyBadgeColumnState(badgeCol, difficulty, tag)
+    if not badgeCol or not badgeCol.diffText then
+        return;
+    end
+
+    local diffAbbrev = difficulty and self.constants.DIFF_ABBREV[difficulty] or "";
+    local dc = difficulty and self.constants.DIFF_COLORS[difficulty];
+    if dc then
+        badgeCol.diffText:SetText(string.format("|cff%02x%02x%02x%s|r", dc.r * 255, dc.g * 255, dc.b * 255, diffAbbrev));
+    else
+        badgeCol.diffText:SetText(diffAbbrev);
+    end
+
+    local tipParts = {};
+    if difficulty then
+        table.insert(tipParts, difficulty);
+    end
+
+    if badgeCol.tagText then
+        local tagLabel = self:FormatTag(tag);
+        badgeCol.tagText:SetText(tagLabel or "");
+        if badgeCol.sep then
+            badgeCol.sep:SetShown(diffAbbrev ~= "" and tagLabel ~= nil);
+        end
+
+        local tagInfo = tag and self.constants.TAG_DISPLAY[tag];
+        if tagInfo then
+            table.insert(tipParts, tagInfo.tip);
+        end
+    elseif badgeCol.sep then
+        badgeCol.sep:Hide();
+    end
+
+    badgeCol.tipText = #tipParts > 0 and table.concat(tipParts, "\n") or nil;
+end
+
 function GoWWishlists:FormatSlotBadge(itemId)
     if not itemId then return nil end
     local _, _, _, equipLoc, _, classId, subclassId = C_Item.GetItemInfoInstant(itemId);
@@ -291,7 +394,7 @@ function GoWWishlists:FormatSlotBadge(itemId)
     end
 
     if subclassName then
-        return slotLabel .. " \194\183 " .. subclassName;
+        return slotLabel .. " / " .. subclassName;
     end
     return slotLabel;
 end
@@ -302,17 +405,59 @@ function GoWWishlists:ApplyBackdrop(frame, bgR, bgG, bgB, bgA, borderR, borderG,
     frame:SetBackdropBorderColor(borderR, borderG, borderB, borderA or 1);
 end
 
+function GoWWishlists:RefreshWishlistViews()
+    local browserFrame = self.frames.browserFrame;
+    if browserFrame and browserFrame.compactBtn and browserFrame.compactBtn.UpdateState then
+        browserFrame.compactBtn:UpdateState();
+    end
+    if browserFrame and browserFrame:IsShown() and browserFrame.SetActiveTab then
+        browserFrame.SetActiveTab(browserFrame.activeTab or 1);
+    end
+
+    local coreWishlists = self.frames.coreWishlists;
+    if coreWishlists and coreWishlists.compactBtn and coreWishlists.compactBtn.UpdateState then
+        coreWishlists.compactBtn:UpdateState();
+    end
+    if coreWishlists and coreWishlists:IsShown() then
+        if coreWishlists.RefreshContent then
+            coreWishlists:RefreshContent();
+        end
+        if coreWishlists.SetActiveTab then
+            coreWishlists.SetActiveTab(coreWishlists.activeTab or 1);
+        end
+    end
+
+    local alertContainer = self.frames.alertContainer;
+    if alertContainer and alertContainer:IsShown() and alertContainer.itemRows and #alertContainer.itemRows > 0 then
+        local activeAlerts = {};
+        for _, row in ipairs(alertContainer.itemRows) do
+            table.insert(activeAlerts, {
+                entry = row.entry,
+                itemLink = row.itemLink,
+            });
+            row:Hide();
+            row:SetParent(nil);
+        end
+
+        alertContainer.itemRows = {};
+        for _, alert in ipairs(activeAlerts) do
+            if alert.entry then
+                table.insert(alertContainer.itemRows, self:CreateAlertItemRow(alertContainer, alert.entry, alert.itemLink));
+            end
+        end
+
+        if self.RelayoutAlertContainer then
+            self:RelayoutAlertContainer(alertContainer);
+        end
+    end
+end
+
 function GoWWishlists:ToggleCompactMode()
     self.state.compactMode = not self.state.compactMode;
-    self.constants.BROWSER_ITEM_HEIGHT = self:GetItemRowHeight();
-    self.constants.GUILD_ITEM_ROW_HEIGHT = self:GetGuildItemRowHeight();
-    self.constants.ALERT_ITEM_ROW_HEIGHT = self:GetAlertItemRowHeight();
-
-    -- Re-render active tab
-    local frame = self.frames.browserFrame;
-    if frame and frame:IsShown() then
-        frame.SetActiveTab(frame.activeTab);
+    if GOW.DB and GOW.DB.profile then
+        GOW.DB.profile.wishlistCompactMode = self.state.compactMode;
     end
+    self:RefreshWishlistViews();
 end
 
 function GoWWishlists:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId)
@@ -419,36 +564,61 @@ function GoWWishlists:BuildInfoLine(entry, showSource)
     if showSource ~= false and entry.sourceBossName then
         table.insert(parts, "|cff888888" .. entry.sourceBossName .. "|r");
     end
-    if entry.difficulty then
-        table.insert(parts, self:FormatDifficultyTag(entry.difficulty));
-    end
     return table.concat(parts, "  ");
 end
 
-function GoWWishlists:BuildDetailLine(entry)
-    local tagLabel = self:FormatTag(entry.tag);
-    return tagLabel or "";
-end
-
-function GoWWishlists:ApplyNoteIcon(row, notes)
-    if notes and notes ~= "" then
-        row.noteIcon.noteText = notes;
-        row.noteIcon:Show();
-    else
-        row.noteIcon.noteText = nil;
-        row.noteIcon:Hide();
+function GoWWishlists:ResetRowTextAnchors(row)
+    if row and row.resetTextAnchors then
+        row.resetTextAnchors();
     end
 end
 
-function GoWWishlists:ApplyOfficerNoteIcon(row, officerNotes)
-    if not row.officerNoteIcon then return end
-    if officerNotes and officerNotes ~= "" then
-        row.officerNoteIcon.noteText = officerNotes;
-        row.officerNoteIcon:Show();
-    else
-        row.officerNoteIcon.noteText = nil;
-        row.officerNoteIcon:Hide();
-    end
+function GoWWishlists:CreateNoteTooltipWidget(parent, row, header, headerR, headerG, headerB)
+    local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    label:SetJustifyH("RIGHT");
+    label:SetWordWrap(false);
+    label:Hide();
+
+    local hover = self:CreateTextHoverTooltip(parent, label, row, header, headerR, headerG, headerB);
+    hover:Hide();
+
+    return label, hover;
+end
+
+function GoWWishlists:CreateNoteIconButton(parent, row, texturePath, header, headerR, headerG, headerB)
+    local button = CreateFrame("Button", nil, parent);
+    button:SetSize(14, 14);
+
+    local texture = button:CreateTexture(nil, "ARTWORK");
+    texture:SetAllPoints();
+    texture:SetTexture(texturePath);
+
+    button:SetScript("OnEnter", function(self)
+        row.highlight:Show();
+        if self.noteText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine(header, headerR or 1, headerG or 1, headerB or 1);
+            GameTooltip:AddLine(self.noteText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    button:SetScript("OnLeave", function()
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+    button:Hide();
+
+    return button;
+end
+
+function GoWWishlists:CreateNoteIcons(parent, row, anchorFrame)
+    local officerNoteIcon = self:CreateNoteIconButton(parent, row, "Interface\\Buttons\\UI-GuildButton-OfficerNote-Up", "Officer Note", 1, 0.5, 0);
+    officerNoteIcon:SetPoint("TOPRIGHT", anchorFrame, "TOPRIGHT", -4, 0);
+
+    local noteIcon = self:CreateNoteIconButton(parent, row, "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", "Note", 0, 1, 0);
+    noteIcon:SetPoint("RIGHT", officerNoteIcon, "LEFT", -2, 0);
+
+    return noteIcon, officerNoteIcon;
 end
 
 function GoWWishlists:ApplyNoteLabels(row, notes, officerNotes)
@@ -457,17 +627,22 @@ function GoWWishlists:ApplyNoteLabels(row, notes, officerNotes)
     local noteW = math.min(math.floor(rowWidth * 0.3), 140);
     if noteW < 40 then showInline = false end
 
-    -- Reset all note display elements
+    self:ResetRowTextAnchors(row);
+
     if row.noteLabel then row.noteLabel:Hide() end
     if row.noteHover then row.noteHover:Hide() end
     if row.officerNoteLabel then row.officerNoteLabel:Hide() end
     if row.officerNoteHover then row.officerNoteHover:Hide() end
-    if row.noteIcon then row.noteIcon:Hide() end
-    if row.officerNoteIcon then row.officerNoteIcon:Hide() end
-    row.infoText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    if row.slotText then
-        row.slotText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    if row.noteIcon then
+        row.noteIcon.noteText = nil;
+        row.noteIcon:Hide();
     end
+    if row.officerNoteIcon then
+        row.officerNoteIcon.noteText = nil;
+        row.officerNoteIcon:Hide();
+    end
+    if row.noteHover then row.noteHover.tipText = nil end
+    if row.officerNoteHover then row.officerNoteHover.tipText = nil end
 
     if notes and notes ~= "" then
         if showInline and row.noteLabel then
