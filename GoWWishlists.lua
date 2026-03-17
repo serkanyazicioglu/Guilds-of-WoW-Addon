@@ -156,8 +156,7 @@ function GoWWishlists:FindWishlistMatch(itemId)
     local difficulty = self:GetCurrentDifficultyName();
 
     for _, entry in ipairs(entries) do
-        if entry.difficulty == difficulty
-            and not entry.isObtained then
+        if entry.difficulty == difficulty and not entry.isObtained then
             return entry;
         end
     end
