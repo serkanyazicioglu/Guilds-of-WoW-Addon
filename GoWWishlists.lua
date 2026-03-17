@@ -177,7 +177,6 @@ GoWWishlists.constants.DIFF_COLORS = {
     ["Heroic"]      = { r = 0, g = 0.439, b = 0.867 },
     ["Normal"]      = { r = 0.118, g = 1, b = 0 },
     ["LFR"]         = { r = 1, g = 0.820, b = 0 },
-    ["Timewalking"] = { r = 0, g = 0.8, b = 1 },
 };
 
 GoWWishlists.constants.DIFF_ABBREV = {
@@ -185,7 +184,6 @@ GoWWishlists.constants.DIFF_ABBREV = {
     ["Heroic"]      = "H",
     ["Normal"]      = "N",
     ["LFR"]         = "LFR",
-    ["Timewalking"] = "TW",
 };
 
 GoWWishlists.constants.SUB_ACTIVE_COLOR = { r = GoWWishlists.constants.GOW_ACCENT_COLOR.r, g = GoWWishlists.constants.GOW_ACCENT_COLOR.g, b = GoWWishlists.constants.GOW_ACCENT_COLOR.b, a = 0.3 };
