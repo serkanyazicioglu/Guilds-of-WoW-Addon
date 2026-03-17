@@ -76,7 +76,8 @@ function GoWWishlists:CreateWishlistCardRow(parent, options)
     row.gainBadge:SetPoint("RIGHT", row, "RIGHT", -8, 0);
     row.gainBadge:SetPoint("TOP", nameText, "TOP", 0, 0);
 
-    row.noteIcon, row.officerNoteIcon = self:CreateNoteIcons(row, row, inner);
+    row.noteIcon = self:CreateNoteIconButton(row, row, "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", "Note", 0, 1, 0);
+    row.noteIcon:SetPoint("TOPRIGHT", inner, "TOPRIGHT", -4, 0);
 
     self:CreateRowSeparator(row);
     row.highlight = self:CreateRowHighlight(row);
@@ -118,7 +119,7 @@ function GoWWishlists:PopulateItemRow(row, entry, itemLink)
     if entry.difficulty then table.insert(infoParts, "Difficulty: " .. entry.difficulty) end
     row.infoHover.tipText = #infoParts > 0 and table.concat(infoParts, "\n") or nil;
 
-    self:ApplyNoteLabels(row, entry.notes, entry.officerNotes);
+    self:ApplyNoteLabels(row, entry.notes);
     self:ApplyGainBadge(row.gainBadge, entry.gain);
 end
 

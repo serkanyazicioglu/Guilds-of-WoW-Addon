@@ -594,34 +594,15 @@ function GoWWishlists:CreateNoteIconButton(parent, row, texturePath, header, hea
     return button;
 end
 
-function GoWWishlists:CreateNoteIcons(parent, row, anchorFrame)
-    local officerNoteIcon = self:CreateNoteIconButton(parent, row, "Interface\\Buttons\\UI-GuildButton-OfficerNote-Up", "Officer Note", 1, 0.5, 0);
-    officerNoteIcon:SetPoint("TOPRIGHT", anchorFrame, "TOPRIGHT", -4, 0);
-
-    local noteIcon = self:CreateNoteIconButton(parent, row, "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", "Note", 0, 1, 0);
-    noteIcon:SetPoint("RIGHT", officerNoteIcon, "LEFT", -2, 0);
-
-    return noteIcon, officerNoteIcon;
-end
-
-function GoWWishlists:ApplyNoteLabels(row, notes, officerNotes)
+function GoWWishlists:ApplyNoteLabels(row, notes)
     if row.noteIcon then
         row.noteIcon.noteText = nil;
         row.noteIcon:Hide();
-    end
-    if row.officerNoteIcon then
-        row.officerNoteIcon.noteText = nil;
-        row.officerNoteIcon:Hide();
     end
 
     if notes and notes ~= "" and row.noteIcon then
         row.noteIcon.noteText = notes;
         row.noteIcon:Show();
-    end
-
-    if officerNotes and officerNotes ~= "" and row.officerNoteIcon then
-        row.officerNoteIcon.noteText = officerNotes;
-        row.officerNoteIcon:Show();
     end
 end
 

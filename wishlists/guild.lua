@@ -259,49 +259,11 @@ function GoWWishlists:CreateGuildMemberRow(parent)
     gainBadge:SetPoint("LEFT", tagText, "RIGHT", 8, 0);
     row.gainBadge = gainBadge;
 
-    local officerNoteIcon = CreateFrame("Button", nil, row);
-    officerNoteIcon:SetSize(14, 14);
-    officerNoteIcon:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    local officerNoteTex = officerNoteIcon:CreateTexture(nil, "ARTWORK");
-    officerNoteTex:SetAllPoints();
-    officerNoteTex:SetTexture("Interface\\Buttons\\UI-GuildButton-OfficerNote-Up");
-    officerNoteIcon:SetScript("OnEnter", function(self)
-        row.highlight:Show();
-        if self.noteText then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine("Officer Note", 1, 0.5, 0);
-            GameTooltip:AddLine(self.noteText, 1, 1, 1, true);
-            GameTooltip:Show();
-        end
-    end);
-    officerNoteIcon:SetScript("OnLeave", function(self)
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
-    officerNoteIcon:Hide();
-    row.officerNoteIcon = officerNoteIcon;
+    row.officerNoteIcon = self:CreateNoteIconButton(row, row, "Interface\\Buttons\\UI-GuildButton-OfficerNote-Up", "Officer Note", 1, 0.5, 0);
+    row.officerNoteIcon:SetPoint("RIGHT", row, "RIGHT", -8, 0);
 
-    local noteIcon = CreateFrame("Button", nil, row);
-    noteIcon:SetSize(14, 14);
-    noteIcon:SetPoint("RIGHT", officerNoteIcon, "LEFT", -4, 0);
-    local noteIconTex = noteIcon:CreateTexture(nil, "ARTWORK");
-    noteIconTex:SetAllPoints();
-    noteIconTex:SetTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up");
-    noteIcon:SetScript("OnEnter", function(self)
-        row.highlight:Show();
-        if self.noteText then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine("Note", 0, 1, 0);
-            GameTooltip:AddLine(self.noteText, 1, 1, 1, true);
-            GameTooltip:Show();
-        end
-    end);
-    noteIcon:SetScript("OnLeave", function(self)
-        row.highlight:Hide();
-        GameTooltip:Hide();
-    end);
-    noteIcon:Hide();
-    row.noteIcon = noteIcon;
+    row.noteIcon = self:CreateNoteIconButton(row, row, "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", "Note", 0, 1, 0);
+    row.noteIcon:SetPoint("RIGHT", row.officerNoteIcon, "LEFT", -4, 0);
 
     row.highlight = self:CreateRowHighlight(row, 0.03);
 
