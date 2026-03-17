@@ -51,6 +51,10 @@ function Helper:IsInGameCalendarAccessible()
     return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE or WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC;
 end
 
+function Helper:IsRetail()
+    return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
+end
+
 function Helper:IsKeystonesEnabled()
     return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
 end

@@ -81,7 +81,6 @@ local tabs = {
 	{ value = "events",          text = "Events" },
 	{ value = "teams",           text = "Teams" },
 	{ value = "recruitmentApps", text = "Recruitment" },
-	{ value = "wishlists",       text = "Wishlists" },
 };
 
 local LibQTip = LibStub('LibQTip-1.0');
@@ -104,13 +103,13 @@ function GOW:OnInitialize()
 	local consoleCommandFunc = function(msg, editbox)
 		if (msg == "minimap") then
 			Core:ToggleMinimap();
-		elseif (msg == "loot") then
+		elseif (msg == "loot" and GOW.Helper:IsRetail()) then
 			if GOW.Wishlists then
 				GOW.Wishlists:HandleSlashCommand();
 			else
 				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
 			end
-		elseif (msg:match("^testloot") and GOW.consts.ENABLE_DEBUGGING) then
+		elseif (msg:match("^testloot") and GOW.Helper:IsRetail() and GOW.consts.ENABLE_DEBUGGING) then
 			local count = tonumber(msg:match("^testloot%s+(%d+)")) or 1;
 			if GOW.Wishlists then
 				GOW.Wishlists:SimulateLootDrops(count);
@@ -176,6 +175,11 @@ function GOW:OnInitialize()
 	tinsert(UISpecialFrames, FRAME_NAME);
 
 	containerTabs = GOW.GUI:Create("TabGroup");
+
+	if GOW.Helper:IsRetail() then
+		table.insert(tabs, { value = "wishlists", text = "Wishlists" });
+	end
+    
 	containerTabs:SetTabs(tabs);
 	containerTabs:SelectTab(selectedTab);
 	containerTabs:SetCallback("OnGroupSelected", function(frame, event, value) Core:ToggleTabs(value) end);
