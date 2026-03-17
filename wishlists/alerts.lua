@@ -2,8 +2,9 @@ local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
 
 function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
+    local rowHeight = self:GetAlertItemRowHeight();
     local row = CreateFrame("Frame", nil, parent);
-    row:SetHeight(self.constants.ALERT_ITEM_ROW_HEIGHT);
+    row:SetHeight(rowHeight);
 
     local sideBar = row:CreateTexture(nil, "ARTWORK", nil, 2);
     sideBar:SetTexture("Interface\\Buttons\\WHITE8x8");
@@ -12,13 +13,68 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     sideBar:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0);
     sideBar:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0);
 
-    local inner = CreateFrame("Frame", nil, row);
-    inner:SetPoint("LEFT", row, "LEFT", 0, 0);
-    inner:SetPoint("RIGHT", row, "RIGHT", 0, 0);
-    inner:SetHeight(46);
-    inner:SetPoint("TOP", row, "TOP", 0, -math.floor((self.constants.ALERT_ITEM_ROW_HEIGHT - 46) / 2));
+    -- Badge column
+    local badgeCol = CreateFrame("Frame", nil, row, "BackdropTemplate");
+    badgeCol:SetWidth(self.constants.BADGE_COLUMN_WIDTH);
+    badgeCol:SetPoint("TOPLEFT", sideBar, "TOPRIGHT", 0, 0);
+    badgeCol:SetPoint("BOTTOMLEFT", sideBar, "BOTTOMRIGHT", 0, 0);
+    badgeCol:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" });
+    badgeCol:SetBackdropColor(0.08, 0.08, 0.1, 0.5);
 
-    local iconBorder, icon = self:CreateRowIcon(inner, 24, 10);
+    local content = CreateFrame("Frame", nil, badgeCol);
+    content:SetWidth(self.constants.BADGE_COLUMN_WIDTH - 4);
+    content:SetHeight(28);
+    content:SetPoint("CENTER", badgeCol, "CENTER", 0, 0);
+
+    local diffText = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    diffText:SetPoint("TOP", content, "TOP", 0, 0);
+    diffText:SetWidth(self.constants.BADGE_COLUMN_WIDTH - 4);
+    diffText:SetJustifyH("CENTER");
+    badgeCol.diffText = diffText;
+
+    local badgeSep = content:CreateTexture(nil, "ARTWORK");
+    badgeSep:SetTexture("Interface\\Buttons\\WHITE8x8");
+    badgeSep:SetVertexColor(0.3, 0.3, 0.35, 0.3);
+    badgeSep:SetSize(24, 1);
+    badgeSep:SetPoint("TOP", diffText, "BOTTOM", 0, -3);
+    badgeCol.sep = badgeSep;
+
+    local tagText = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    tagText:SetPoint("TOP", badgeSep, "BOTTOM", 0, -3);
+    tagText:SetWidth(self.constants.BADGE_COLUMN_WIDTH - 4);
+    tagText:SetJustifyH("CENTER");
+    badgeCol.tagText = tagText;
+
+    badgeCol:EnableMouse(true);
+    badgeCol:SetScript("OnEnter", function(self)
+        if self.tipText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    badgeCol:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+    local colBorder = badgeCol:CreateTexture(nil, "ARTWORK", nil, 2);
+    colBorder:SetTexture("Interface\\Buttons\\WHITE8x8");
+    colBorder:SetVertexColor(0.25, 0.25, 0.3, 0.3);
+    colBorder:SetWidth(1);
+    colBorder:SetPoint("TOPRIGHT", badgeCol, "TOPRIGHT", 0, 0);
+    colBorder:SetPoint("BOTTOMRIGHT", badgeCol, "BOTTOMRIGHT", 0, 0);
+
+    row.badgeCol = badgeCol;
+
+    local BADGE_W = self.constants.BADGE_COLUMN_WIDTH;
+    local iconSize = self.state.compactMode and 24 or 32;
+
+    local inner = CreateFrame("Frame", nil, row);
+    inner:SetPoint("LEFT", badgeCol, "RIGHT", 4, 0);
+    inner:SetPoint("RIGHT", row, "RIGHT", 0, 0);
+    local innerHeight = self.state.compactMode and 38 or 50;
+    inner:SetHeight(innerHeight);
+    inner:SetPoint("TOP", row, "TOP", 0, -math.floor((rowHeight - innerHeight) / 2));
+
+    local iconBorder, icon = self:CreateRowIcon(inner, iconSize, 4);
     row.iconBorder = iconBorder;
     row.icon = icon;
 
@@ -30,7 +86,7 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     row.nameText = nameText;
 
     local infoText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    infoText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -3);
+    infoText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -2);
     infoText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
     infoText:SetJustifyH("LEFT");
     infoText:SetWordWrap(false);
@@ -38,18 +94,75 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
 
     row.infoHover = self:CreateTextHoverTooltip(inner, infoText, row);
 
-    local detailText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    detailText:SetPoint("TOPLEFT", infoText, "BOTTOMLEFT", 0, -2);
-    detailText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    detailText:SetJustifyH("LEFT");
-    detailText:SetWordWrap(false);
-    row.detailText = detailText;
-
-    row.detailHover = self:CreateTextHoverTooltip(inner, detailText, row, "Priority", 0, 1, 0);
+    -- Slot badge (card mode only)
+    local slotText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    slotText:SetPoint("TOPLEFT", infoText, "BOTTOMLEFT", 0, -1);
+    slotText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    slotText:SetJustifyH("LEFT");
+    slotText:SetWordWrap(false);
+    row.slotText = slotText;
 
     local gainBadge = self:CreateGainBadge(inner);
-    gainBadge:SetPoint("BOTTOMRIGHT", inner, "BOTTOMRIGHT", -8, 0);
+    gainBadge:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    gainBadge:SetPoint("TOP", nameText, "TOP", 0, 0);
     row.gainBadge = gainBadge;
+
+    -- Note text labels (inline for wide alert rows)
+    local noteLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    noteLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    noteLabel:SetPoint("TOP", infoText, "TOP", 0, 0);
+    noteLabel:SetJustifyH("RIGHT");
+    noteLabel:SetWordWrap(false);
+    noteLabel:Hide();
+    row.noteLabel = noteLabel;
+
+    local noteHover = CreateFrame("Frame", nil, row);
+    noteHover:SetPoint("TOPLEFT", noteLabel, "TOPLEFT", 0, 2);
+    noteHover:SetPoint("BOTTOMRIGHT", noteLabel, "BOTTOMRIGHT", 0, -2);
+    noteHover:EnableMouse(true);
+    noteHover:SetScript("OnEnter", function(self)
+        row.highlight:Show();
+        if self.tipText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Note", 0, 1, 0);
+            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    noteHover:SetScript("OnLeave", function()
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+    noteHover:Hide();
+    row.noteHover = noteHover;
+
+    local officerNoteLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    officerNoteLabel:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    officerNoteLabel:SetPoint("TOP", slotText, "TOP", 0, 0);
+    officerNoteLabel:SetJustifyH("RIGHT");
+    officerNoteLabel:SetWordWrap(false);
+    officerNoteLabel:Hide();
+    row.officerNoteLabel = officerNoteLabel;
+
+    local officerNoteHover = CreateFrame("Frame", nil, row);
+    officerNoteHover:SetPoint("TOPLEFT", officerNoteLabel, "TOPLEFT", 0, 2);
+    officerNoteHover:SetPoint("BOTTOMRIGHT", officerNoteLabel, "BOTTOMRIGHT", 0, -2);
+    officerNoteHover:EnableMouse(true);
+    officerNoteHover:SetScript("OnEnter", function(self)
+        row.highlight:Show();
+        if self.tipText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Officer Note", 1, 0.5, 0);
+            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    officerNoteHover:SetScript("OnLeave", function()
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+    officerNoteHover:Hide();
+    row.officerNoteHover = officerNoteHover;
 
     self:CreateRowSeparator(row);
 
@@ -91,21 +204,39 @@ function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     end
 
     row.infoText:SetText(self:BuildInfoLine(match));
-    row.detailText:SetText(self:BuildDetailLine(match));
+
+    -- Badge column populate
+    local diffAbbrev = match.difficulty and self.constants.DIFF_ABBREV[match.difficulty] or "";
+    local dc = match.difficulty and self.constants.DIFF_COLORS[match.difficulty];
+    if dc then
+        badgeCol.diffText:SetText(string.format("|cff%02x%02x%02x%s|r", dc.r * 255, dc.g * 255, dc.b * 255, diffAbbrev));
+    else
+        badgeCol.diffText:SetText(diffAbbrev);
+    end
+    local tagLabel = self:FormatTag(match.tag);
+    badgeCol.tagText:SetText(tagLabel or "");
+    badgeCol.sep:SetShown(diffAbbrev ~= "" and tagLabel ~= nil);
+
+    local tipParts = {};
+    if match.difficulty then table.insert(tipParts, match.difficulty) end
+    local tagInfo = match.tag and self.constants.TAG_DISPLAY[match.tag];
+    if tagInfo then table.insert(tipParts, tagInfo.tip) end
+    badgeCol.tipText = #tipParts > 0 and table.concat(tipParts, "\n") or nil;
+
+    -- Slot badge
+    local slotBadge = self:FormatSlotBadge(match.itemId);
+    if slotBadge then
+        row.slotText:SetText("|cff888888" .. slotBadge .. "|r");
+    else
+        row.slotText:SetText("");
+    end
 
     local infoParts = {};
     if match.sourceBossName then table.insert(infoParts, "Source: " .. match.sourceBossName) end
     if match.difficulty then table.insert(infoParts, "Difficulty: " .. match.difficulty) end
     if #infoParts > 0 then row.infoHover.tipText = table.concat(infoParts, "\n") end
 
-    if match.tag then
-        local tagInfo = self.constants.TAG_DISPLAY[match.tag];
-        if tagInfo then
-            row.detailHover.tipText = tagInfo.tip;
-        end
-    end
-
-    self:ApplyNoteIcon(row, match.notes);
+    self:ApplyNoteLabels(row, match.notes, match.officerNotes);
     self:ApplyGainBadge(row.gainBadge, match.gain);
 
     return row;

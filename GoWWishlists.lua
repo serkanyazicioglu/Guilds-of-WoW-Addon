@@ -11,6 +11,7 @@ GoWWishlists.state = {
     guildWishlistData = nil,
     pendingItemRows = {},
     raidNameCache = {},
+    compactMode = false,
 };
 
 GoWWishlists.frames = {};
@@ -163,7 +164,7 @@ end
 
 
 -- Wishlist Loot Alert Container Frame
-GoWWishlists.constants.ALERT_ITEM_ROW_HEIGHT = 58;
+GoWWishlists.constants.ALERT_ITEM_ROW_HEIGHT = 68;
 GoWWishlists.constants.ALERT_DISPLAY_TIME = 60;
 GoWWishlists.constants.ALERT_FADE_TIME = 1.5;
 
@@ -200,12 +201,12 @@ GoWWishlists.constants.COLOR_TIMESTAMP = "|cff555555";
 GoWWishlists.constants.COLOR_CLOSE = "|r";
 
 GoWWishlists.constants.TAG_DISPLAY = {
-    BIS      = { label = "BiS",     color = "ff8000", tip = "Best in Slot" },
-    NEED     = { label = "Need",    color = "ff0000", tip = "Need" },
-    GREED    = { label = "Greed",   color = "00ff00", tip = "Greed" },
-    MINOR    = { label = "Minor",   color = "ffff00", tip = "Minor Upgrade" },
-    TRANSMOG = { label = "Tmog",    color = "ff69b4", tip = "Transmog" },
-    OFFSPEC  = { label = "Offspec", color = "00ccff", tip = "Off-Spec" },
+    BIS      = { label = "BiS", color = "25f478", tip = "Best in Slot" },
+    NEED     = { label = "N",   color = "ff8000", tip = "Need" },
+    GREED    = { label = "G",   color = "ffd700", tip = "Greed" },
+    MINOR    = { label = "M",   color = "6495ed", tip = "Minor Upgrade" },
+    TRANSMOG = { label = "T",   color = "ff69b4", tip = "Transmog" },
+    OFFSPEC  = { label = "OS",  color = "a9a9a9", tip = "Off-Spec" },
 };
 
 GoWWishlists.constants.DIFFICULTIES = { "All", "Normal", "Heroic", "Mythic", "LFR" };
@@ -251,10 +252,67 @@ GoWWishlists.constants.SLOT_ORDER = {
     "INVTYPE_RANGED", "INVTYPE_2HWEAPON", "INVTYPE_WEAPON",
 };
 
+GoWWishlists.constants.BROWSER_ITEM_HEIGHT_CARD = 68;
+GoWWishlists.constants.BROWSER_ITEM_HEIGHT_COMPACT = 44;
+GoWWishlists.constants.GUILD_ITEM_ROW_HEIGHT_CARD = 36;
+GoWWishlists.constants.GUILD_ITEM_ROW_HEIGHT_COMPACT = 28;
+GoWWishlists.constants.ALERT_ITEM_ROW_HEIGHT_CARD = 68;
+GoWWishlists.constants.ALERT_ITEM_ROW_HEIGHT_COMPACT = 58;
+
+GoWWishlists.constants.BADGE_COLUMN_WIDTH = 40;
+
+function GoWWishlists:GetItemRowHeight()
+    return self.state.compactMode and self.constants.BROWSER_ITEM_HEIGHT_COMPACT or self.constants.BROWSER_ITEM_HEIGHT_CARD;
+end
+
+function GoWWishlists:GetGuildItemRowHeight()
+    return self.state.compactMode and self.constants.GUILD_ITEM_ROW_HEIGHT_COMPACT or self.constants.GUILD_ITEM_ROW_HEIGHT_CARD;
+end
+
+function GoWWishlists:GetAlertItemRowHeight()
+    return self.state.compactMode and self.constants.ALERT_ITEM_ROW_HEIGHT_COMPACT or self.constants.ALERT_ITEM_ROW_HEIGHT_CARD;
+end
+
+function GoWWishlists:FormatSlotBadge(itemId)
+    if not itemId then return nil end
+    local _, _, _, equipLoc, _, classId, subclassId = C_Item.GetItemInfoInstant(itemId);
+    if not equipLoc or equipLoc == "" then return nil end
+
+    local slotLabel = self.constants.SLOT_LABELS[equipLoc];
+    if not slotLabel then return nil end
+
+    local subclassName;
+    if classId and subclassId then
+        subclassName = C_Item.GetItemSubClassInfo(classId, subclassId);
+        -- Skip generic subclasses
+        if subclassName == "Miscellaneous" or subclassName == "Junk" then
+            subclassName = nil;
+        end
+    end
+
+    if subclassName then
+        return slotLabel .. " \194\183 " .. subclassName;
+    end
+    return slotLabel;
+end
+
 function GoWWishlists:ApplyBackdrop(frame, bgR, bgG, bgB, bgA, borderR, borderG, borderB, borderA)
     frame:SetBackdrop(self.constants.STANDARD_BACKDROP);
     frame:SetBackdropColor(bgR, bgG, bgB, bgA or 1);
     frame:SetBackdropBorderColor(borderR, borderG, borderB, borderA or 1);
+end
+
+function GoWWishlists:ToggleCompactMode()
+    self.state.compactMode = not self.state.compactMode;
+    self.constants.BROWSER_ITEM_HEIGHT = self:GetItemRowHeight();
+    self.constants.GUILD_ITEM_ROW_HEIGHT = self:GetGuildItemRowHeight();
+    self.constants.ALERT_ITEM_ROW_HEIGHT = self:GetAlertItemRowHeight();
+
+    -- Re-render active tab
+    local frame = self.frames.browserFrame;
+    if frame and frame:IsShown() then
+        frame.SetActiveTab(frame.activeTab);
+    end
 end
 
 function GoWWishlists:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId)
@@ -299,37 +357,45 @@ function GoWWishlists:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId)
     return raidOrder, raidBosses, ungrouped;
 end
 
-function GoWWishlists:HighlightDifficultyBtn(btns, activeDiff)
-    local difficulties = self.constants.DIFFICULTIES;
-    for i, btn in ipairs(btns) do
-        self:SetButtonActive(btn, difficulties[i] == activeDiff);
-    end
-end
-
-function GoWWishlists:SetupDifficultyFilterButtons(sourcePanel, onChangeCallback)
-    if sourcePanel.diffFilterBtns then return end
-    local difficulties = self.constants.DIFFICULTIES;
-    local diffLabels = self.constants.DIFFICULTY_LABELS;
-    local btns = {};
+function GoWWishlists:SetupDifficultyDropdown(sourcePanel, onChangeCallback)
+    if sourcePanel.diffDropdownBtn then return end
     local headerBar = sourcePanel.headerBar;
+    local popupMenu = self:GetOrCreatePopupMenu();
+    local showPopup = popupMenu.showPopup;
 
-    for i, diff in ipairs(difficulties) do
-        local btn = self:CreateSubFilterBtn(sourcePanel, diffLabels[i], 36);
-        btn:SetHeight(14);
-        if i == 1 then
-            btn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
-        else
-            btn:SetPoint("LEFT", btns[i - 1], "RIGHT", 2, 0);
+    local activeDiff = "All";
+
+    local btn = self:CreateSubFilterBtn(sourcePanel, "Diff: All", 80);
+    btn:SetHeight(14);
+    btn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
+
+    local function updateDiffLabel(diff)
+        activeDiff = diff;
+        btn.btnText:SetText("Diff: " .. diff);
+        local textWidth = btn.btnText:GetStringWidth();
+        btn:SetWidth(math.max(textWidth + 16, 60));
+        self:SetButtonActive(btn, diff ~= "All");
+    end
+
+    btn:SetScript("OnClick", function()
+        if popupMenu.popup:IsShown() and popupMenu.popup.owner == "difficulty" then
+            popupMenu.clearPopup();
+            return;
         end
-        btns[i] = btn;
-    end
+        local options = {};
+        for _, diff in ipairs(self.constants.DIFFICULTIES) do
+            table.insert(options, { key = diff, label = diff });
+        end
+        popupMenu.popup.owner = "difficulty";
+        showPopup(btn, options, activeDiff, function(key)
+            updateDiffLabel(key);
+            onChangeCallback(key);
+        end);
+    end);
 
-    for i, btn in ipairs(btns) do
-        btn:SetScript("OnClick", function() onChangeCallback(difficulties[i]) end);
-    end
-
-    sourcePanel.diffFilterBtns = btns;
-    sourcePanel.scrollFrame:SetPoint("TOPLEFT", btns[1], "BOTTOMLEFT", -4, -4);
+    sourcePanel.diffDropdownBtn = btn;
+    sourcePanel.updateDiffLabel = updateDiffLabel;
+    sourcePanel.scrollFrame:SetPoint("TOPLEFT", btn, "BOTTOMLEFT", -4, -4);
 end
 
 function GoWWishlists:SetItemIconAndName(row, itemId, itemLink)
@@ -371,6 +437,68 @@ function GoWWishlists:ApplyNoteIcon(row, notes)
     else
         row.noteIcon.noteText = nil;
         row.noteIcon:Hide();
+    end
+end
+
+function GoWWishlists:ApplyOfficerNoteIcon(row, officerNotes)
+    if not row.officerNoteIcon then return end
+    if officerNotes and officerNotes ~= "" then
+        row.officerNoteIcon.noteText = officerNotes;
+        row.officerNoteIcon:Show();
+    else
+        row.officerNoteIcon.noteText = nil;
+        row.officerNoteIcon:Hide();
+    end
+end
+
+function GoWWishlists:ApplyNoteLabels(row, notes, officerNotes)
+    local rowWidth = row:GetParent() and row:GetParent():GetWidth() or 0;
+    local showInline = rowWidth > 300;
+    local noteW = math.min(math.floor(rowWidth * 0.3), 140);
+    if noteW < 40 then showInline = false end
+
+    -- Reset all note display elements
+    if row.noteLabel then row.noteLabel:Hide() end
+    if row.noteHover then row.noteHover:Hide() end
+    if row.officerNoteLabel then row.officerNoteLabel:Hide() end
+    if row.officerNoteHover then row.officerNoteHover:Hide() end
+    if row.noteIcon then row.noteIcon:Hide() end
+    if row.officerNoteIcon then row.officerNoteIcon:Hide() end
+    row.infoText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    if row.slotText then
+        row.slotText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+    end
+
+    if notes and notes ~= "" then
+        if showInline and row.noteLabel then
+            local icon = "|TInterface\\Buttons\\UI-GuildButton-PublicNote-Up:12:12|t ";
+            row.noteLabel:SetText("|cff88aa88" .. icon .. notes .. "|r");
+            row.noteLabel:SetWidth(noteW);
+            row.noteLabel:Show();
+            row.noteHover.tipText = notes;
+            row.noteHover:Show();
+            row.infoText:SetPoint("RIGHT", row, "RIGHT", -(noteW + 10), 0);
+        elseif row.noteIcon then
+            row.noteIcon.noteText = notes;
+            row.noteIcon:Show();
+        end
+    end
+
+    if officerNotes and officerNotes ~= "" then
+        if showInline and row.officerNoteLabel then
+            local icon = "|TInterface\\Buttons\\UI-GuildButton-OfficerNote-Up:12:12|t ";
+            row.officerNoteLabel:SetText("|cffcc8844" .. icon .. officerNotes .. "|r");
+            row.officerNoteLabel:SetWidth(noteW);
+            row.officerNoteLabel:Show();
+            row.officerNoteHover.tipText = officerNotes;
+            row.officerNoteHover:Show();
+            if row.slotText then
+                row.slotText:SetPoint("RIGHT", row, "RIGHT", -(noteW + 10), 0);
+            end
+        elseif row.officerNoteIcon then
+            row.officerNoteIcon.noteText = officerNotes;
+            row.officerNoteIcon:Show();
+        end
     end
 end
 

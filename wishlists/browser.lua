@@ -48,6 +48,38 @@ function GoWWishlists:CreateWishlistBrowserFrame()
     closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -6);
     closeBtn:SetScript("OnClick", function() frame:Hide() end);
 
+    -- Compact mode toggle button (right-aligned on tab row)
+    local compactBtn = CreateFrame("Button", nil, frame, "BackdropTemplate");
+    compactBtn:SetSize(60, 18);
+    self:ApplyBackdrop(compactBtn, self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a, 0.3, 0.3, 0.3, 0.4);
+    local compactBtnText = compactBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    compactBtnText:SetPoint("CENTER", compactBtn, "CENTER", 0, 0);
+    compactBtn.btnText = compactBtnText;
+    frame.compactBtn = compactBtn;
+
+    local function updateCompactBtn()
+        if self.state.compactMode then
+            compactBtnText:SetText("|cff00ff00Compact|r");
+            self:SetButtonActive(compactBtn, true);
+        else
+            compactBtnText:SetText("Compact");
+            self:SetButtonActive(compactBtn, false);
+        end
+    end
+    updateCompactBtn();
+
+    compactBtn:SetScript("OnClick", function()
+        self:ToggleCompactMode();
+        updateCompactBtn();
+    end);
+    compactBtn:SetScript("OnEnter", function(btn)
+        GameTooltip:SetOwner(btn, "ANCHOR_BOTTOM");
+        GameTooltip:AddLine("Toggle compact mode", 1, 1, 1);
+        GameTooltip:AddLine("Reduces row height and hides slot badges", 0.7, 0.7, 0.7);
+        GameTooltip:Show();
+    end);
+    compactBtn:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
     local wishlistTab = self:CreateTabButton(frame, "|cff00ff00PERSONAL|r", 1);
     wishlistTab:SetPoint("TOPLEFT", subtitleText, "BOTTOMLEFT", -4, -4);
     wishlistTab:SetWidth(90);
@@ -58,6 +90,10 @@ function GoWWishlists:CreateWishlistBrowserFrame()
     guildWishlistTab:SetWidth(90);
     guildWishlistTab:Hide();
     frame.guildWishlistTab = guildWishlistTab;
+
+    -- Position compact button on the tab row, right-aligned
+    compactBtn:SetPoint("TOP", wishlistTab, "TOP", 0, 0);
+    compactBtn:SetPoint("RIGHT", frame, "RIGHT", -8, 0);
 
     local tabIndicator = frame:CreateTexture(nil, "ARTWORK", nil, 2);
     tabIndicator:SetTexture("Interface\\Buttons\\WHITE8x8");

@@ -104,6 +104,13 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         end
 
         self:RelayoutBrowserContent(container);
+
+        if #container.sections == 0 then
+            local emptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+            emptyText:SetPoint("TOP", scrollChild, "TOP", 0, -40);
+            emptyText:SetText("|cff888888No loot drops for this selection.|r");
+            scrollChild:SetHeight(80);
+        end
     end
 
 
@@ -356,14 +363,13 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
     detailPanel.updateSlotLabel();
     detailPanel.updateObtainedBtn();
 
-    self:SetupDifficultyFilterButtons(sourcePanel, function(diff)
+    self:SetupDifficultyDropdown(sourcePanel, function(diff)
         frame.personalDifficultyFilter = diff;
         if GOW.DB and GOW.DB.profile then GOW.DB.profile.wishlistPersonalDifficulty = diff end
-        self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, diff);
         rebuildPersonalView();
     end);
 
-    self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, filter);
+    sourcePanel.updateDiffLabel(filter);
 
     rebuildPersonalView();
 end

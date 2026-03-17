@@ -2,7 +2,7 @@ local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
 local ns = select(2, ...);
 
-GoWWishlists.constants.GUILD_ITEM_ROW_HEIGHT = 28;
+GoWWishlists.constants.GUILD_ITEM_ROW_HEIGHT = 36;
 GoWWishlists.constants.GUILD_MEMBER_ROW_HEIGHT = 22;
 GoWWishlists.constants.GUILD_FILTER_HEIGHT = 26;
 
@@ -108,15 +108,51 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
 end
 
 function GoWWishlists:CreateGuildItemRow(parent)
+    local isCompact = self.state.compactMode;
+    local rowHeight = self:GetGuildItemRowHeight();
     local row = CreateFrame("Frame", nil, parent);
-    row:SetHeight(self.constants.GUILD_ITEM_ROW_HEIGHT);
+    row:SetHeight(rowHeight);
 
-    local iconBorder, icon = self:CreateRowIcon(row, 22, 23);
+    -- Small badge column for difficulty
+    local badgeCol = CreateFrame("Frame", nil, row, "BackdropTemplate");
+    badgeCol:SetWidth(30);
+    badgeCol:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0);
+    badgeCol:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0);
+    badgeCol:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" });
+    badgeCol:SetBackdropColor(0.08, 0.08, 0.1, 0.5);
+
+    local diffText = badgeCol:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    diffText:SetPoint("LEFT", badgeCol, "LEFT", 2, 0);
+    diffText:SetPoint("RIGHT", badgeCol, "RIGHT", -2, 0);
+    diffText:SetJustifyH("CENTER");
+    badgeCol.diffText = diffText;
+
+    badgeCol:EnableMouse(true);
+    badgeCol:SetScript("OnEnter", function(self)
+        if self.tipText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine(self.tipText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end
+    end);
+    badgeCol:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+    local border = badgeCol:CreateTexture(nil, "ARTWORK", nil, 2);
+    border:SetTexture("Interface\\Buttons\\WHITE8x8");
+    border:SetVertexColor(0.25, 0.25, 0.3, 0.3);
+    border:SetWidth(1);
+    border:SetPoint("TOPRIGHT", badgeCol, "TOPRIGHT", 0, 0);
+    border:SetPoint("BOTTOMRIGHT", badgeCol, "BOTTOMRIGHT", 0, 0);
+
+    row.badgeCol = badgeCol;
+
+    local iconSize = isCompact and 20 or 24;
+    local iconBorder, icon = self:CreateRowIcon(row, iconSize, 34);
     row.iconBorder = iconBorder;
     row.icon = icon;
 
     local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal");
-    nameText:SetPoint("LEFT", icon, "RIGHT", 6, 0);
+    nameText:SetPoint("LEFT", iconBorder, "RIGHT", 6, 0);
     nameText:SetJustifyH("LEFT");
     nameText:SetWordWrap(false);
     row.nameText = nameText;
@@ -143,10 +179,19 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
 
     local itemName = self:SetItemIconAndName(row, itemData.itemId);
 
-    local parts = {};
-    if itemData.difficulty then
-        table.insert(parts, self:FormatDifficultyTag(itemData.difficulty));
+    -- Badge column: difficulty
+    if row.badgeCol then
+        local diffAbbrev = itemData.difficulty and self.constants.DIFF_ABBREV[itemData.difficulty] or "";
+        local dc = itemData.difficulty and self.constants.DIFF_COLORS[itemData.difficulty];
+        if dc then
+            row.badgeCol.diffText:SetText(string.format("|cff%02x%02x%02x%s|r", dc.r * 255, dc.g * 255, dc.b * 255, diffAbbrev));
+        else
+            row.badgeCol.diffText:SetText(diffAbbrev);
+        end
+        row.badgeCol.tipText = itemData.difficulty or nil;
     end
+
+    local parts = {};
     local memberCount = #itemData.members;
     table.insert(parts, "|cff888888" .. memberCount .. (memberCount == 1 and " wants" or " want") .. "|r");
     row.infoText:SetText(table.concat(parts, "  "));
@@ -654,14 +699,13 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         self:PopulateGuildDetailDefault(detailPanel, displayName, memberCount, totalItems, rosterMemberSet);
     end
 
-    self:SetupDifficultyFilterButtons(sourcePanel, function(diff)
+    self:SetupDifficultyDropdown(sourcePanel, function(diff)
         frame.guildDifficultyFilter = diff;
         if GOW.DB and GOW.DB.profile then GOW.DB.profile.wishlistGuildDifficulty = diff end
-        self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, diff);
         rebuildGuildView();
     end);
 
-    self:HighlightDifficultyBtn(sourcePanel.diffFilterBtns, filter);
+    sourcePanel.updateDiffLabel(filter);
 
     rebuildGuildView();
 end
@@ -837,6 +881,14 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
             end
             table.insert(container.guildSections, { obtainedRows = obtRows });
         end
+    end
+
+    if #container.guildSections == 0 then
+        local emptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+        emptyText:SetPoint("TOP", scrollChild, "TOP", 0, -40);
+        emptyText:SetText("|cff888888No items match the current filters.|r");
+        scrollChild:SetHeight(80);
+        return;
     end
 
     self:RelayoutGuildContent(container);
