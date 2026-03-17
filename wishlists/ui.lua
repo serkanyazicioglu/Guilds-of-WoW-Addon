@@ -595,12 +595,13 @@ function GoWWishlists:RelayoutBrowserContent(frame)
     scrollChild:SetHeight(yOffset + 8);
 end
 
-function GoWWishlists:BuildSections(container, scrollChild, bossGroups, bossOrder, unknownItems, bossToRaid, bossToJournalId)
+function GoWWishlists:BuildSections(container, scrollChild, bossGroups, bossOrder, unknownItems, bossToRaid, bossToJournalId, expandedBosses)
     container.sections = {};
+    expandedBosses = expandedBosses or {};
 
     local function addSection(bossName, items)
         local header = self:CreateBossHeader(scrollChild, bossName, #items);
-        header.isCollapsed = true;
+        header.isCollapsed = not expandedBosses[bossName];
         self:UpdateBossHeaderArrow(header);
 
         header.itemRows = {};
@@ -612,6 +613,7 @@ function GoWWishlists:BuildSections(container, scrollChild, bossGroups, bossOrde
 
         header:SetScript("OnClick", function(self)
             self.isCollapsed = not self.isCollapsed;
+            expandedBosses[bossName] = not self.isCollapsed or nil;
             GoWWishlists:UpdateBossHeaderArrow(self);
             GoWWishlists:RelayoutBrowserContent(container);
         end);

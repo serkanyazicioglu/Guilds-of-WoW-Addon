@@ -675,7 +675,11 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
 
         self:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, nil, guildRealm, detailPanel, bossToRaid, bossToJournalId, guildLootSortMode, guildHideObtained, rosterMemberSet);
 
-        self:PopulateGuildDetailDefault(detailPanel, displayName, memberCount, totalItems, rosterMemberSet);
+        if detailPanel._activeMember then
+            self:PopulateGuildPlayerDetail(detailPanel, detailPanel._activeMember, detailPanel._activeGuildRealm);
+        else
+            self:PopulateGuildDetailDefault(detailPanel, displayName, memberCount, totalItems, rosterMemberSet);
+        end
     end
 
     self:SetupDifficultyDropdown(sourcePanel, function(diff)
@@ -693,6 +697,7 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
     local scrollChild = lootPanel.scrollChild;
     self:ClearChildren(scrollChild);
     scrollChild:SetWidth(lootPanel.scrollFrame:GetWidth());
+    if not lootPanel.expandedBosses then lootPanel.expandedBosses = {} end
 
     sortMode = NormalizeGuildLootSort(sortMode);
     if hideObtained == nil then hideObtained = true end
@@ -780,7 +785,8 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
         if not boss then return end
 
         local header = self:CreateBossHeader(scrollChild, bossName, #boss.itemOrder);
-        header.isCollapsed = (selectedBoss == nil);
+        local expandedBosses = lootPanel.expandedBosses or {};
+        header.isCollapsed = not expandedBosses[bossName];
         self:UpdateBossHeaderArrow(header);
 
         local bossItems = {};
@@ -798,6 +804,8 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
 
         header:SetScript("OnClick", function(h)
             h.isCollapsed = not h.isCollapsed;
+            if not lootPanel.expandedBosses then lootPanel.expandedBosses = {} end
+            lootPanel.expandedBosses[bossName] = not h.isCollapsed or nil;
             GoWWishlists:UpdateBossHeaderArrow(h);
             GoWWishlists:RelayoutGuildContent(container);
         end);
@@ -999,6 +1007,8 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
 
     detailPanel.headerText:SetText("LOOT HISTORY");
 
+    detailPanel._activeMember = nil;
+    detailPanel._activeGuildRealm = nil;
     detailPanel._lastGuildName = guildName;
     detailPanel._lastMemberCount = memberCount;
     detailPanel._lastTotalItems = totalItems;
@@ -1161,6 +1171,9 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     end
 
     detailPanel.headerText:SetText("|cff" .. colorHex .. displayName .. "|r");
+
+    detailPanel._activeMember = member;
+    detailPanel._activeGuildRealm = guildRealm;
 
     local guildPlayerSortMode = detailPanel.guildPlayerSortMode or "upgrade";
     local guildPlayerSlotFilter = detailPanel.guildPlayerSlotFilter or "All";

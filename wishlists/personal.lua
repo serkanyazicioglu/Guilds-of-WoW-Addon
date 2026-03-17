@@ -74,6 +74,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         local scrollChild = lootPanel.scrollChild;
         self:ClearChildren(scrollChild);
         scrollChild:SetWidth(lootPanel.scrollFrame:GetWidth());
+        if not lootPanel.expandedBosses then lootPanel.expandedBosses = {} end
 
         local container = { sections = {}, scrollChild = scrollChild };
 
@@ -100,7 +101,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
                 table.insert(container.sections, { header = header });
             end
         else
-            self:BuildSections(container, scrollChild, bossGroups, bossOrder, unknownItems, bossToRaid, bossToJournalId);
+            self:BuildSections(container, scrollChild, bossGroups, bossOrder, unknownItems, bossToRaid, bossToJournalId, lootPanel.expandedBosses);
         end
 
         self:RelayoutBrowserContent(container);
