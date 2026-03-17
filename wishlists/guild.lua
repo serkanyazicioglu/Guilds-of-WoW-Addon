@@ -302,21 +302,8 @@ function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
 
     self:ApplyGainBadge(row.gainBadge, member.gain);
 
-    if member.notes and member.notes ~= "" then
-        row.noteIcon.noteText = member.notes;
-        row.noteIcon:Show();
-    else
-        row.noteIcon.noteText = nil;
-        row.noteIcon:Hide();
-    end
-
-    if member.officerNotes and member.officerNotes ~= "" and GoWWishlists:HasGuildWishlistData() then
-        row.officerNoteIcon.noteText = member.officerNotes;
-        row.officerNoteIcon:Show();
-    else
-        row.officerNoteIcon.noteText = nil;
-        row.officerNoteIcon:Hide();
-    end
+    self:ApplyNoteIcon(row.noteIcon, member.notes);
+    self:ApplyNoteIcon(row.officerNoteIcon, self:HasGuildWishlistData() and member.officerNotes or nil);
 end
 
 function GoWWishlists:RelayoutGuildContent(frame)

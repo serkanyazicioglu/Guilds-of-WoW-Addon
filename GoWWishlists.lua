@@ -594,15 +594,14 @@ function GoWWishlists:CreateNoteIconButton(parent, row, texturePath, header, hea
     return button;
 end
 
-function GoWWishlists:ApplyNoteLabels(row, notes)
-    if row.noteIcon then
-        row.noteIcon.noteText = nil;
-        row.noteIcon:Hide();
-    end
+function GoWWishlists:ApplyNoteIcon(icon, notes)
+    if not icon then return end
+    icon.noteText = nil;
+    icon:Hide();
 
-    if notes and notes ~= "" and row.noteIcon then
-        row.noteIcon.noteText = notes;
-        row.noteIcon:Show();
+    if notes and notes ~= "" then
+        icon.noteText = notes;
+        icon:Show();
     end
 end
 

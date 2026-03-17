@@ -119,7 +119,7 @@ function GoWWishlists:PopulateItemRow(row, entry, itemLink)
     if entry.difficulty then table.insert(infoParts, "Difficulty: " .. entry.difficulty) end
     row.infoHover.tipText = #infoParts > 0 and table.concat(infoParts, "\n") or nil;
 
-    self:ApplyNoteLabels(row, entry.notes);
+    self:ApplyNoteIcon(row.noteIcon, entry.notes);
     self:ApplyGainBadge(row.gainBadge, entry.gain);
 end
 
