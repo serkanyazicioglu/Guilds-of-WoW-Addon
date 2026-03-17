@@ -103,13 +103,13 @@ function GOW:OnInitialize()
 	local consoleCommandFunc = function(msg, editbox)
 		if (msg == "minimap") then
 			Core:ToggleMinimap();
-		elseif (msg == "loot" and GOW.Helper:IsRetail()) then
+		elseif (msg == "loot" and GOW.Helper:IsWishlistsEnabled()) then
 			if GOW.Wishlists then
 				GOW.Wishlists:HandleSlashCommand();
 			else
 				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
 			end
-		elseif (msg:match("^testloot") and GOW.Helper:IsRetail() and GOW.consts.ENABLE_DEBUGGING) then
+		elseif (msg:match("^testloot") and GOW.Helper:IsWishlistsEnabled() and GOW.consts.ENABLE_DEBUGGING) then
 			local count = tonumber(msg:match("^testloot%s+(%d+)")) or 1;
 			if GOW.Wishlists then
 				GOW.Wishlists:SimulateLootDrops(count);
@@ -176,7 +176,7 @@ function GOW:OnInitialize()
 
 	containerTabs = GOW.GUI:Create("TabGroup");
 
-	if GOW.Helper:IsRetail() then
+	if GOW.Helper:IsWishlistsEnabled() then
 		table.insert(tabs, { value = "wishlists", text = "Wishlists" });
 	end
     
