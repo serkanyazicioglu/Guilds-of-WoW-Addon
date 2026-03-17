@@ -249,72 +249,58 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
 
     if not detailPanel.sortBtn then
         local headerBar = detailPanel.headerBar;
-        local popupMenu = self:GetOrCreatePopupMenu();
-        local showPopup = popupMenu.showPopup;
         local SLOT_LABELS = self.constants.SLOT_LABELS;
-
         local SORT_LABELS = self.constants.SORT_LABELS;
+        local updateSortLabel, updateSlotLabel;
 
-        local sortBtn = self:CreateSubFilterBtn(detailPanel, "Sort: Upgrade", 90);
-        sortBtn:SetHeight(14);
-        sortBtn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
-        detailPanel.sortBtn = sortBtn;
-
-        local slotBtn = self:CreateSubFilterBtn(detailPanel, "Slot: All", 80);
-        slotBtn:SetHeight(14);
-        slotBtn:SetPoint("LEFT", sortBtn, "RIGHT", 4, 0);
-        detailPanel.slotBtn = slotBtn;
-
-        local function updateSortLabel()
-            sortBtn.btnText:SetText("Sort: " .. (SORT_LABELS[detailSortMode] or detailSortMode));
-        end
-
-        local function updateSlotLabel()
-            slotBtn.btnText:SetText("Slot: " .. (SLOT_LABELS[detailSlotFilter] or detailSlotFilter));
-        end
-
-        sortBtn:SetScript("OnClick", function()
-            if popupMenu.popup:IsShown() and popupMenu.popup.owner == "sort" then
-                popupMenu.clearPopup();
-                return;
-            end
-            popupMenu.popup.owner = "sort";
-            showPopup(sortBtn, self.constants.SORT_OPTIONS, detailSortMode, function(key)
+        local sortBtn = self:CreatePopupFilterBtn(detailPanel, "Sort: Upgrade", 90, "sort",
+            self.constants.SORT_OPTIONS,
+            function() return detailSortMode end,
+            function(key)
                 detailSortMode = key;
                 frame.detailSortMode = key;
                 updateSortLabel();
                 populateDetailPanel();
             end);
-        end);
+        sortBtn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
+        detailPanel.sortBtn = sortBtn;
 
-        slotBtn:SetScript("OnClick", function()
-            if popupMenu.popup:IsShown() and popupMenu.popup.owner == "slot" then
-                popupMenu.clearPopup();
-                return;
-            end
-            local seenSlots = {};
-            for _, entry in ipairs(self.state.allItems) do
-                if not entry.isObtained then
-                    local _, _, _, equipLoc = C_Item.GetItemInfoInstant(entry.itemId);
-                    if equipLoc and equipLoc ~= "" then
-                        seenSlots[equipLoc] = true;
+        local slotBtn = self:CreatePopupFilterBtn(detailPanel, "Slot: All", 80, "slot",
+            function()
+                local seenSlots = {};
+                for _, entry in ipairs(self.state.allItems) do
+                    if not entry.isObtained then
+                        local _, _, _, equipLoc = C_Item.GetItemInfoInstant(entry.itemId);
+                        if equipLoc and equipLoc ~= "" then
+                            seenSlots[equipLoc] = true;
+                        end
                     end
                 end
-            end
-            local slotOptions = { { key = "All", label = "All Slots" } };
-            for _, slotKey in ipairs(self.constants.SLOT_ORDER) do
-                if seenSlots[slotKey] then
-                    table.insert(slotOptions, { key = slotKey, label = SLOT_LABELS[slotKey] or slotKey });
+                local slotOptions = { { key = "All", label = "All Slots" } };
+                for _, slotKey in ipairs(self.constants.SLOT_ORDER) do
+                    if seenSlots[slotKey] then
+                        table.insert(slotOptions, { key = slotKey, label = SLOT_LABELS[slotKey] or slotKey });
+                    end
                 end
-            end
-            popupMenu.popup.owner = "slot";
-            showPopup(slotBtn, slotOptions, detailSlotFilter, function(key)
+                return slotOptions;
+            end,
+            function() return detailSlotFilter end,
+            function(key)
                 detailSlotFilter = key;
                 frame.detailSlotFilter = key;
                 updateSlotLabel();
                 populateDetailPanel();
             end);
-        end);
+        slotBtn:SetPoint("LEFT", sortBtn, "RIGHT", 4, 0);
+        detailPanel.slotBtn = slotBtn;
+
+        updateSortLabel = function()
+            sortBtn.btnText:SetText("Sort: " .. (SORT_LABELS[detailSortMode] or detailSortMode));
+        end
+
+        updateSlotLabel = function()
+            slotBtn.btnText:SetText("Slot: " .. (SLOT_LABELS[detailSlotFilter] or detailSlotFilter));
+        end
 
         detailPanel.updateSortLabel = updateSortLabel;
         detailPanel.updateSlotLabel = updateSlotLabel;

@@ -817,6 +817,24 @@ function GoWWishlists:CreateSubFilterBtn(btnParent, label, width)
     return btn;
 end
 
+function GoWWishlists:CreatePopupFilterBtn(parent, label, width, ownerKey, getOptions, getCurrentValue, onSelect)
+    local popupMenu = self:GetOrCreatePopupMenu();
+    local btn = self:CreateSubFilterBtn(parent, label, width);
+    btn:SetHeight(14);
+
+    btn:SetScript("OnClick", function()
+        if popupMenu.popup:IsShown() and popupMenu.popup.owner == ownerKey then
+            popupMenu.clearPopup();
+            return;
+        end
+        local options = type(getOptions) == "function" and getOptions() or getOptions;
+        popupMenu.popup.owner = ownerKey;
+        popupMenu.showPopup(btn, options, getCurrentValue(), onSelect);
+    end);
+
+    return btn;
+end
+
 function GoWWishlists:SetButtonActive(btn, isActive)
     if isActive then
         btn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);

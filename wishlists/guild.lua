@@ -542,8 +542,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
 
     if not lootPanel.guildSortBtn then
         local headerBar = lootPanel.headerBar;
-        local popupMenu = self:GetOrCreatePopupMenu();
-        local showPopup = popupMenu.showPopup;
+        local updateGuildSortLabel;
 
         local GUILD_SORT_LABELS = {
             bosspriority = "Boss Priority",
@@ -553,8 +552,26 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
             slot = "Slot Name",
         };
 
-        local sortBtn = self:CreateSubFilterBtn(lootPanel, "Sort: Most Wanted", 130);
-        sortBtn:SetHeight(14);
+        local sortBtn = self:CreatePopupFilterBtn(lootPanel, "Sort: Most Wanted", 130, "guildsort",
+            function()
+                local sortOptions = {
+                    { key = "mostwanted", label = "Most Wanted" },
+                    { key = "avggain",    label = "Upgrade" },
+                    { key = "name",       label = "Name" },
+                    { key = "slot",       label = "Slot Name" },
+                };
+                if lootPanel.allowBossPrioritySort then
+                    table.insert(sortOptions, { key = "bosspriority", label = "Boss Priority" });
+                end
+                return sortOptions;
+            end,
+            function() return NormalizeGuildLootSort(frame.guildLootSortMode or guildLootSortMode) end,
+            function(key)
+                guildLootSortMode = key;
+                frame.guildLootSortMode = key;
+                updateGuildSortLabel();
+                rebuildGuildView();
+            end);
         sortBtn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
         lootPanel.guildSortBtn = sortBtn;
 
@@ -582,7 +599,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         end);
         obtainedBtn:SetScript("OnLeave", function() GameTooltip:Hide() end);
 
-        local function updateGuildSortLabel()
+        updateGuildSortLabel = function()
             local activeSort = NormalizeGuildLootSort(frame.guildLootSortMode or guildLootSortMode);
             sortBtn.btnText:SetText("Sort: " .. (GUILD_SORT_LABELS[activeSort] or activeSort));
         end
@@ -592,31 +609,6 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
             if hideObtained == nil then hideObtained = guildHideObtained end
             self:SetButtonActiveWithIcon(obtainedBtn, eyeTex, not hideObtained);
         end
-
-        sortBtn:SetScript("OnClick", function()
-            if popupMenu.popup:IsShown() and popupMenu.popup.owner == "guildsort" then
-                popupMenu.clearPopup();
-                return;
-            end
-            local sortOptions = {
-                { key = "mostwanted", label = "Most Wanted" },
-                { key = "avggain",    label = "Upgrade" },
-                { key = "name",       label = "Name" },
-                { key = "slot",       label = "Slot Name" },
-            };
-            if lootPanel.allowBossPrioritySort then
-                table.insert(sortOptions, { key = "bosspriority", label = "Boss Priority" });
-            end
-
-            local activeSort = NormalizeGuildLootSort(frame.guildLootSortMode or guildLootSortMode);
-            popupMenu.popup.owner = "guildsort";
-            showPopup(sortBtn, sortOptions, activeSort, function(key)
-                guildLootSortMode = key;
-                frame.guildLootSortMode = key;
-                updateGuildSortLabel();
-                rebuildGuildView();
-            end);
-        end);
 
         obtainedBtn:SetScript("OnClick", function()
             guildHideObtained = not guildHideObtained;
@@ -1276,50 +1268,35 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
         end);
     end
 
-    local popupMenu = self:GetOrCreatePopupMenu();
-    local showPopup = popupMenu.showPopup;
-
-    local sortBtn = self:CreateSubFilterBtn(scrollChild, "Sort: " .. (SORT_LABELS[guildPlayerSortMode] or guildPlayerSortMode), 110);
-    sortBtn:SetHeight(14);
-    sortBtn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
-
-    local slotBtn = self:CreateSubFilterBtn(scrollChild, "Slot: " .. (SLOT_LABELS[guildPlayerSlotFilter] or guildPlayerSlotFilter), 80);
-    slotBtn:SetHeight(14);
-    slotBtn:SetPoint("LEFT", sortBtn, "RIGHT", 4, 0);
-
     local function rebuild()
         self:PopulateGuildPlayerDetail(detailPanel, member, guildRealm);
     end
 
-    sortBtn:SetScript("OnClick", function()
-        if popupMenu.popup:IsShown() and popupMenu.popup.owner == "playerSort" then
-            popupMenu.clearPopup();
-            return;
-        end
-        popupMenu.popup.owner = "playerSort";
-        showPopup(sortBtn, self.constants.SORT_OPTIONS, guildPlayerSortMode, function(key)
+    local sortBtn = self:CreatePopupFilterBtn(scrollChild, "Sort: " .. (SORT_LABELS[guildPlayerSortMode] or guildPlayerSortMode), 110, "playerSort",
+        self.constants.SORT_OPTIONS,
+        function() return guildPlayerSortMode end,
+        function(key)
             detailPanel.guildPlayerSortMode = key;
             rebuild();
         end);
-    end);
+    sortBtn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
 
-    slotBtn:SetScript("OnClick", function()
-        if popupMenu.popup:IsShown() and popupMenu.popup.owner == "playerSlot" then
-            popupMenu.clearPopup();
-            return;
-        end
-        local slotOptions = { { key = "All", label = "All Slots" } };
-        for _, slotKey in ipairs(SLOT_ORDER) do
-            if seenSlots[slotKey] then
-                table.insert(slotOptions, { key = slotKey, label = SLOT_LABELS[slotKey] or slotKey });
+    local slotBtn = self:CreatePopupFilterBtn(scrollChild, "Slot: " .. (SLOT_LABELS[guildPlayerSlotFilter] or guildPlayerSlotFilter), 80, "playerSlot",
+        function()
+            local slotOptions = { { key = "All", label = "All Slots" } };
+            for _, slotKey in ipairs(SLOT_ORDER) do
+                if seenSlots[slotKey] then
+                    table.insert(slotOptions, { key = slotKey, label = SLOT_LABELS[slotKey] or slotKey });
+                end
             end
-        end
-        popupMenu.popup.owner = "playerSlot";
-        showPopup(slotBtn, slotOptions, guildPlayerSlotFilter, function(key)
+            return slotOptions;
+        end,
+        function() return guildPlayerSlotFilter end,
+        function(key)
             detailPanel.guildPlayerSlotFilter = key;
             rebuild();
         end);
-    end);
+    slotBtn:SetPoint("LEFT", sortBtn, "RIGHT", 4, 0);
 
     yOffset = yOffset + 20;
 
