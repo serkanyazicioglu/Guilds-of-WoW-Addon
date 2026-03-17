@@ -3,6 +3,7 @@ local GoWWishlists = GOW.Wishlists;
 
 GoWWishlists.constants.BROWSER_BOSS_HEADER_HEIGHT = 24;
 GoWWishlists.constants.RAID_HEADER_HEIGHT = 18;
+
 function GoWWishlists:CreateWishlistCardRow(parent, options)
     local opts = options or {};
     local isCompact = self.state.compactMode;
