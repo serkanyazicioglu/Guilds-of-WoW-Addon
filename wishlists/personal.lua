@@ -107,9 +107,18 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
 
         if #container.sections == 0 then
             local emptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
-            emptyText:SetPoint("TOP", scrollChild, "TOP", 0, -40);
-            emptyText:SetText("|cff888888No loot drops for this selection.|r");
-            scrollChild:SetHeight(80);
+            if not self:HasPersonalWishlistEntry() then
+                emptyText:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -28);
+                emptyText:SetPoint("RIGHT", scrollChild, "RIGHT", -10, 0);
+                emptyText:SetJustifyH("CENTER");
+                emptyText:SetWordWrap(true);
+                emptyText:SetText("|cff888888No synced wishlist data found for this character.|r\n|cff666666" .. self:GetSyncAppInstallHint() .. "|r");
+                scrollChild:SetHeight(110);
+            else
+                emptyText:SetPoint("TOP", scrollChild, "TOP", 0, -40);
+                emptyText:SetText("|cff888888No loot drops for this selection.|r");
+                scrollChild:SetHeight(80);
+            end
         end
     end
 

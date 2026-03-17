@@ -7,6 +7,7 @@ local ns = select(2, ...);
 GoWWishlists.state = {
     wishlistIndex = {},
     allItems = {},
+    hasPersonalWishlistEntry = false,
     currentCharInfo = nil,
     guildWishlistData = nil,
     pendingItemRows = {},
@@ -76,6 +77,7 @@ end
 function GoWWishlists:BuildWishlistIndex()
     self.state.wishlistIndex = {};
     self.state.allItems = {};
+    self.state.hasPersonalWishlistEntry = false;
     self.state.guildWishlistData = nil;
 
     self.state.currentCharInfo = self:GetCurrentCharacterInfo();
@@ -96,6 +98,7 @@ function GoWWishlists:BuildWishlistIndex()
             local entryRealm = charEntry.realmNameNormalized and charEntry.realmNameNormalized:lower() or "";
 
             if isDebug or (entryName == charInfo.nameLower and entryRealm == charInfo.realmLower) then
+                self.state.hasPersonalWishlistEntry = true;
                 for _, item in ipairs(charEntry.wishlist) do
                     item.characterName = entryName;
                     item.characterRealmNormalized = entryRealm;
@@ -763,6 +766,14 @@ end
 
 function GoWWishlists:HasGuildWishlistData()
     return self.state.guildWishlistData and self.state.guildWishlistData.wishlists and #self.state.guildWishlistData.wishlists > 0;
+end
+
+function GoWWishlists:HasPersonalWishlistEntry()
+    return self.state.hasPersonalWishlistEntry == true;
+end
+
+function GoWWishlists:GetSyncAppInstallHint()
+    return "Download and install the GoW Sync App to populate your wishlist data for this feature.";
 end
 
 function GoWWishlists:ClassColorToHex(color)

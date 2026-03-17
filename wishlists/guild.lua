@@ -49,6 +49,13 @@ local function BuildBossOrderIndex(self, bossNames, bossToRaid, bossToJournalId)
     return bossIndex;
 end
 
+local function NormalizeGuildLootSort(sortMode)
+    if not sortMode or sortMode == "" or sortMode == "boss" then
+        return "mostwanted";
+    end
+    return sortMode;
+end
+
 -- Returns an array of {id, name} for teams matching the current guild.
 function GoWWishlists:GetGuildTeams()
     local teams = {};
@@ -453,9 +460,17 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         local sc = lootPanel.scrollChild;
         self:ClearChildren(sc);
         local emptyText = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal");
-        emptyText:SetPoint("TOP", sc, "TOP", 0, -30);
-        emptyText:SetText("|cff888888" .. msg .. "|r");
-        sc:SetHeight(80);
+        emptyText:SetPoint("TOPLEFT", sc, "TOPLEFT", 10, -28);
+        emptyText:SetPoint("RIGHT", sc, "RIGHT", -10, 0);
+        emptyText:SetJustifyH("CENTER");
+        emptyText:SetWordWrap(true);
+        if playerGuild then
+            emptyText:SetText("|cff888888" .. msg .. "|r\n|cff666666" .. self:GetSyncAppInstallHint() .. "|r");
+            sc:SetHeight(110);
+        else
+            emptyText:SetText("|cff888888" .. msg .. "|r");
+            sc:SetHeight(80);
+        end
         frame.subtitleText:SetText(playerGuild or "No Guild");
         return;
     end
@@ -562,7 +577,8 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
     detailPanel.headerText:SetText("WISHLIST");
     lootPanel.ownerFrame = frame;
 
-    local guildLootSortMode = frame.guildLootSortMode or "boss";
+    local guildLootSortMode = NormalizeGuildLootSort(frame.guildLootSortMode);
+    frame.guildLootSortMode = guildLootSortMode;
     local guildHideObtained = frame.guildHideObtained;
     if guildHideObtained == nil then guildHideObtained = true end
 
@@ -572,15 +588,14 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         local showPopup = popupMenu.showPopup;
 
         local GUILD_SORT_LABELS = {
-            boss = "Boss Order",
             bosspriority = "Boss Priority",
             mostwanted = "Most Wanted",
-            avggain = "Avg. Gain",
+            avggain = "Upgrade",
             name = "Name",
-            slot = "Slot",
+            slot = "Slot Name",
         };
 
-        local sortBtn = self:CreateSubFilterBtn(lootPanel, "Sort: Boss Order", 110);
+        local sortBtn = self:CreateSubFilterBtn(lootPanel, "Sort: Most Wanted", 130);
         sortBtn:SetHeight(14);
         sortBtn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
         lootPanel.guildSortBtn = sortBtn;
@@ -610,7 +625,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         obtainedBtn:SetScript("OnLeave", function() GameTooltip:Hide() end);
 
         local function updateGuildSortLabel()
-            local activeSort = frame.guildLootSortMode or guildLootSortMode or "boss";
+            local activeSort = NormalizeGuildLootSort(frame.guildLootSortMode or guildLootSortMode);
             sortBtn.btnText:SetText("Sort: " .. (GUILD_SORT_LABELS[activeSort] or activeSort));
         end
 
@@ -626,17 +641,16 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
                 return;
             end
             local sortOptions = {
-                { key = "boss",       label = "Boss Order" },
+                { key = "mostwanted", label = "Most Wanted" },
+                { key = "avggain",    label = "Upgrade" },
+                { key = "name",       label = "Name" },
+                { key = "slot",       label = "Slot Name" },
             };
             if lootPanel.allowBossPrioritySort then
                 table.insert(sortOptions, { key = "bosspriority", label = "Boss Priority" });
             end
-            table.insert(sortOptions, { key = "mostwanted", label = "Most Wanted" });
-            table.insert(sortOptions, { key = "avggain", label = "Avg. Gain" });
-            table.insert(sortOptions, { key = "name", label = "Name" });
-            table.insert(sortOptions, { key = "slot", label = "Slot" });
 
-            local activeSort = frame.guildLootSortMode or guildLootSortMode or "boss";
+            local activeSort = NormalizeGuildLootSort(frame.guildLootSortMode or guildLootSortMode);
             popupMenu.popup.owner = "guildsort";
             showPopup(sortBtn, sortOptions, activeSort, function(key)
                 guildLootSortMode = key;
@@ -664,7 +678,8 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
 
     rebuildGuildView = function()
         filter = frame.guildDifficultyFilter or "All";
-        guildLootSortMode = frame.guildLootSortMode or "boss";
+        guildLootSortMode = NormalizeGuildLootSort(frame.guildLootSortMode);
+        frame.guildLootSortMode = guildLootSortMode;
         guildHideObtained = frame.guildHideObtained;
         if guildHideObtained == nil then guildHideObtained = true end
         guildRosterFilter = frame.guildRosterFilter or "all";
@@ -729,12 +744,12 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
     self:ClearChildren(scrollChild);
     scrollChild:SetWidth(lootPanel.scrollFrame:GetWidth());
 
-    sortMode = sortMode or "boss";
+    sortMode = NormalizeGuildLootSort(sortMode);
     if hideObtained == nil then hideObtained = true end
     lootPanel.allowBossPrioritySort = selectedBoss == nil;
 
     if selectedBoss and sortMode == "bosspriority" then
-        sortMode = "boss";
+        sortMode = "mostwanted";
         if lootPanel.ownerFrame then
             lootPanel.ownerFrame.guildLootSortMode = sortMode;
         end
@@ -744,6 +759,47 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
     end
 
     local container = { guildSections = {}, guildScrollChild = scrollChild };
+    local SLOT_LABELS = self.constants.SLOT_LABELS;
+
+    local function sortItemDataList(itemList, sortKey)
+        if sortKey == "mostwanted" then
+            table.sort(itemList, function(a, b)
+                local aCount = #a.members;
+                local bCount = #b.members;
+                if aCount ~= bCount then return aCount > bCount end
+                local aName = C_Item.GetItemInfo(a.itemId) or "";
+                local bName = C_Item.GetItemInfo(b.itemId) or "";
+                return aName < bName;
+            end);
+        elseif sortKey == "avggain" then
+            table.sort(itemList, function(a, b)
+                local aAvg = GetAverageGainFromMembers(a.members);
+                local bAvg = GetAverageGainFromMembers(b.members);
+                if aAvg ~= bAvg then return aAvg > bAvg end
+                local aName = C_Item.GetItemInfo(a.itemId) or "";
+                local bName = C_Item.GetItemInfo(b.itemId) or "";
+                return aName < bName;
+            end);
+        elseif sortKey == "name" then
+            table.sort(itemList, function(a, b)
+                local aName = C_Item.GetItemInfo(a.itemId) or "";
+                local bName = C_Item.GetItemInfo(b.itemId) or "";
+                return aName < bName;
+            end);
+        elseif sortKey == "slot" then
+            table.sort(itemList, function(a, b)
+                local _, _, _, aLoc = C_Item.GetItemInfoInstant(a.itemId);
+                local _, _, _, bLoc = C_Item.GetItemInfoInstant(b.itemId);
+                local aSlot = SLOT_LABELS[aLoc] or "zzz";
+                local bSlot = SLOT_LABELS[bLoc] or "zzz";
+                if aSlot ~= bSlot then return aSlot < bSlot end
+                local aName = C_Item.GetItemInfo(a.itemId) or "";
+                local bName = C_Item.GetItemInfo(b.itemId) or "";
+                return aName < bName;
+            end);
+        end
+        return itemList;
+    end
 
     local function buildItemWithMembers(itemData)
         table.sort(itemData.members, function(a, b)
@@ -769,7 +825,7 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
         return { row = itemRow, memberRows = memberRows };
     end
 
-    local function buildBossSection(bossName)
+    local function buildBossSection(bossName, itemSortKey)
         local boss = bossGroups[bossName];
         if not boss then return end
 
@@ -777,9 +833,16 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
         header.isCollapsed = (selectedBoss == nil);
         self:UpdateBossHeaderArrow(header);
 
-        local items = {};
+        local bossItems = {};
         for _, itemKey in ipairs(boss.itemOrder) do
-            local itemData = boss.items[itemKey];
+            table.insert(bossItems, boss.items[itemKey]);
+        end
+        if itemSortKey then
+            sortItemDataList(bossItems, itemSortKey);
+        end
+
+        local items = {};
+        for _, itemData in ipairs(bossItems) do
             table.insert(items, buildItemWithMembers(itemData));
         end
 
@@ -802,44 +865,27 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
 
     local bossOrderIndex = BuildBossOrderIndex(self, bossOrder, bossToRaid, bossToJournalId);
 
-    local function buildFlatList(sortKey)
+    local function buildFlatList(sortKey, onlyBossName)
         local flatItems = {};
-        for _, bossName in ipairs(bossOrder) do
-            local boss = bossGroups[bossName];
+        if onlyBossName then
+            local boss = bossGroups[onlyBossName];
             if boss then
                 for _, itemKey in ipairs(boss.itemOrder) do
                     table.insert(flatItems, boss.items[itemKey]);
                 end
             end
+        else
+            for _, bossName in ipairs(bossOrder) do
+                local boss = bossGroups[bossName];
+                if boss then
+                    for _, itemKey in ipairs(boss.itemOrder) do
+                        table.insert(flatItems, boss.items[itemKey]);
+                    end
+                end
+            end
         end
 
-        local SLOT_LABELS = self.constants.SLOT_LABELS;
-        if sortKey == "mostwanted" then
-            table.sort(flatItems, function(a, b) return #a.members > #b.members end);
-        elseif sortKey == "avggain" then
-            table.sort(flatItems, function(a, b)
-                local aAvg = GetAverageGainFromMembers(a.members);
-                local bAvg = GetAverageGainFromMembers(b.members);
-                return aAvg > bAvg;
-            end);
-        elseif sortKey == "name" then
-            table.sort(flatItems, function(a, b)
-                local aName = C_Item.GetItemInfo(a.itemId) or "";
-                local bName = C_Item.GetItemInfo(b.itemId) or "";
-                return aName < bName;
-            end);
-        elseif sortKey == "slot" then
-            table.sort(flatItems, function(a, b)
-                local _, _, _, aLoc = C_Item.GetItemInfoInstant(a.itemId);
-                local _, _, _, bLoc = C_Item.GetItemInfoInstant(b.itemId);
-                local aSlot = SLOT_LABELS[aLoc] or "zzz";
-                local bSlot = SLOT_LABELS[bLoc] or "zzz";
-                if aSlot ~= bSlot then return aSlot < bSlot end
-                local aName = C_Item.GetItemInfo(a.itemId) or "";
-                local bName = C_Item.GetItemInfo(b.itemId) or "";
-                return aName < bName;
-            end);
-        end
+        sortItemDataList(flatItems, sortKey);
 
         local items = {};
         for _, itemData in ipairs(flatItems) do
@@ -884,13 +930,7 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
         end
     end
 
-    if sortMode ~= "boss" and sortMode ~= "bosspriority" then
-        buildFlatList(sortMode);
-    elseif selectedBoss then
-        buildBossSection(selectedBoss);
-    elseif sortMode == "bosspriority" then
-        buildBossPrioritySections();
-    else
+    local function buildGroupedSections(itemSortKey)
         local hasRaidGroups = bossToRaid and next(bossToRaid);
         if hasRaidGroups then
             local raidOrder, raidBosses, ungrouped = self:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId);
@@ -898,21 +938,29 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
             for _, raidName in ipairs(raidOrder) do
                 addRaidLabel(raidName);
                 for _, bossName in ipairs(raidBosses[raidName]) do
-                    buildBossSection(bossName);
+                    buildBossSection(bossName, itemSortKey);
                 end
             end
 
             if #ungrouped > 0 then
                 addRaidLabel("Other");
                 for _, bossName in ipairs(ungrouped) do
-                    buildBossSection(bossName);
+                    buildBossSection(bossName, itemSortKey);
                 end
             end
         else
             for _, bossName in ipairs(bossOrder) do
-                buildBossSection(bossName);
+                buildBossSection(bossName, itemSortKey);
             end
         end
+    end
+
+    if selectedBoss then
+        buildFlatList(sortMode, selectedBoss);
+    elseif sortMode == "bosspriority" then
+        buildBossPrioritySections();
+    else
+        buildGroupedSections(sortMode);
     end
 
     if not hideObtained then
