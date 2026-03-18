@@ -177,11 +177,10 @@ The wishlist column sorting depends on the active display mode:
 - **Percent / Value modes**: Items are sorted primarily by stat gain (higher percent/value first). When gains are equal, priority tier (BiS > Need > Greed > Minor > Offspec > Transmog) is used as a secondary ordering.
 - **Tag mode**: Items are sorted primarily by priority tier (BiS > Need > Greed > Minor > Offspec > Transmog). Within the same tier, items with higher stat gain are shown first.
 
-
 ### Configuration
 
 - **Enable/Disable**: Toggle via `showRCLCWishlist` in addon profile settings
-- **Display Mode**: Saved per-character and persists across sessions
+- **Display Mode**: Saved in your addon profile and persists across sessions
 
 Guilds of WoW website: https://guildsofwow.com
 
