@@ -172,11 +172,11 @@ Click the column header to cycle between three display modes:
 
 ### Sorting
 
-The wishlist column is sortable with intelligent priority ordering:
+The wishlist column sorting depends on the active display mode:
 
-1.  **By Priority Tier**: BiS > Need > Greed > Minor > Offspec > Transmog
-2.  **By Stat Gain**: Higher percentage gains rank higher
-3.  **Tiebreaker**: Higher gain percentage wins ties
+- **Percent / Value modes**: Items are sorted primarily by stat gain (higher percent/value first). When gains are equal, priority tier (BiS > Need > Greed > Minor > Offspec > Transmog) is used as a secondary ordering.
+- **Tag mode**: Items are sorted primarily by priority tier (BiS > Need > Greed > Minor > Offspec > Transmog). Within the same tier, items with higher stat gain are shown first.
+
 
 ### Configuration
 
