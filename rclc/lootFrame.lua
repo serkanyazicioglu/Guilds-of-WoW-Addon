@@ -12,8 +12,6 @@ local GoWLootFrame = RCGoW:NewModule("GoWLootFrame", "AceTimer-3.0");
 
 local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:16:16|t";
 
-local hookedFrames = {};
-
 local function OnEntryRefreshed(entry)
     if GOW.DB and GOW.DB.profile.showRCLCWishlist == false then return end
     if not entry.itemLvl then return end
@@ -98,16 +96,23 @@ local function OnEntryRefreshed(entry)
     entry._gowTipFrame._gowTip = #tipLines > 0 and tipLines or nil;
 end
 
+local prototypeHooked = false;
+
 local function HookGetEntry(_, entry)
-    if entry then
-        if not hookedFrames[entry] then
-            hookedFrames[entry] = true;
-            hooksecurefunc(entry, "Update", function(e)
+    if not entry then return end
+
+    if not prototypeHooked then
+        local mt = getmetatable(entry);
+        local proto = mt and mt.__index;
+        if proto and type(proto.Update) == "function" then
+            hooksecurefunc(proto, "Update", function(e)
                 OnEntryRefreshed(e);
             end);
+            prototypeHooked = true;
         end
-        OnEntryRefreshed(entry);
     end
+
+    OnEntryRefreshed(entry);
 end
 
 function GoWLootFrame:OnEnable()

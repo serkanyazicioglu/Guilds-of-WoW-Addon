@@ -121,8 +121,8 @@ local function CompareByPriority(st, rowa, rowb, sortbycol)
     local wishA = RCGoW:GetPlayerWish(itemId, a.name);
     local wishB = RCGoW:GetPlayerWish(itemId, b.name);
 
-    local dir = st.cols[sortbycol].sort or "asc";
-    local asc = dir:lower() == "asc";
+    local dir = st.cols[sortbycol].sort;
+    local asc = (dir == 1); -- lib-st: SORT_ASC=1, SORT_DSC=2
     local mode = GetDisplayMode();
 
     if mode == "percent" then
