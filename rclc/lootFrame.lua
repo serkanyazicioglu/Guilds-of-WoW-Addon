@@ -98,7 +98,10 @@ end
 
 local prototypeHooked = false;
 
-local function HookGetEntry(_, entry)
+local function HookGetEntry(entryManager, item)
+    if not item then return end
+
+    local entry = entryManager.entries and entryManager.entries[item];
     if not entry then return end
 
     if not prototypeHooked then
