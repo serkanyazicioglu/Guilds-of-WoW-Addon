@@ -121,7 +121,8 @@ local function CompareByPriority(st, rowa, rowb, sortbycol)
     local wishA = RCGoW:GetPlayerWish(itemId, a.name);
     local wishB = RCGoW:GetPlayerWish(itemId, b.name);
 
-    local dir = st.cols[sortbycol].sort;
+    local col = st.cols[sortbycol];
+    local dir = col and (col.sort or col.defaultsort) or 1;
     local asc = (dir == 1); -- lib-st: SORT_ASC=1, SORT_DSC=2
     local mode = GetDisplayMode();
 
@@ -129,26 +130,29 @@ local function CompareByPriority(st, rowa, rowb, sortbycol)
         local valA = (wishA and wishA.gain and wishA.gain.percent) or 0;
         local valB = (wishB and wishB.gain and wishB.gain.percent) or 0;
         if valA ~= valB then
-            return asc and valA > valB or valA < valB;
+            if asc then return valA < valB else return valA > valB end
         end
     elseif mode == "value" then
         local valA = (wishA and wishA.gain and wishA.gain.stat) or 0;
         local valB = (wishB and wishB.gain and wishB.gain.stat) or 0;
         if valA ~= valB then
-            return asc and valA > valB or valA < valB;
+            if asc then return valA < valB else return valA > valB end
         end
     else
         local prioA = wishA and (TAG_RANK[wishA.tag] or 99) or 999;
         local prioB = wishB and (TAG_RANK[wishB.tag] or 99) or 999;
         if prioA ~= prioB then
-            return asc and prioA < prioB or prioA > prioB;
+            if asc then return prioA < prioB else return prioA > prioB end
         end
     end
 
-    -- Tiebreak: higher gain percent wins
+    -- Tiebreak: use gain percent, following the same sort direction
     local gainA = (wishA and wishA.gain and wishA.gain.percent) or 0;
     local gainB = (wishB and wishB.gain and wishB.gain.percent) or 0;
-    return gainA > gainB;
+    if gainA ~= gainB then
+        if asc then return gainA < gainB else return gainA > gainB end
+    end
+    return false;
 end
 
 local function InsertGoWColumn()
