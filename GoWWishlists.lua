@@ -690,7 +690,7 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
         badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.1f", gain.percent) .. "%|r");
         hasGain = true;
     elseif gain and gain.stat and gain.stat > 0 then
-        badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.0f", gain.stat) .. "|r");
+        badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.1f", gain.stat) .. "|r");
         hasGain = true;
     end
 
@@ -748,13 +748,14 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
                 table.insert(tipParts, string.format("%.1f%% %s%s", gain.percent, metric, catalystSuffix));
             end
             if gain.stat and gain.stat > 0 then
-                table.insert(tipParts, "+" .. string.format("%.0f", gain.stat) .. " " .. metric);
+                table.insert(tipParts, "+" .. string.format("%.1f", gain.stat) .. " " .. metric);
             end
             badge.tooltipText = #tipParts > 0 and table.concat(tipParts, "\n") or nil;
         end
     else
         badge.tooltipText = nil;
         badge.tooltipLines = nil;
+        badge:SetWidth(0.1);
         badge:Hide();
     end
 end

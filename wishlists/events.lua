@@ -298,7 +298,7 @@ function GoWWishlists:SimulateLootDrops(count)
         table.insert(groups[key], item);
     end
 
-    -- Sort: Mythic first, then groups with duplicates first, then shuffle within tiers
+    -- Sort: Mythic first, then groups with duplicates first
     table.sort(groupOrder, function(a, b)
         local aIsMythic = a:match(":Mythic$") and 1 or 0;
         local bIsMythic = b:match(":Mythic$") and 1 or 0;

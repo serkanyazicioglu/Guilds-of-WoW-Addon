@@ -52,7 +52,7 @@ local function OnEntryRefreshed(entry)
     if wish.gain and wish.gain.percent and wish.gain.percent > 0 then
         label = label .. string.format(" |cff00ff00%.1f%%|r", wish.gain.percent);
         if wish.gain.stat then
-            label = label .. string.format(" |cff00ff00(%d %s)|r", wish.gain.stat, wish.gain.metric or "");
+            label = label .. string.format(" |cff00ff00(%.1f %s)|r", wish.gain.stat, wish.gain.metric or "");
         end
     end
 
@@ -90,7 +90,7 @@ local function OnEntryRefreshed(entry)
             table.insert(tipLines, string.format("%.1f%% %s", wish.gain.percent, metric));
         end
         if wish.gain.stat and wish.gain.stat > 0 then
-            table.insert(tipLines, string.format("%d %s (raw)", wish.gain.stat, metric));
+            table.insert(tipLines, string.format("%.1f %s (raw)", wish.gain.stat, metric));
         end
     end
     if wish.isCatalystItem then
