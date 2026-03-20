@@ -48,7 +48,6 @@ function GoWWishlists:CreateWishlistCardRow(parent, options)
 
     local nameText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     nameText:SetPoint("TOPLEFT", iconBorder, "TOPRIGHT", 6, 2);
-    nameText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
     nameText:SetJustifyH("LEFT");
     nameText:SetWordWrap(false);
     row.nameText = nameText;
@@ -74,17 +73,13 @@ function GoWWishlists:CreateWishlistCardRow(parent, options)
     end
 
     row.gainBadge = self:CreateGainBadge(inner);
-    row.gainBadge:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    row.gainBadge:SetPoint("TOP", nameText, "TOP", 0, 0);
+    row.gainBadge:SetPoint("TOPRIGHT", inner, "TOPRIGHT", -4, 2);
+
+    nameText:SetPoint("RIGHT", row.gainBadge, "LEFT", -4, 0);
 
     row.noteIcon = self:CreateNoteIconButton(row, row, "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", "Note", 0, 1, 0);
-    row.noteIcon:SetPoint("TOPRIGHT", inner, "TOPRIGHT", -4, 0);
-
-    row.catalystBadge = self:CreateCatalystBadge(row);
-    row.catalystBadge:SetPoint("RIGHT", row.noteIcon, "LEFT", -2, 0);
-
-    row.tierBadge = self:CreateTierBadge(row);
-    row.tierBadge:SetPoint("RIGHT", row.catalystBadge, "LEFT", -2, 0);
+    row.catalystBadge = self:CreateCatalystBadge(inner);
+    row.tierBadge = self:CreateTierBadge(inner);
 
     self:CreateRowSeparator(row);
     row.highlight = self:CreateRowHighlight(row);
@@ -131,6 +126,30 @@ function GoWWishlists:PopulateItemRow(row, entry, itemLink)
     self:UpdateGainBadge(row.gainBadge, entry.gain, nil, entry.report, entry.isCatalystItem);
     self:UpdateTierBadge(row.tierBadge, entry.isTierSetPiece);
     self:UpdateCatalystBadge(row.catalystBadge, entry.isCatalystItem);
+
+    local rightAnchor = row;
+    local rightOffset = -8;
+    local anchorPoint = "RIGHT";
+    if row.noteIcon:IsShown() then
+        row.noteIcon:ClearAllPoints();
+        row.noteIcon:SetPoint("BOTTOMRIGHT", row.inner, "BOTTOMRIGHT", -4, 2);
+        rightAnchor = row.noteIcon;
+        anchorPoint = "LEFT";
+        rightOffset = -2;
+    end
+    if row.catalystBadge:IsShown() then
+        row.catalystBadge:ClearAllPoints();
+        row.catalystBadge:SetPoint("RIGHT", rightAnchor, anchorPoint, rightOffset, 0);
+        row.catalystBadge:SetPoint("BOTTOM", row.inner, "BOTTOM", 0, 2);
+        rightAnchor = row.catalystBadge;
+        anchorPoint = "LEFT";
+        rightOffset = -2;
+    end
+    if row.tierBadge:IsShown() then
+        row.tierBadge:ClearAllPoints();
+        row.tierBadge:SetPoint("RIGHT", rightAnchor, anchorPoint, rightOffset, 0);
+        row.tierBadge:SetPoint("BOTTOM", row.inner, "BOTTOM", 0, 2);
+    end
 end
 
 function GoWWishlists:CreateBossHeader(parent, bossName, itemCount)

@@ -186,9 +186,6 @@ function GoWWishlists:CreateGuildItemRow(parent)
 
     row.infoHover = self:CreateTextHoverTooltip(row, infoText, row);
 
-    row.catalystBadge = self:CreateCatalystBadge(row);
-    row.catalystBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
-
     row.tierBadge = self:CreateTierBadge(row);
     row.tierBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
 
@@ -205,8 +202,8 @@ end
 function GoWWishlists:PopulateGuildItemRow(row, itemData)
     row.itemId = itemData.itemId;
 
-    local displayId = itemData.catalystItemId or itemData.itemId;
-    local itemName = self:SetItemIconAndName(row, itemData.itemId, nil, itemData.catalystItemId);
+    local displayId = itemData.itemId;
+    local itemName = self:SetItemIconAndName(row, itemData.itemId, nil, nil);
 
     if row.badgeCol then
         self:ApplyBadgeColumnState(row.badgeCol, itemData.difficulty, nil);
@@ -236,24 +233,19 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
     end
 
     self:UpdateTierBadge(row.tierBadge, itemData.isTierSetPiece);
-    self:UpdateCatalystBadge(row.catalystBadge, itemData.isCatalystItem);
 
     row.gainBadge:ClearAllPoints();
     local rightAnchor = row;
     local rightOffset = -6;
-    if row.catalystBadge:IsShown() then
-        row.catalystBadge:ClearAllPoints();
-        row.catalystBadge:SetPoint("RIGHT", rightAnchor, "RIGHT", rightOffset, 0);
-        rightAnchor = row.catalystBadge;
-        rightOffset = -4;
-    end
+    local anchorPoint = "RIGHT";
     if row.tierBadge:IsShown() then
         row.tierBadge:ClearAllPoints();
-        row.tierBadge:SetPoint("RIGHT", rightAnchor, rightAnchor == row and "RIGHT" or "LEFT", rightOffset, 0);
+        row.tierBadge:SetPoint("RIGHT", rightAnchor, "RIGHT", rightOffset, 0);
         rightAnchor = row.tierBadge;
+        anchorPoint = "LEFT";
         rightOffset = -4;
     end
-    row.gainBadge:SetPoint("RIGHT", rightAnchor, rightAnchor == row and "RIGHT" or "LEFT", rightOffset, 0);
+    row.gainBadge:SetPoint("RIGHT", rightAnchor, anchorPoint, rightOffset, 0);
 
     if not itemName then
         self:RegisterPendingItem(displayId, function()
@@ -297,6 +289,9 @@ function GoWWishlists:CreateGuildMemberRow(parent)
     row.noteIcon = self:CreateNoteIconButton(row, row, "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", "Note", 0, 1, 0);
     row.noteIcon:SetPoint("RIGHT", row.officerNoteIcon, "LEFT", -4, 0);
 
+    row.catalystBadge = self:CreateCatalystBadge(row);
+    row.catalystBadge:SetPoint("RIGHT", row.noteIcon, "LEFT", -4, 0);
+
     row.highlight = self:CreateRowHighlight(row, 0.03);
 
     row:EnableMouse(true);
@@ -333,6 +328,7 @@ function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
     end
 
     self:UpdateGainBadge(row.gainBadge, member.gain, nil, member.report, member.isCatalystItem);
+    self:UpdateCatalystBadge(row.catalystBadge, member.isCatalystItem);
 
     self:UpdateNoteIcon(row.noteIcon, member.notes);
     self:UpdateNoteIcon(row.officerNoteIcon, self:HasGuildWishlistData() and member.officerNotes or nil);

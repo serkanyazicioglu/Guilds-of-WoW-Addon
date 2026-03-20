@@ -641,14 +641,12 @@ function GoWWishlists:CreateGainBadge(parent)
     badge:SetScript("OnEnter", function(self)
         if self.tooltipLines then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine("Upgrade", 0, 1, 0);
             for _, line in ipairs(self.tooltipLines) do
                 GameTooltip:AddLine(line.text, line.r, line.g, line.b, line.wrap);
             end
             GameTooltip:Show();
         elseif self.tooltipText then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine("Upgrade", 0, 1, 0);
             GameTooltip:AddLine(self.tooltipText, 1, 1, 1, true);
             GameTooltip:Show();
         end
@@ -704,6 +702,9 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
             -- Line 3: report title
             if report.title and report.title ~= "" then
                 local trimmedTitle = report.title:match("^%S+%s+(.+)") or report.title;
+                if gain.isQeMaxUpgradeLevel then
+                    trimmedTitle = trimmedTitle .. " (Max Upgrade)";
+                end
                 table.insert(lines, { text = trimmedTitle, r = 0.7, g = 0.7, b = 0.7, wrap = true });
             end
 
