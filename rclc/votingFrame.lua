@@ -126,12 +126,7 @@ local function CompareByPriority(st, rowa, rowb, sortbycol)
 
     local col = st.cols[sortbycol];
     local dir = col and (col.sort or col.defaultsort) or 1;
-    local asc;
-    if type(dir) == "string" then
-        asc = (dir:lower() == "asc" or dir:lower() == "ascending");
-    else
-        asc = (dir == 1);
-    end
+    local asc = (dir == 1); -- lib-st normalizes to SORT_ASC=1, SORT_DSC=2
     local mode = GetDisplayMode();
 
     if mode == "percent" then
