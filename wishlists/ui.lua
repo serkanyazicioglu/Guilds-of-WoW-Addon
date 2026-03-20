@@ -80,8 +80,11 @@ function GoWWishlists:CreateWishlistCardRow(parent, options)
     row.noteIcon = self:CreateNoteIconButton(row, row, "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", "Note", 0, 1, 0);
     row.noteIcon:SetPoint("TOPRIGHT", inner, "TOPRIGHT", -4, 0);
 
+    row.catalystBadge = self:CreateCatalystBadge(row);
+    row.catalystBadge:SetPoint("RIGHT", row.noteIcon, "LEFT", -2, 0);
+
     row.tierBadge = self:CreateTierBadge(row);
-    row.tierBadge:SetPoint("RIGHT", row.noteIcon, "LEFT", -2, 0);
+    row.tierBadge:SetPoint("RIGHT", row.catalystBadge, "LEFT", -2, 0);
 
     self:CreateRowSeparator(row);
     row.highlight = self:CreateRowHighlight(row);
@@ -97,9 +100,10 @@ end
 function GoWWishlists:PopulateItemRow(row, entry, itemLink)
     row.itemId = entry.itemId;
 
-    local itemName = self:SetItemIconAndName(row, entry.itemId, itemLink);
+    local displayId = entry.catalystItemId or entry.itemId;
+    local itemName = self:SetItemIconAndName(row, entry.itemId, itemLink, entry.catalystItemId);
     if not itemName then
-        self:RegisterPendingItem(entry.itemId, function()
+        self:RegisterPendingItem(displayId, function()
             if row:GetParent() then
                 self:PopulateItemRow(row, entry, itemLink);
             end
@@ -109,7 +113,7 @@ function GoWWishlists:PopulateItemRow(row, entry, itemLink)
     row.infoText:SetText(self:BuildInfoLine(entry, row.showSource));
     self:ApplyBadgeColumnState(row.badgeCol, entry.difficulty, entry.tag);
 
-    local slotBadge = self:FormatSlotBadge(entry.itemId);
+    local slotBadge = self:FormatSlotBadge(displayId);
     if slotBadge and not self.state.compactMode then
         row.slotText:SetText("|cff888888" .. slotBadge .. "|r");
         row.slotText:Show();
@@ -124,8 +128,9 @@ function GoWWishlists:PopulateItemRow(row, entry, itemLink)
     row.infoHover.tipText = #infoParts > 0 and table.concat(infoParts, "\n") or nil;
 
     self:UpdateNoteIcon(row.noteIcon, entry.notes);
-    self:UpdateGainBadge(row.gainBadge, entry.gain);
+    self:UpdateGainBadge(row.gainBadge, entry.gain, nil, entry.report, entry.isCatalystItem);
     self:UpdateTierBadge(row.tierBadge, entry.isTierSetPiece);
+    self:UpdateCatalystBadge(row.catalystBadge, entry.isCatalystItem);
 end
 
 function GoWWishlists:CreateBossHeader(parent, bossName, itemCount)
