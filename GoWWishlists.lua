@@ -164,6 +164,24 @@ function GoWWishlists:FindWishlistMatch(itemId)
     return nil;
 end
 
+function GoWWishlists:FindAllWishlistMatches(itemId)
+    local entries = self.state.wishlistIndex[itemId];
+    if not entries then
+        return nil;
+    end
+
+    local difficulty = self:GetCurrentDifficultyName();
+    local matches = {};
+
+    for _, entry in ipairs(entries) do
+        if entry.difficulty == difficulty and not entry.isObtained then
+            table.insert(matches, entry);
+        end
+    end
+
+    return #matches > 0 and matches or nil;
+end
+
 
 GoWWishlists.constants.ALERT_DISPLAY_TIME = 60;
 GoWWishlists.constants.ALERT_FADE_TIME = 1.5;
@@ -702,7 +720,7 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
             -- Line 3: report title
             if report.title and report.title ~= "" then
                 local trimmedTitle = report.title:match("^%S+%s+(.+)") or report.title;
-                if gain.isQeMaxUpgradeLevel then
+                if gain.isMaxUpgradeLevel then
                     trimmedTitle = trimmedTitle .. " (Max Upgrade)";
                 end
                 table.insert(lines, { text = trimmedTitle, r = 0.7, g = 0.7, b = 0.7, wrap = true });
@@ -773,6 +791,7 @@ end
 function GoWWishlists:CreateCatalystBadge(parent)
     local badge = CreateFrame("Frame", nil, parent, "BackdropTemplate");
     badge:SetSize(16, 16);
+    badge:SetHitRectInsets(-4, -4, -4, -4);
     badge:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
         edgeFile = "Interface\\Buttons\\WHITE8x8",
