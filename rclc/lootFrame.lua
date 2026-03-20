@@ -12,8 +12,6 @@ local GoWLootFrame = RCGoW:NewModule("GoWLootFrame", "AceTimer-3.0");
 
 local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:16:16|t";
 
-local hookedFrames = {};
-
 local function OnEntryRefreshed(entry)
     if GOW.DB and GOW.DB.profile.showRCLCWishlist == false then return end
     if not entry.itemLvl then return end
@@ -54,8 +52,12 @@ local function OnEntryRefreshed(entry)
     if wish.gain and wish.gain.percent and wish.gain.percent > 0 then
         label = label .. string.format(" |cff00ff00%.1f%%|r", wish.gain.percent);
         if wish.gain.stat then
-            label = label .. string.format(" |cff00ff00(%d %s)|r", wish.gain.stat, wish.gain.metric or "");
+            label = label .. string.format(" |cff00ff00(%.1f %s)|r", wish.gain.stat, wish.gain.metric or "");
         end
+    end
+
+    if wish.isCatalystItem then
+        label = label .. " |cff5ef5f5(Cata)|r";
     end
 
     entry.itemLvl:SetText(entry._gowBaseText .. "  " .. GOW_ICON .. " " .. label);
@@ -88,8 +90,11 @@ local function OnEntryRefreshed(entry)
             table.insert(tipLines, string.format("%.1f%% %s", wish.gain.percent, metric));
         end
         if wish.gain.stat and wish.gain.stat > 0 then
-            table.insert(tipLines, string.format("%d %s (raw)", wish.gain.stat, metric));
+            table.insert(tipLines, string.format("%.1f %s (raw)", wish.gain.stat, metric));
         end
+    end
+    if wish.isCatalystItem then
+        table.insert(tipLines, "|cff5ef5f5Catalyst Piece|r");
     end
     if wish.notes and wish.notes ~= "" then
         table.insert(tipLines, " ");
@@ -98,16 +103,26 @@ local function OnEntryRefreshed(entry)
     entry._gowTipFrame._gowTip = #tipLines > 0 and tipLines or nil;
 end
 
-local function HookGetEntry(_, entry)
-    if entry then
-        if not hookedFrames[entry] then
-            hookedFrames[entry] = true;
-            hooksecurefunc(entry, "Update", function(e)
+local prototypeHooked = false;
+
+local function HookGetEntry(entryManager, item)
+    if not item then return end
+
+    local entry = entryManager.entries and entryManager.entries[item];
+    if not entry then return end
+
+    if not prototypeHooked then
+        local mt = getmetatable(entry);
+        local proto = mt and mt.__index;
+        if proto and type(proto.Update) == "function" then
+            hooksecurefunc(proto, "Update", function(e)
                 OnEntryRefreshed(e);
             end);
+            prototypeHooked = true;
         end
-        OnEntryRefreshed(entry);
     end
+
+    OnEntryRefreshed(entry);
 end
 
 function GoWLootFrame:OnEnable()

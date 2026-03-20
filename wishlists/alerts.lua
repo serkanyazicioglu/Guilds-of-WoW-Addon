@@ -189,10 +189,12 @@ function GoWWishlists:OnStartLootRoll(rollID)
         itemId = tonumber(itemLink:match("item:(%d+)"));
         if not itemId then return end
 
-        local match = GoWWishlists:FindWishlistMatch(itemId);
-        if match then
+        local matches = GoWWishlists:FindAllWishlistMatches(itemId);
+        if matches then
             C_Timer.After(0.05, function()
-                self:ShowWishlistInfoFrame(match, itemLink);
+                for _, match in ipairs(matches) do
+                    self:ShowWishlistInfoFrame(match, itemLink);
+                end
             end);
         end
     end)

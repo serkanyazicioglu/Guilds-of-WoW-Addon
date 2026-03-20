@@ -125,9 +125,16 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
                                 itemId = item.itemId,
                                 difficulty = item.difficulty,
                                 isTierSetPiece = item.isTierSetPiece,
+                                isCatalystItem = item.isCatalystItem,
+                                catalystItemId = item.catalystItemId,
                                 members = {},
                             };
                             table.insert(boss.itemOrder, itemKey);
+                        else
+                            if item.isCatalystItem then
+                                boss.items[itemKey].isCatalystItem = true;
+                                boss.items[itemKey].catalystItemId = boss.items[itemKey].catalystItemId or item.catalystItemId;
+                            end
                         end
 
                         table.insert(boss.items[itemKey].members, {
@@ -138,6 +145,8 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
                             notes = item.notes,
                             officerNotes = item.officerNotes,
                             gain = item.gain,
+                            report = item.report,
+                            isCatalystItem = item.isCatalystItem,
                         });
                     end
                 end
@@ -193,7 +202,8 @@ end
 function GoWWishlists:PopulateGuildItemRow(row, itemData)
     row.itemId = itemData.itemId;
 
-    local itemName = self:SetItemIconAndName(row, itemData.itemId);
+    local displayId = itemData.itemId;
+    local itemName = self:SetItemIconAndName(row, itemData.itemId, nil, nil);
 
     if row.badgeCol then
         self:ApplyBadgeColumnState(row.badgeCol, itemData.difficulty, nil);
@@ -225,14 +235,20 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
     self:UpdateTierBadge(row.tierBadge, itemData.isTierSetPiece);
 
     row.gainBadge:ClearAllPoints();
+    local rightAnchor = row;
+    local rightOffset = -6;
+    local anchorPoint = "RIGHT";
     if row.tierBadge:IsShown() then
-        row.gainBadge:SetPoint("RIGHT", row.tierBadge, "LEFT", -4, 0);
-    else
-        row.gainBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
+        row.tierBadge:ClearAllPoints();
+        row.tierBadge:SetPoint("RIGHT", rightAnchor, "RIGHT", rightOffset, 0);
+        rightAnchor = row.tierBadge;
+        anchorPoint = "LEFT";
+        rightOffset = -4;
     end
+    row.gainBadge:SetPoint("RIGHT", rightAnchor, anchorPoint, rightOffset, 0);
 
     if not itemName then
-        self:RegisterPendingItem(itemData.itemId, function()
+        self:RegisterPendingItem(displayId, function()
             if row:GetParent() then
                 self:PopulateGuildItemRow(row, itemData);
             end
@@ -273,6 +289,9 @@ function GoWWishlists:CreateGuildMemberRow(parent)
     row.noteIcon = self:CreateNoteIconButton(row, row, "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", "Note", 0, 1, 0);
     row.noteIcon:SetPoint("RIGHT", row.officerNoteIcon, "LEFT", -4, 0);
 
+    row.catalystBadge = self:CreateCatalystBadge(row);
+    row.catalystBadge:SetPoint("RIGHT", row.noteIcon, "LEFT", -4, 0);
+
     row.highlight = self:CreateRowHighlight(row, 0.03);
 
     row:EnableMouse(true);
@@ -308,7 +327,8 @@ function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
         end
     end
 
-    self:UpdateGainBadge(row.gainBadge, member.gain);
+    self:UpdateGainBadge(row.gainBadge, member.gain, nil, member.report, member.isCatalystItem);
+    self:UpdateCatalystBadge(row.catalystBadge, member.isCatalystItem);
 
     self:UpdateNoteIcon(row.noteIcon, member.notes);
     self:UpdateNoteIcon(row.officerNoteIcon, self:HasGuildWishlistData() and member.officerNotes or nil);

@@ -154,14 +154,37 @@ function GoWWishlists:FindWishlistMatch(itemId)
     end
 
     local difficulty = self:GetCurrentDifficultyName();
+    local best = nil;
 
     for _, entry in ipairs(entries) do
         if entry.difficulty == difficulty and not entry.isObtained then
-            return entry;
+            local entryPct = (entry.gain and entry.gain.percent) or 0;
+            local bestPct = best and ((best.gain and best.gain.percent) or 0) or -1;
+            if entryPct > bestPct then
+                best = entry;
+            end
         end
     end
 
-    return nil;
+    return best;
+end
+
+function GoWWishlists:FindAllWishlistMatches(itemId)
+    local entries = self.state.wishlistIndex[itemId];
+    if not entries then
+        return nil;
+    end
+
+    local difficulty = self:GetCurrentDifficultyName();
+    local matches = {};
+
+    for _, entry in ipairs(entries) do
+        if entry.difficulty == difficulty and not entry.isObtained then
+            table.insert(matches, entry);
+        end
+    end
+
+    return #matches > 0 and matches or nil;
 end
 
 
@@ -557,17 +580,19 @@ function GoWWishlists:SetupDifficultyDropdown(sourcePanel, onChangeCallback)
     sourcePanel.scrollFrame:SetPoint("TOPLEFT", btn, "BOTTOMLEFT", -4, -4);
 end
 
-function GoWWishlists:SetItemIconAndName(row, itemId, itemLink)
-    local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(itemId);
+function GoWWishlists:SetItemIconAndName(row, itemId, itemLink, displayItemId)
+    local lookupId = displayItemId or itemId;
+    local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(lookupId);
     row.icon:SetTexture(itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
+    row.tooltipItemId = lookupId;
 
     if itemQuality then
         local r, g, b, hex = C_Item.GetItemQualityColor(itemQuality);
         row.iconBorder:SetVertexColor(r, g, b, 0.7);
-        row.nameText:SetText(itemLink or ("|c" .. hex .. (itemName or ("Item " .. itemId)) .. "|r"));
+        row.nameText:SetText(itemLink or ("|c" .. hex .. (itemName or ("Item " .. lookupId)) .. "|r"));
     else
         row.iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
-        row.nameText:SetText(itemLink or itemName or ("Item " .. itemId));
+        row.nameText:SetText(itemLink or itemName or ("Item " .. lookupId));
     end
 
     return itemName;
@@ -637,9 +662,14 @@ function GoWWishlists:CreateGainBadge(parent)
 
     badge:EnableMouse(true);
     badge:SetScript("OnEnter", function(self)
-        if self.tooltipText then
+        if self.tooltipLines then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine("Upgrade", 0, 1, 0);
+            for _, line in ipairs(self.tooltipLines) do
+                GameTooltip:AddLine(line.text, line.r, line.g, line.b, line.wrap);
+            end
+            GameTooltip:Show();
+        elseif self.tooltipText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
             GameTooltip:AddLine(self.tooltipText, 1, 1, 1, true);
             GameTooltip:Show();
         end
@@ -650,7 +680,7 @@ function GoWWishlists:CreateGainBadge(parent)
     return badge;
 end
 
-function GoWWishlists:UpdateGainBadge(badge, gain, prefix)
+function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystItem)
     if not badge then return end
     prefix = prefix or "";
 
@@ -658,25 +688,74 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix)
     if gain and gain.percent and gain.percent > 0 then
         local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
         badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.1f", gain.percent) .. "%|r");
-
-        local tipParts = {};
-        table.insert(tipParts, string.format("%.1f%% %s", gain.percent, metric));
-        if gain.stat and gain.stat > 0 then
-            table.insert(tipParts, "+" .. string.format("%.0f", gain.stat) .. " " .. metric);
-        end
-        badge.tooltipText = table.concat(tipParts, "\n");
         hasGain = true;
     elseif gain and gain.stat and gain.stat > 0 then
-        badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.0f", gain.stat) .. "|r");
-        badge.tooltipText = "+" .. string.format("%.0f", gain.stat);
+        badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.1f", gain.stat) .. "|r");
         hasGain = true;
     end
 
     if hasGain then
         badge:SetWidth(badge.text:GetStringWidth() + 12);
         badge:Show();
+
+        local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
+        if report and report.source then
+            local lines = {};
+            -- Line 1: stat + metric + catalyst suffix
+            local statLine = "";
+            if gain.stat and gain.stat > 0 then
+                statLine = string.format("+%.1f %s", gain.stat, metric);
+            else
+                statLine = string.format("%.1f%% %s", gain.percent, metric);
+            end
+            if isCatalystItem then
+                statLine = statLine .. " (Catalyst)";
+            end
+            table.insert(lines, { text = statLine, r = 1, g = 1, b = 1 });
+
+            -- Line 2: report source (colored)
+            local srcR, srcG, srcB = 1, 1, 1;
+            if report.source == "Droptimizer" then
+                srcR, srcG, srcB = 0.94, 0.33, 0.31;
+            elseif report.source == "QE Live" then
+                srcR, srcG, srcB = 0.30, 0.69, 0.31;
+            end
+            table.insert(lines, { text = report.source, r = srcR, g = srcG, b = srcB });
+
+            -- Line 3: report title
+            if report.title and report.title ~= "" then
+                local trimmedTitle = report.title:match("^%S+%s+(.+)") or report.title;
+                if gain.isMaxUpgradeLevel then
+                    trimmedTitle = trimmedTitle .. " (Max Upgrade)";
+                end
+                table.insert(lines, { text = trimmedTitle, r = 0.7, g = 0.7, b = 0.7, wrap = true });
+            end
+
+            -- Line 4: timestamp as date
+            if report.timestamp and report.timestamp > 0 then
+                local ts = report.timestamp / 1000;
+                table.insert(lines, { text = date("%m/%d/%Y", ts), r = 0.5, g = 0.5, b = 0.5 });
+            end
+
+            badge.tooltipLines = lines;
+            badge.tooltipText = nil;
+        else
+            -- Fallback: simple tooltip
+            badge.tooltipLines = nil;
+            local tipParts = {};
+            if gain.percent and gain.percent > 0 then
+                local catalystSuffix = isCatalystItem and " (Catalyst)" or "";
+                table.insert(tipParts, string.format("%.1f%% %s%s", gain.percent, metric, catalystSuffix));
+            end
+            if gain.stat and gain.stat > 0 then
+                table.insert(tipParts, "+" .. string.format("%.1f", gain.stat) .. " " .. metric);
+            end
+            badge.tooltipText = #tipParts > 0 and table.concat(tipParts, "\n") or nil;
+        end
     else
         badge.tooltipText = nil;
+        badge.tooltipLines = nil;
+        badge:SetWidth(0.1);
         badge:Hide();
     end
 end
@@ -713,6 +792,41 @@ end
 function GoWWishlists:UpdateTierBadge(badge, isTierSetPiece)
     if not badge then return end
     badge:SetShown(isTierSetPiece == true);
+end
+
+function GoWWishlists:CreateCatalystBadge(parent)
+    local badge = CreateFrame("Frame", nil, parent, "BackdropTemplate");
+    badge:SetSize(16, 16);
+    badge:SetHitRectInsets(-4, -4, -4, -4);
+    badge:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+        insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    });
+    badge:SetBackdropColor(0.04, 0.10, 0.10, 0.85);
+    badge:SetBackdropBorderColor(0.37, 0.96, 0.96, 0.3);
+
+    local text = badge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    text:SetPoint("CENTER", badge, "CENTER", 0, 0);
+    text:SetText("|cff5ef5f5C|r");
+    badge.text = text;
+
+    badge:EnableMouse(true);
+    badge:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+        GameTooltip:AddLine("Catalyst Item", 0.37, 0.96, 0.96);
+        GameTooltip:Show();
+    end);
+    badge:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+    badge:Hide();
+    return badge;
+end
+
+function GoWWishlists:UpdateCatalystBadge(badge, isCatalystItem)
+    if not badge then return end
+    badge:SetShown(isCatalystItem == true);
 end
 
 function GoWWishlists:FormatTag(tag)
@@ -906,9 +1020,10 @@ function GoWWishlists:CreateItemTooltipZone(row, iconBorder)
     iconHover:EnableMouse(true);
     iconHover:SetScript("OnEnter", function()
         row.highlight:Show();
-        if row.itemId then
+        local tipId = row.tooltipItemId or row.itemId;
+        if tipId then
             GameTooltip:SetOwner(row, "ANCHOR_RIGHT");
-            GameTooltip:SetItemByID(row.itemId);
+            GameTooltip:SetItemByID(tipId);
             GameTooltip:Show();
         end
     end);

@@ -268,6 +268,7 @@ function GoWWishlists:SimulateLootDrops(count)
         return;
     end
 
+    -- Pool only personal wishlist items
     local pool = {};
     local personalLists = ns.WISHLISTS.personalWishlists;
     if personalLists then
@@ -279,38 +280,47 @@ function GoWWishlists:SimulateLootDrops(count)
             end
         end
     end
-    local guildLists = ns.WISHLISTS.guildWishlists;
-    if guildLists then
-        for _, guildEntry in ipairs(guildLists) do
-            for _, charEntry in ipairs(guildEntry.wishlists) do
-                for _, item in ipairs(charEntry.wishlist) do
-                    if not item.isObtained then
-                        table.insert(pool, item);
-                    end
-                end
-            end
-        end
-    end
 
     if #pool == 0 then
-        GOW.Logger:PrintMessage("No wishlist items available to simulate.");
+        GOW.Logger:PrintMessage("No personal wishlist items available to simulate.");
         return;
     end
 
-    count = math.min(count, #pool);
-
-    for i = #pool, 2, -1 do
-        local j = math.random(1, i);
-        pool[i], pool[j] = pool[j], pool[i];
+    -- Group items by itemId+difficulty
+    local groups = {};
+    local groupOrder = {};
+    for _, item in ipairs(pool) do
+        local key = item.itemId .. ":" .. (item.difficulty or "");
+        if not groups[key] then
+            groups[key] = {};
+            table.insert(groupOrder, key);
+        end
+        table.insert(groups[key], item);
     end
 
-    GOW.Logger:PrintMessage("Simulating " .. count .. " loot drop(s)...");
+    -- Sort: Mythic first, then groups with duplicates first
+    table.sort(groupOrder, function(a, b)
+        local aIsMythic = a:match(":Mythic$") and 1 or 0;
+        local bIsMythic = b:match(":Mythic$") and 1 or 0;
+        if aIsMythic ~= bIsMythic then return aIsMythic > bIsMythic end
+        local aCount = #groups[a];
+        local bCount = #groups[b];
+        if aCount ~= bCount then return aCount > bCount end
+        return false;
+    end);
+
+    count = math.min(count, #groupOrder);
+
+    GOW.Logger:PrintMessage("Simulating " .. count .. " loot drop(s) from personal wishlist...");
 
     for i = 1, count do
-        local item = pool[i];
+        local key = groupOrder[i];
+        local items = groups[key];
         local delay = (i - 1) * 0.3;
         C_Timer.After(delay, function()
-            self:ShowWishlistInfoFrame(item, nil);
+            for _, item in ipairs(items) do
+                self:ShowWishlistInfoFrame(item, nil);
+            end
         end);
     end
 end

@@ -8,14 +8,24 @@ local RCGoW = RCLootCouncil:NewModule("RCGoW", "AceTimer-3.0", "AceEvent-3.0");
 GOW.RCGoW = RCGoW;
 
 local DEBUG_TAGS = { "BIS", "NEED", "MINOR", "OFFSPEC", "GREED", "TRANSMOG" };
+local DEBUG_SOURCES = { "Droptimizer", "QE Live" };
 local function GetDebugWish()
     local tag = DEBUG_TAGS[math.random(#DEBUG_TAGS)];
     local pct = math.random(1, 250) / 10;
+    local isCatalyst = math.random() > 0.5;
+    local source = DEBUG_SOURCES[math.random(#DEBUG_SOURCES)];
     return {
         tag = tag,
         difficulty = "Mythic",
         notes = "Debug: fake wishlist entry",
         gain = { percent = pct, stat = math.random(50, 800), metric = "DPS" },
+        isCatalystItem = isCatalyst or nil,
+        catalystItemId = isCatalyst and 249991 or nil,
+        report = {
+            title = source .. "  Season 1 Raids  Mythic",
+            timestamp = (time() - math.random(0, 604800)) * 1000,
+            source = source,
+        },
     };
 end
 RCGoW.GetDebugWish = GetDebugWish;
@@ -35,7 +45,10 @@ function RCGoW:GetPlayerWish(itemId, playerFullName)
     if GOW.DB and GOW.DB.profile.showRCLCWishlist == false then return nil end
 
     local data = GoWWishlists.state.guildWishlistData;
-    if not data or not data.wishlists then return nil end
+    if not data or not data.wishlists then
+        if GOW.consts.ENABLE_DEBUGGING then return GetDebugWish() end
+        return nil;
+    end
 
     local playerName, playerRealm = SplitFullName(playerFullName);
     if not playerName then return nil end
@@ -62,9 +75,17 @@ function RCGoW:GetPlayerWish(itemId, playerFullName)
     end
 
     local currentDiff = GoWWishlists:GetCurrentDifficultyName();
+    local best = nil;
+
     for _, m in ipairs(matches) do
-        if m.difficulty == currentDiff then return m end
+        if m.difficulty == currentDiff then
+            local mPct = (m.gain and m.gain.percent) or 0;
+            local bestPct = best and ((best.gain and best.gain.percent) or 0) or -1;
+            if mPct > bestPct then
+                best = m;
+            end
+        end
     end
 
-    return nil;
+    return best;
 end
