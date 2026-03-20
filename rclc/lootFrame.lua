@@ -56,6 +56,10 @@ local function OnEntryRefreshed(entry)
         end
     end
 
+    if wish.isCatalystItem then
+        label = label .. " |cff5ef5f5(Cata)|r";
+    end
+
     entry.itemLvl:SetText(entry._gowBaseText .. "  " .. GOW_ICON .. " " .. label);
 
     -- Add tooltip overlay for GoW wish info
@@ -88,6 +92,9 @@ local function OnEntryRefreshed(entry)
         if wish.gain.stat and wish.gain.stat > 0 then
             table.insert(tipLines, string.format("%d %s (raw)", wish.gain.stat, metric));
         end
+    end
+    if wish.isCatalystItem then
+        table.insert(tipLines, "|cff5ef5f5Catalyst Piece|r");
     end
     if wish.notes and wish.notes ~= "" then
         table.insert(tipLines, " ");

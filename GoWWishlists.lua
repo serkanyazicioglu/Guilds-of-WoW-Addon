@@ -154,14 +154,19 @@ function GoWWishlists:FindWishlistMatch(itemId)
     end
 
     local difficulty = self:GetCurrentDifficultyName();
+    local best = nil;
 
     for _, entry in ipairs(entries) do
         if entry.difficulty == difficulty and not entry.isObtained then
-            return entry;
+            local entryPct = (entry.gain and entry.gain.percent) or 0;
+            local bestPct = best and ((best.gain and best.gain.percent) or 0) or -1;
+            if entryPct > bestPct then
+                best = entry;
+            end
         end
     end
 
-    return nil;
+    return best;
 end
 
 function GoWWishlists:FindAllWishlistMatches(itemId)

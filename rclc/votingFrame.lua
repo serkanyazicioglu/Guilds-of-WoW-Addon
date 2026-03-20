@@ -89,6 +89,9 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
             tinsert(tipLines, string.format("%d %s (raw)", wish.gain.stat, metric));
         end
     end
+    if wish.isCatalystItem then
+        tinsert(tipLines, "|cff5ef5f5Catalyst Piece|r");
+    end
     if wish.notes and wish.notes ~= "" then
         tinsert(tipLines, " ");
         tinsert(tipLines, "Note: " .. wish.notes);
