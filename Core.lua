@@ -27,6 +27,22 @@ local ns = select(2, ...);
 local Core = {};
 GOW.Core = Core;
 
+-- WoW 12.x returns secret string values from C_Calendar APIs.
+-- issecurevariable/issecretvalue guards are needed before comparing them.
+local function SafeCompareSecret(val, expected)
+	if issecretvalue and issecretvalue(val) then
+		return securecallfunction(rawequal, val, expected);
+	end
+	return val == expected;
+end
+
+local function SafeToString(val)
+	if issecretvalue and issecretvalue(val) then
+		return "(secret)";
+	end
+	return tostring(val);
+end
+
 function Core.GetGowGameVersionId()
 	-- if (GOW.consts.ENABLE_DEBUGGING) then
 	-- 	print("WOW_PROJECT_ID: " .. WOW_PROJECT_ID);
@@ -529,13 +545,13 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		if (C_Calendar.IsEventOpen()) then
 			local eventInfo = C_Calendar.GetEventInfo();
 
-			if (eventInfo and eventInfo.title and string.len(eventInfo.title) > 0) then
+			if (eventInfo and eventInfo.title and not (issecretvalue and issecretvalue(eventInfo.title)) and string.len(eventInfo.title) > 0) then
 				GOW.Logger:Debug("CALENDAR_OPEN_EVENT: Opened: " ..
-					eventInfo.title .. ". Calendar Type: " .. eventInfo.calendarType);
+					SafeToString(eventInfo.title) .. ". Calendar Type: " .. SafeToString(eventInfo.calendarType));
 				Core:ClearEventInvites(false);
 				isNewEventBeingCreated = false;
 
-				if (eventInfo.calendarType == "GUILD_EVENT" or eventInfo.calendarType == "PLAYER") then
+				if (SafeCompareSecret(eventInfo.calendarType, "GUILD_EVENT") or SafeCompareSecret(eventInfo.calendarType, "PLAYER")) then
 					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title);
 
 					if (upcomingEvent) then
@@ -549,7 +565,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 							end
 						end
 
-						if (eventInfo.calendarType == "PLAYER") then
+						if (SafeCompareSecret(eventInfo.calendarType, "PLAYER")) then
 							--processedEvents:remove(upcomingEvent.titleWithKey)
 							Core:CreateEventInvites(upcomingEvent, not isEventProcessCompleted);
 						else
@@ -591,20 +607,22 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 
 		if (C_Calendar.IsEventOpen()) then
 			local eventInfo = C_Calendar.GetEventInfo();
+			local eventTitle = eventInfo.title;
+			local isTitleSecret = issecretvalue and issecretvalue(eventTitle);
 
-			if (processedEvents:contains(eventInfo.title)) then
-				if (eventInfo.title == "") then
+			if (not isTitleSecret and processedEvents:contains(eventTitle)) then
+				if (eventTitle == "") then
 					Core:ClearEventInvites(false);
 				else
-					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title);
+					local upcomingEvent = Core:FindUpcomingEventFromName(eventTitle);
 					if (upcomingEvent) then
-						--processedEvents:remove(eventInfo.title);
+						--processedEvents:remove(eventTitle);
 						Core:SetAttendance(upcomingEvent, false);
 					end
 				end
 			elseif (workQueue:isEmpty()) then
 				GOW.Logger:Debug("Continuing event attendance and moderation!");
-				local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title);
+				local upcomingEvent = Core:FindUpcomingEventFromName(eventTitle);
 				if (upcomingEvent) then
 					Core:SetAttendance(upcomingEvent, false);
 				end
@@ -882,10 +900,11 @@ function Core:searchForEvent(event)
 		for i = 1, numDayEvents do
 			local dayEvent = C_Calendar.GetDayEvent(offsetMonths, event.day, i);
 			local calendarType = dayEvent.calendarType;
-			if (calendarType and (calendarType == "GUILD_EVENT" or calendarType == "PLAYER")) then
-				--GOW.Logger:Debug("dayEvent: " .. dayEvent.title .. " - " .. dayEvent.calendarType);
+			if (calendarType and (SafeCompareSecret(calendarType, "GUILD_EVENT") or SafeCompareSecret(calendarType, "PLAYER"))) then
+				--GOW.Logger:Debug("dayEvent: " .. SafeToString(dayEvent.title) .. " - " .. SafeToString(dayEvent.calendarType));
 
-				if (string.match(dayEvent.title, "*" .. event.eventKey)) then
+				local dayEventTitle = dayEvent.title;
+				if (not (issecretvalue and issecretvalue(dayEventTitle)) and string.match(dayEventTitle, "*" .. event.eventKey)) then
 					return i, offsetMonths, dayEvent;
 				end
 			end
@@ -1514,10 +1533,10 @@ function Core:CheckEventInvites()
 									hasAnyUninvitedEvent = true;
 								end
 							elseif (eventIndex > 0) then
-								GOW.Logger:Debug(dayEvent.title .. " creator: " .. dayEvent.modStatus .. " eventIndex:" .. eventIndex);
+								GOW.Logger:Debug(SafeToString(dayEvent.title) .. " creator: " .. SafeToString(dayEvent.modStatus) .. " eventIndex:" .. eventIndex);
 
-								if (dayEvent.calendarType == "PLAYER" or dayEvent.calendarType == "GUILD_EVENT") then
-									if (dayEvent.modStatus == "CREATOR" or dayEvent.modStatus == "MODERATOR") then
+								if (SafeCompareSecret(dayEvent.calendarType, "PLAYER") or SafeCompareSecret(dayEvent.calendarType, "GUILD_EVENT")) then
+									if (SafeCompareSecret(dayEvent.modStatus, "CREATOR") or SafeCompareSecret(dayEvent.modStatus, "MODERATOR")) then
 										if (CalendarFrame and CalendarFrame:IsShown()) then
 											GOW.Logger:Debug("Calendar frame is open.");
 										else
@@ -1569,6 +1588,11 @@ function Core:CheckEventInvites()
 end
 
 function Core:FindUpcomingEventFromName(eventTitle)
+	if issecretvalue and issecretvalue(eventTitle) then
+		GOW.Logger:Debug("Trying to find event from title: (secret)");
+		return nil;
+	end
+
 	GOW.Logger:Debug("Trying to find event from title: " .. eventTitle);
 	local isInGuild = IsInGuild();
 
