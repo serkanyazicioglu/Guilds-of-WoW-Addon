@@ -994,7 +994,7 @@ function GoWWishlists:CollectObtainedItems(characterName, realmName, rosterMembe
         end
 
         if passRoster then
-            local match = not characterName or (charEntry.name == characterName and charEntry.realmName == realmName);
+            local match = not characterName or (GOW.Helper:StripDiacritics(charEntry.name) == GOW.Helper:StripDiacritics(characterName) and charEntry.realmName == realmName);
             if match then
                 for _, item in ipairs(charEntry.wishlist) do
                     if item.isObtained then
@@ -1231,7 +1231,7 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     local seenBosses = {};
     if self.state.guildWishlistData and self.state.guildWishlistData.wishlists then
         for _, charEntry in ipairs(self.state.guildWishlistData.wishlists) do
-            if charEntry.name == member.characterName and charEntry.realmName == member.realmName then
+            if GOW.Helper:StripDiacritics(charEntry.name) == GOW.Helper:StripDiacritics(member.characterName) and charEntry.realmName == member.realmName then
                 for _, item in ipairs(charEntry.wishlist) do
                     if not item.isObtained then
                         table.insert(allMemberItems, item);
