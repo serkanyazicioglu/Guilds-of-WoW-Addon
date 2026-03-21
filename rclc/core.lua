@@ -18,6 +18,7 @@ local function GetDebugWish()
         tag = tag,
         difficulty = "Mythic",
         notes = "Debug: fake wishlist entry",
+        officerNotes = "Officer: debug officer note",
         gain = { percent = pct, stat = math.random(50, 800), metric = "DPS" },
         isCatalystItem = isCatalyst or nil,
         catalystItemId = isCatalyst and 249991 or nil,

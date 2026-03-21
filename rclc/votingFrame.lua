@@ -94,7 +94,11 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
     end
     if wish.notes and wish.notes ~= "" then
         tinsert(tipLines, " ");
-        tinsert(tipLines, "Note: " .. wish.notes);
+        tinsert(tipLines, "|cff00ff00Note:|r " .. wish.notes);
+    end
+    if wish.officerNotes and wish.officerNotes ~= "" then
+        tinsert(tipLines, " ");
+        tinsert(tipLines, "|cffff8000Officer Note:|r " .. wish.officerNotes);
     end
     cellFrame._gowTip = #tipLines > 0 and tipLines or nil;
 
