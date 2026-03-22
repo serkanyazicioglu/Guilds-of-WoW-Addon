@@ -1,4 +1,4 @@
-Helper = {}
+local Helper = {}
 Helper.__index = Helper
 
 local GOW = GuildsOfWow or {};
