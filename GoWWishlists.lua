@@ -70,7 +70,6 @@ function GoWWishlists:GetCurrentCharacterInfo()
         realmNormalized = realmNormalized,
         regionId = regionId,
         nameLower = name:lower(),
-        nameNormalized = GOW.Helper:StripDiacritics(name),
         realmLower = realmNormalized:lower(),
     };
 end
@@ -95,10 +94,10 @@ function GoWWishlists:BuildWishlistIndex()
     local personalLists = ns.WISHLISTS.personalWishlists;
     if personalLists then
         for _, charEntry in ipairs(personalLists) do
-            local entryName = charEntry.name and GOW.Helper:StripDiacritics(charEntry.name) or "";
+            local entryName = charEntry.name and charEntry.name:lower() or "";
             local entryRealm = charEntry.realmNameNormalized and charEntry.realmNameNormalized:lower() or "";
 
-            if isDebug or (entryName == charInfo.nameNormalized and entryRealm == charInfo.realmLower) then
+            if isDebug or (entryName == charInfo.nameLower and entryRealm == charInfo.realmLower) then
                 self.state.hasPersonalWishlistEntry = true;
                 for _, item in ipairs(charEntry.wishlist) do
                     item.characterName = entryName;

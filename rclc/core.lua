@@ -57,7 +57,7 @@ function RCGoW:GetPlayerWish(itemId, playerFullName)
     local matches = {};
 
     for _, charEntry in ipairs(data.wishlists) do
-        local nameMatch = GOW.Helper:StripDiacritics(charEntry.name) == GOW.Helper:StripDiacritics(playerName);
+        local nameMatch = charEntry.name == playerName;
         local realmMatch = not playerRealm
             or (charEntry.realmName and charEntry.realmName:gsub("%s", "") == playerRealm);
         if nameMatch and realmMatch then
