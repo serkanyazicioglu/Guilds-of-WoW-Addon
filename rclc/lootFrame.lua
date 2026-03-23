@@ -64,7 +64,7 @@ local function OnEntryRefreshed(entry)
 
     -- Add tooltip overlay for GoW wish info
     if not entry._gowTipFrame then
-        local tipFrame = CreateFrame("Frame", nil, entry);
+        local tipFrame = CreateFrame("Frame", nil, entry.itemLvl:GetParent());
         tipFrame:SetPoint("TOPLEFT", entry.itemLvl, "TOPLEFT", 0, 0);
         tipFrame:SetPoint("BOTTOMRIGHT", entry.itemLvl, "BOTTOMRIGHT", 0, 0);
         tipFrame:EnableMouse(true);
