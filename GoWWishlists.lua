@@ -125,8 +125,7 @@ function GoWWishlists:BuildWishlistIndex()
             local playerGuild = GetGuildInfo("player");
             if playerGuild then
                 for _, guildEntry in ipairs(guildLists) do
-                    local guildRealm = guildEntry.guildRealmNormalized and guildEntry.guildRealmNormalized:lower() or "";
-                    if guildEntry.guild == playerGuild and guildRealm == charInfo.realmLower then
+                    if guildEntry.guild == playerGuild and guildEntry.guildRegionId == charInfo.regionId then
                         self.state.guildWishlistData = guildEntry;
                         break;
                     end
