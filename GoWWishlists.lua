@@ -123,6 +123,8 @@ function GoWWishlists:BuildWishlistIndex()
             self.state.guildWishlistData = guildLists[1];
         else
             local playerGuild, _, _, playerGuildRealm = GetGuildInfo("player");
+            -- GetGuildInfo returns nil for realm when guild is on the player's own realm
+            playerGuildRealm = playerGuildRealm or charInfo.realmNormalized;
             if playerGuild then
                 for _, guildEntry in ipairs(guildLists) do
                     if guildEntry.guild == playerGuild and guildEntry.guildRegionId == charInfo.regionId and guildEntry.guildRealmNormalized == playerGuildRealm then
