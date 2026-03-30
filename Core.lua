@@ -516,13 +516,11 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 			local eventInfo = C_Calendar.GetEventInfo();
 
 			if (eventInfo and eventInfo.title and string.len(eventInfo.title) > 0) then
-				local calendarType = tostring(eventInfo.calendarType);
-				GOW.Logger:Debug("CALENDAR_OPEN_EVENT: Opened: " ..
-					eventInfo.title .. ". Calendar Type: " .. calendarType);
+				GOW.Logger:Debug("CALENDAR_OPEN_EVENT: Opened: " .. eventInfo.title);
 				Core:ClearEventInvites(false);
 				isNewEventBeingCreated = false;
 
-				if (calendarType == "GUILD_EVENT" or calendarType == "PLAYER") then
+				if (GOW.Helper:IsPlayerCreatedInGameEvent(eventInfo)) then
 					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title);
 
 					if (upcomingEvent) then
@@ -536,7 +534,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 							end
 						end
 
-						if (calendarType == "PLAYER") then
+						if (eventInfo.calendarType == "PLAYER") then
 							--processedEvents:remove(upcomingEvent.titleWithKey)
 							Core:CreateEventInvites(upcomingEvent, not isEventProcessCompleted);
 						else
@@ -915,13 +913,9 @@ function Core:searchForEvent(event)
 	if (numDayEvents > 0) then
 		for i = 1, numDayEvents do
 			local dayEvent = C_Calendar.GetDayEvent(offsetMonths, event.day, i);
-			local calendarType = tostring(dayEvent.calendarType);
-			if (calendarType == "GUILD_EVENT" or calendarType == "PLAYER") then
-				--GOW.Logger:Debug("dayEvent: " .. dayEvent.title .. " - " .. dayEvent.calendarType);
 
-				if (string.match(dayEvent.title, "*" .. event.eventKey)) then
-					return i, offsetMonths, dayEvent;
-				end
+			if (string.match(dayEvent.title, "*" .. event.eventKey)) then
+				return i, offsetMonths, dayEvent;
 			end
 		end
 	end
@@ -1550,12 +1544,8 @@ function Core:CheckEventInvites()
 									hasAnyUninvitedEvent = true;
 								end
 							elseif (eventIndex > 0) then
-								local calendarType = tostring(dayEvent.calendarType);
-								local modStatus = tostring(dayEvent.modStatus);
-								GOW.Logger:Debug(dayEvent.title .. " creator: " .. modStatus .. " eventIndex:" .. eventIndex);
-
-								if (calendarType == "PLAYER" or calendarType == "GUILD_EVENT") then
-									if (modStatus == "CREATOR" or modStatus == "MODERATOR") then
+								if (GOW.Helper:IsPlayerCreatedInGameEvent(dayEvent)) then
+									if (GOW.Helper:IsInGameEventAdmin(dayEvent)) then
 										if (CalendarFrame and CalendarFrame:IsShown()) then
 											GOW.Logger:Debug("Calendar frame is open.");
 										else
@@ -1801,12 +1791,10 @@ function Core:SetAttendanceValues(upcomingEvent, inviteInfo, inviteIndex)
 				if (isFound) then
 					local isInvitationChanged = false;
 
-					if (currentInviteMember.isManager) then
-						if (inviteInfo.modStatus ~= "CREATOR" and inviteInfo.modStatus ~= "MODERATOR") then
-							isInvitationChanged = true;
-							GOW.Logger:Debug("Setting member as moderator: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name);
-							workQueue:addTask(function() C_Calendar.EventSetModerator(inviteIndex) end, nil, GOW.consts.INVITE_INTERVAL);
-						end
+					if (currentInviteMember.isManager and not GOW.Helper:IsInGameEventAdmin(inviteInfo)) then
+						isInvitationChanged = true;
+						GOW.Logger:Debug("Setting member as moderator: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name);
+						workQueue:addTask(function() C_Calendar.EventSetModerator(inviteIndex) end, nil, GOW.consts.INVITE_INTERVAL);
 					end
 
 					if (currentInviteMember.forceUpdate or (currentInviteMember.inviteStatus > Enum.CalendarStatus.Invited and inviteInfo.inviteStatus == Enum.CalendarStatus.Invited)) then

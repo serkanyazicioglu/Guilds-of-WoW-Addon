@@ -71,6 +71,14 @@ function Helper:IsInCombat()
     return InCombatLockdown() or UnitAffectingCombat("player");
 end
 
+function Helper:IsPlayerCreatedInGameEvent(eventInfo)
+    return eventInfo.calendarType == "GUILD_EVENT" or eventInfo.calendarType == "PLAYER";
+end
+
+function Helper:IsInGameEventAdmin(eventInfo)
+    return eventInfo.modStatus == "CREATOR" or eventInfo.modStatus == "MODERATOR";
+end
+
 function Helper:InviteToParty(inviteName)
     if (not IsInRaid() and GetNumGroupMembers() == 5 and C_PartyInfo.AllowedToDoPartyConversion(true)) then
         C_PartyInfo.ConvertToRaid();
