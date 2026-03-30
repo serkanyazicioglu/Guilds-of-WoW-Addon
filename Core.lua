@@ -1471,8 +1471,8 @@ function Core:AddCheckEventsTask()
 	end
 
 	addCheckEventTimer = GOW.timers:ScheduleTimer(function()
-		if ((CalendarFrame and CalendarFrame:IsShown()) or C_Calendar.IsEventOpen()) then
-			GOW.Logger:Debug("Calendar or an event open! Re-trying checking event invites later...");
+		if (GOW.Helper:IsInCombat() or (CalendarFrame and CalendarFrame:IsShown()) or C_Calendar.IsEventOpen()) then
+			GOW.Logger:Debug("Player is in combat, calendar or an event open! Re-trying checking event invites later...");
 			Core:AddCheckEventsTask();
 		else
 			Core:CheckEventInvites();
@@ -1631,7 +1631,7 @@ end
 function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
 	if (processedEvents:contains(upcomingEvent.titleWithKey)) then
 		GOW.Logger:Debug("Processed queue contains event!");
-		return false;
+		return;
 	end
 
 	GOW.Logger:Debug("Processing event: " .. upcomingEvent.titleWithKey);
