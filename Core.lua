@@ -36,30 +36,6 @@ local ns = select(2, ...);
 local Core = {};
 GOW.Core = Core;
 
-local openRaidLib = nil;
-local libKeystone = nil;
-local libKeystoneData = {};
-
-local function UpdateLibKeystoneEntry(keyLevel, keyChallengeMapID, playerRating, playerName, channel)
-	if (channel ~= "GUILD") then
-		return;
-	end
-
-	if (not keyLevel or keyLevel == 0) then
-		return;
-	end
-
-	local normalizedName = GOW.Helper:GetNormalizedCharacterName(playerName);
-	if (not normalizedName) then
-		return;
-	end
-
-	libKeystoneData[normalizedName] = {
-		level = keyLevel,
-		challengeMapID = keyChallengeMapID
-	};
-end
-
 local f = CreateFrame("Frame");
 f:RegisterEvent("PLAYER_ENTERING_WORLD");
 f:RegisterEvent("FIRST_FRAME_RENDERED");
@@ -118,12 +94,6 @@ function GOW:OnInitialize()
 	persistentWorkQueue = self.WorkQueue.new();
 	processedEvents = GOW.List.new();
 	isEventProcessCompleted = GOW.Helper:IsInGameCalendarAccessible() == false; -- if calendar is not accessible, consider event process completed to avoid blocking the app
-
-	if (GOW.Helper:IsKeystonesEnabled()) then
-		openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0");
-		libKeystone = LibStub:GetLibrary("LibKeystone", true);
-		libKeystone.Register(Core, UpdateLibKeystoneEntry);
-	end
 
 	local consoleCommandFunc = function(msg, editbox)
 		if (msg == "minimap") then
@@ -484,11 +454,8 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 			isEventProcessCompleted = true; -- if calendar is not accessible, consider event process completed to avoid blocking the app
 		end
 
-		if (openRaidLib) then
-			openRaidLib.RequestKeystoneDataFromGuild();
-		end
-		if (libKeystone) then
-			libKeystone.Request("GUILD");
+		if (GOW.Keystones) then
+			GOW.Keystones:Initialize();
 		end
 
 		if GOW.Wishlists then
@@ -1985,13 +1952,8 @@ function Core:SetRosterInfo()
 				GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = nil;
 			end
 
-			local openRaidLibKeystoneData = nil;
-
-			if (openRaidLib) then
-				openRaidLibKeystoneData = openRaidLib.GetAllKeystonesInfo();
-			end
-			if (libKeystone) then
-				libKeystone.Request("GUILD");
+			if (GOW.Keystones) then
+				GOW.Keystones:Refresh();
 			end
 
 			local anyKeystoneFound = false;
@@ -2007,47 +1969,12 @@ function Core:SetRosterInfo()
 					};
 
 					if (isKeystonesEnabled and C_MythicPlus.IsMythicPlusActive()) then
+						local normalizedName = GOW.Helper:GetNormalizedCharacterName(name);
 						local keystoneLevel = nil;
 						local keystoneMapId = nil;
-						local normalizedName = GOW.Helper:GetNormalizedCharacterName(name);
 
-						if (normalizedName == me) then
-							keystoneLevel = C_MythicPlus.GetOwnedKeystoneLevel();
-							keystoneMapId = C_MythicPlus.GetOwnedKeystoneChallengeMapID();
-						else
-							if (C_AddOns.IsAddOnLoaded("AstralKeys") and AstralKeys) then
-								if (level >= _G['AstralEngine'].EXPANSION_LEVEL) then
-									keystoneLevel = _G['AstralEngine'].GetCharacterKeyLevel(name);
-									keystoneMapId = _G['AstralEngine'].GetCharacterMapID(name);
-
-									if (keystoneLevel) then
-										GOW.Logger:Debug("Keystone exported frome AstralKeys for " .. normalizedName .. ". Level: " .. keystoneLevel);
-									end
-								end
-							end
-
-							if (libKeystone and libKeystoneData) then
-								local keystoneInfo = libKeystoneData[normalizedName];
-								if (keystoneInfo) then
-									keystoneLevel = keystoneInfo.level;
-									keystoneMapId = keystoneInfo.challengeMapID;
-									GOW.Logger:Debug("Keystone exported frome LibKeystone for " .. normalizedName .. ". Level: " .. keystoneLevel);
-								end
-							end
-
-							if (openRaidLib and openRaidLibKeystoneData) then
-								if (openRaidLibKeystoneData) then
-									for unitName, keystoneInfo in pairs(openRaidLibKeystoneData) do
-										if (keystoneInfo.level > 0) then
-											if (GOW.Helper:GetNormalizedCharacterName(unitName) == normalizedName) then
-												keystoneLevel = keystoneInfo.level;
-												keystoneMapId = keystoneInfo.challengeMapID;
-												GOW.Logger:Debug("Keystone exported frome openRaidLib for " .. normalizedName .. ". Level: " .. keystoneLevel);
-											end
-										end
-									end
-								end
-							end
+						if (GOW.Keystones) then
+							keystoneLevel, keystoneMapId = GOW.Keystones:GetGuildMemberKeystone(name, level, normalizedName == me);
 						end
 
 						if (keystoneLevel and keystoneMapId) then

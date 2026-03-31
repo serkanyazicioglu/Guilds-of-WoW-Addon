@@ -15,6 +15,7 @@ db\wishlists.lua
 
 Core.lua
 Helper.lua
+GoWKeystones.lua
 GoWWishlists.lua
 wishlists\load.xml
 rclc\load.xml
