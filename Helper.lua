@@ -67,6 +67,18 @@ function Helper:GetCurrentCharacterUniqueKey()
     return name .. "-" .. characterRealm;
 end
 
+function Helper:GetNormalizedCharacterName(name)
+    if (not name or name == "") then
+        return nil;
+    end
+
+    if (string.find(name, "-", 1, true)) then
+        return name;
+    end
+
+    return name .. "-" .. GetNormalizedRealmName();
+end
+
 function Helper:IsInCombat()
     return InCombatLockdown() or UnitAffectingCombat("player");
 end

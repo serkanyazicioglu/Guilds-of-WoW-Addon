@@ -36,10 +36,28 @@ local ns = select(2, ...);
 local Core = {};
 GOW.Core = Core;
 
-
 local openRaidLib = nil;
-if ((GOW.Helper and GOW.Helper:IsKeystonesEnabled()) or WOW_PROJECT_ID == WOW_PROJECT_MAINLINE) then
-	openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0");
+local libKeystone = nil;
+local libKeystoneData = {};
+
+local function UpdateLibKeystoneEntry(keyLevel, keyChallengeMapID, playerRating, playerName, channel)
+	if (channel ~= "GUILD") then
+		return;
+	end
+
+	if (not keyLevel or keyLevel == 0) then
+		return;
+	end
+
+	local normalizedName = GOW.Helper:GetNormalizedCharacterName(playerName);
+	if (not normalizedName) then
+		return;
+	end
+
+	libKeystoneData[normalizedName] = {
+		level = keyLevel,
+		challengeMapID = keyChallengeMapID
+	};
 end
 
 local f = CreateFrame("Frame");
@@ -70,7 +88,7 @@ local workQueue = nil;
 local persistentWorkQueue = nil;
 
 local processedEvents = nil;
-local isEventProcessCompleted = ((GOW.Helper and GOW.Helper:IsInGameCalendarAccessible()) or (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)) == false; -- if calendar is not accessible, consider event process completed to avoid blocking the app
+local isEventProcessCompleted = false;
 local isNewEventBeingCreated = false;
 local isProcessedEventsPrinted = false;
 local isCalendarOpened = false;
@@ -99,6 +117,13 @@ function GOW:OnInitialize()
 	workQueue = self.WorkQueue.new();
 	persistentWorkQueue = self.WorkQueue.new();
 	processedEvents = GOW.List.new();
+	isEventProcessCompleted = GOW.Helper:IsInGameCalendarAccessible() == false; -- if calendar is not accessible, consider event process completed to avoid blocking the app
+
+	if (GOW.Helper:IsKeystonesEnabled()) then
+		openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0");
+		libKeystone = LibStub:GetLibrary("LibKeystone", true);
+		libKeystone.Register(Core, UpdateLibKeystoneEntry);
+	end
 
 	local consoleCommandFunc = function(msg, editbox)
 		if (msg == "minimap") then
@@ -462,6 +487,9 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		if (openRaidLib) then
 			openRaidLib.RequestKeystoneDataFromGuild();
 		end
+		if (libKeystone) then
+			libKeystone.Request("GUILD");
+		end
 
 		if GOW.Wishlists then
 			GOW.Wishlists:Initialize();
@@ -804,7 +832,7 @@ function Core:CreateTeams()
 		end
 
 		if (not hasAnyData) then
-			Core:AppendMessage("This guild doesn't have any team or you are not a roster manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
+			Core:AppendMessage("This guild doesn't have any team, or you are not a roster manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
 		end
 	end
 
@@ -859,7 +887,7 @@ function Core:CreateRecruitmentApplications()
 		end
 
 		if (not hasAnyData) then
-			Core:AppendMessage("This guild doesn't have any guild recruitment application or you are not a recruitment manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
+			Core:AppendMessage("This guild doesn't have any guild recruitment application, or you are not a recruitment manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
 		end
 	end
 
@@ -1957,11 +1985,15 @@ function Core:SetRosterInfo()
 				GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = nil;
 			end
 
-			local keystoneData = nil;
+			local openRaidLibKeystoneData = nil;
 
 			if (openRaidLib) then
-				keystoneData = openRaidLib.GetAllKeystonesInfo();
+				openRaidLibKeystoneData = openRaidLib.GetAllKeystonesInfo();
 			end
+			if (libKeystone) then
+				libKeystone.Request("GUILD");
+			end
+
 			local anyKeystoneFound = false;
 
 			for i = 1, numTotalMembers do
@@ -1977,8 +2009,9 @@ function Core:SetRosterInfo()
 					if (isKeystonesEnabled and C_MythicPlus.IsMythicPlusActive()) then
 						local keystoneLevel = nil;
 						local keystoneMapId = nil;
+						local normalizedName = GOW.Helper:GetNormalizedCharacterName(name);
 
-						if (name == me) then
+						if (normalizedName == me) then
 							keystoneLevel = C_MythicPlus.GetOwnedKeystoneLevel();
 							keystoneMapId = C_MythicPlus.GetOwnedKeystoneChallengeMapID();
 						else
@@ -1986,22 +2019,30 @@ function Core:SetRosterInfo()
 								if (level >= _G['AstralEngine'].EXPANSION_LEVEL) then
 									keystoneLevel = _G['AstralEngine'].GetCharacterKeyLevel(name);
 									keystoneMapId = _G['AstralEngine'].GetCharacterMapID(name);
+
+									if (keystoneLevel) then
+										GOW.Logger:Debug("Keystone exported frome AstralKeys for " .. normalizedName .. ". Level: " .. keystoneLevel);
+									end
 								end
 							end
 
-							if (openRaidLib and keystoneData) then
-								if (keystoneData) then
-									for unitName, keystoneInfo in pairs(keystoneData) do
+							if (libKeystone and libKeystoneData) then
+								local keystoneInfo = libKeystoneData[normalizedName];
+								if (keystoneInfo) then
+									keystoneLevel = keystoneInfo.level;
+									keystoneMapId = keystoneInfo.challengeMapID;
+									GOW.Logger:Debug("Keystone exported frome LibKeystone for " .. normalizedName .. ". Level: " .. keystoneLevel);
+								end
+							end
+
+							if (openRaidLib and openRaidLibKeystoneData) then
+								if (openRaidLibKeystoneData) then
+									for unitName, keystoneInfo in pairs(openRaidLibKeystoneData) do
 										if (keystoneInfo.level > 0) then
-											local unitNameToCheck = unitName;
-
-											if (not string.match(unitNameToCheck, "-")) then
-												unitNameToCheck = unitNameToCheck .. "-" .. GetNormalizedRealmName();
-											end
-
-											if (unitNameToCheck == name) then
+											if (GOW.Helper:GetNormalizedCharacterName(unitName) == normalizedName) then
 												keystoneLevel = keystoneInfo.level;
 												keystoneMapId = keystoneInfo.challengeMapID;
+												GOW.Logger:Debug("Keystone exported frome openRaidLib for " .. normalizedName .. ". Level: " .. keystoneLevel);
 											end
 										end
 									end

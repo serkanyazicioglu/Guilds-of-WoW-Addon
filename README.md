@@ -33,7 +33,7 @@ https://guildsofwow.com/manage/addon
 
 - Easier in-game recruitment management for inviting to guild, adding as friend or whispering.
 
-- Syncing back your guild's Mythic+ keystones to GoW and Discord (Requires 'Astral Keys' and/or 'Details' addons).
+- Syncing back your guild's Mythic+ keystones to GoW and Discord (Supports AstralKeys, LibOpenRaid/Details, and LibKeystone/BigWigs).
 
 - Personal and guild-wide item wishlists with loot drop alerts, browser interface, and team filtering.
 

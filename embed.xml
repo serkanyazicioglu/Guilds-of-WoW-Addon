@@ -13,6 +13,7 @@
 	<Include file="libs\AceComm-3.0\AceComm-3.0.xml" />
 
 	<Include file="libs\AceGUI-3.0_SFX-Widgets\AceGUI-3.0_SFX-Widgets.xml" />
+	<Script file="libs\LibKeystone\LibKeystone.lua" />
 	<Include file="libs\LibOpenRaid\lib.xml" />
 	
 	<Include file="libs\lib-st\lib-st.xml" />
