@@ -174,6 +174,9 @@ function GOW:OnInitialize()
 	if GOW.Helper:IsWishlistsEnabled() then
 		table.insert(tabs, { value = "wishlists", text = "Wishlists" });
 	end
+	if GOW.Helper:IsKeystonesEnabled() then
+		table.insert(tabs, { value = "keystones", text = "Keystones" });
+	end
     
 	containerTabs:SetTabs(tabs);
 	containerTabs:SelectTab(selectedTab);
@@ -194,6 +197,7 @@ function GOW:OnInitialize()
 	};
 	GOW.teams = GoWTeams:new(Core, self.UI, self.GUI);
 	GOW.eventDetails = GoWEventDetails:new(Core, self.UI, self.GUI);
+	GOW.keystoneDetails = GoWKeystoneDetails:new(Core, self.UI, self.GUI);
 
 	if (ns.UPCOMING_EVENTS == nil or ns.TEAMS == nil or ns.RECRUITMENT_APPLICATIONS == nil) then
 		GOW.Logger:PrintErrorMessage("Data is not fetched! Please make sure your sync app is installed and working properly.");
@@ -654,6 +658,9 @@ function Core:RefreshApplication()
 			Core:AppendMessage("Wishlist module not loaded.", true);
 		end
 		isPropogatingUpdate = false;
+	elseif (selectedTab == "keystones") then
+		containerScrollFrame.frame:Show();
+		Core:CreateKeystones();
 	end
 end
 
@@ -859,6 +866,35 @@ function Core:CreateRecruitmentApplications()
 	end
 
 	Core:AppendScrollBottomPadding();
+	isPropogatingUpdate = false;
+end
+
+function Core:CreateKeystones()
+	if (selectedTab ~= "keystones") then
+		return;
+	end
+
+	containerScrollFrame:ReleaseChildren();
+
+	if (not GOW.Helper:IsKeystonesEnabled()) then
+		Core:AppendMessage("Keystones are not available in this game version.", false);
+		isPropogatingUpdate = false;
+		return;
+	end
+
+	if (not IsInGuild()) then
+		Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false);
+		isPropogatingUpdate = false;
+		return;
+	end
+
+	if (GOW.keystoneDetails) then
+		GOW.keystoneDetails:Render();
+	else
+		Core:AppendMessage("Keystone module not loaded.", true);
+		Core:AppendScrollBottomPadding();
+	end
+
 	isPropogatingUpdate = false;
 end
 
@@ -1993,7 +2029,6 @@ function Core:SetRosterInfo()
 			if (anyKeystoneFound) then
 				GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = GetServerTime();
 			end
-
 			local numTotalRanks = GuildControlGetNumRanks();
 
 			for i = 1, numTotalRanks do

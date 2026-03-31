@@ -7,6 +7,51 @@ local openRaidLib = nil;
 local libKeystone = nil;
 local libKeystoneData = {};
 local openRaidLibKeystoneData = nil;
+local latestEntries = {};
+
+local function RebuildLatestEntries()
+	latestEntries = {};
+
+	if (not GOW.Helper:IsKeystonesEnabled()) then
+		return;
+	end
+
+	local numTotalMembers = GetNumGuildMembers() or 0;
+	if (numTotalMembers <= 0 or not C_MythicPlus.IsMythicPlusActive()) then
+		return;
+	end
+
+	local me = GOW.Helper:GetCurrentCharacterUniqueKey();
+
+	for i = 1, numTotalMembers do
+		local name, _, _, level = GetGuildRosterInfo(i);
+		if (name) then
+			local normalizedName = GOW.Helper:GetNormalizedCharacterName(name);
+			local keystoneLevel, keystoneMapId = Keystones:GetGuildMemberKeystone(name, level, normalizedName == me);
+
+			if (keystoneLevel and keystoneMapId) then
+				local dungeonName = C_ChallengeMode.GetMapUIInfo(keystoneMapId);
+
+				table.insert(latestEntries, {
+					name = name,
+					normalizedName = normalizedName,
+					keystoneLevel = keystoneLevel,
+					keystoneMapId = keystoneMapId,
+					dungeonName = dungeonName or "Unknown",
+					date = GetServerTime()
+				});
+			end
+		end
+	end
+
+	table.sort(latestEntries, function(a, b)
+		if ((a.keystoneLevel or 0) ~= (b.keystoneLevel or 0)) then
+			return (a.keystoneLevel or 0) > (b.keystoneLevel or 0);
+		end
+
+		return string.lower(a.name or "") < string.lower(b.name or "");
+	end);
+end
 
 local function UpdateLibKeystoneEntry(keyLevel, keyChallengeMapID, playerRating, playerName, channel)
 	if (channel ~= "GUILD") then
@@ -26,6 +71,8 @@ local function UpdateLibKeystoneEntry(keyLevel, keyChallengeMapID, playerRating,
 		level = keyLevel,
 		challengeMapID = keyChallengeMapID
 	};
+
+	RebuildLatestEntries();
 end
 
 function Keystones:Initialize()
@@ -49,11 +96,14 @@ end
 function Keystones:Refresh()
 	if (openRaidLib) then
 		openRaidLibKeystoneData = openRaidLib.GetAllKeystonesInfo();
+		openRaidLib.RequestKeystoneDataFromGuild();
 	end
 
 	if (libKeystone) then
 		libKeystone.Request("GUILD");
 	end
+
+	RebuildLatestEntries();
 end
 
 function Keystones:GetGuildMemberKeystone(name, level, isSelf)
@@ -94,4 +144,8 @@ function Keystones:GetGuildMemberKeystone(name, level, isSelf)
 			end
 		end
 	end
+end
+
+function Keystones:GetLatestEntries()
+	return latestEntries;
 end
