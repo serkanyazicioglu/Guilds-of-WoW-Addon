@@ -35,6 +35,39 @@ function Layout:CreateSubFilterBtn(parent, label, width)
     return btn;
 end
 
+function Layout:CreateActionButton(parent, options)
+    local opts = type(options) == "table" and options or {};
+    local text = opts.text or "";
+    local width = opts.width or 110;
+    local isActive = opts.isActive ~= false;
+    local onClick = opts.onClick;
+
+    local btn = self:CreateSubFilterBtn(parent, text, width);
+    btn:SetHeight(opts.height or 18);
+    btn:SetWidth(width);
+    self:SetButtonActive(btn, isActive);
+
+    if (not isActive) then
+        btn.btnText:SetText("|cff888888" .. text .. "|r");
+    end
+
+    if (isActive) then
+        btn:Enable();
+    else
+        btn:Disable();
+    end
+
+    btn:SetScript("OnClick", function()
+        if (not isActive or not onClick) then
+            return;
+        end
+
+        onClick(btn);
+    end);
+
+    return btn;
+end
+
 function Layout:SetButtonActive(btn, isActive)
     if (isActive) then
         btn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
@@ -62,6 +95,194 @@ function Layout:CreateRowSeparator(parent)
     sep:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 6, 0);
     sep:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -6, 0);
     return sep;
+end
+
+function Layout:CreateTextBadge(parent, options)
+    local opts = type(options) == "table" and options or {};
+    local badge = CreateFrame("Frame", nil, parent, "BackdropTemplate");
+    local height = opts.height or 16;
+    badge:SetHeight(height);
+    badge:SetBackdrop(self.constants.STANDARD_BACKDROP);
+    badge:SetBackdropColor(opts.bgR or 0.05, opts.bgG or 0.15, opts.bgB or 0.05, opts.bgA or 0.85);
+    badge:SetBackdropBorderColor(opts.borderR or 0.1, opts.borderG or 0.8, opts.borderB or 0.3, opts.borderA or 0.6);
+
+    local text = badge:CreateFontString(nil, "OVERLAY", opts.fontObject or "GameFontNormalSmall");
+    text:SetPoint("CENTER", badge, "CENTER", 0, 0);
+    text:SetJustifyH("CENTER");
+    badge.text = text;
+
+    function badge:SetLabel(label)
+        local value = label or "";
+        text:SetText(value);
+        badge:SetWidth(math.max(opts.minWidth or 24, text:GetStringWidth() + (opts.paddingX or 12)));
+    end
+
+    badge:SetLabel(opts.text or "");
+    return badge;
+end
+
+function Layout:CreateSidebarList(parent, options)
+    local opts = type(options) == "table" and options or {};
+    local sidebar = {
+        parent = parent,
+        rowHeight = opts.rowHeight or 32,
+        getLabel = opts.getLabel or function(item) return item.label or item.name or "" end,
+        getSubtitle = opts.getSubtitle,
+        getMeta = opts.getMeta,
+        onPostCreate = opts.onPostCreate,
+        isSelected = opts.isSelected or function() return false end,
+        isEnabled = opts.isEnabled or function(item) return item.enabled ~= false end,
+        isAccent = opts.isAccent or function() return false end,
+        onSelect = opts.onSelect or function() end,
+    };
+
+    function sidebar:Render(items)
+        local total = #(items or {});
+
+        for index, item in ipairs(items or {}) do
+            local row = CreateFrame("Button", nil, self.parent, "BackdropTemplate");
+            row:SetHeight(self.rowHeight);
+            row:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 0, -((index - 1) * self.rowHeight));
+            row:SetPoint("TOPRIGHT", self.parent, "TOPRIGHT", 0, -((index - 1) * self.rowHeight));
+
+            row.highlight = Layout:CreateRowHighlight(row, 0.06);
+            row.separator = Layout:CreateRowSeparator(row);
+
+            local label = self.getLabel(item) or "";
+            local meta = self.getMeta and self.getMeta(item) or nil;
+            local isEnabled = self.isEnabled(item) == true;
+            local isSelected = isEnabled and self.isSelected(item) == true;
+            local isAccent = isEnabled and self.isAccent(item) == true;
+
+            if (isSelected) then
+                Layout:ApplyBackdrop(row, Layout.constants.SUB_ACTIVE_COLOR.r, Layout.constants.SUB_ACTIVE_COLOR.g, Layout.constants.SUB_ACTIVE_COLOR.b, 0.22, Layout.constants.GOW_ACCENT_COLOR.r, Layout.constants.GOW_ACCENT_COLOR.g, Layout.constants.GOW_ACCENT_COLOR.b, 0.45);
+            else
+                Layout:ApplyBackdrop(row, 0, 0, 0, 0, 0, 0, 0, 0);
+            end
+
+            row.nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+            local subtitle = self.getSubtitle and self.getSubtitle(item) or nil;
+
+            if (subtitle and subtitle ~= "") then
+                row.nameText:SetPoint("LEFT", row, "LEFT", 10, 6);
+                row.nameText:SetPoint("RIGHT", row, "RIGHT", meta and -70 or -42, 6);
+            else
+                row.nameText:SetPoint("LEFT", row, "LEFT", 10, 0);
+                row.nameText:SetPoint("RIGHT", row, "RIGHT", -42, 0);
+            end
+            row.nameText:SetJustifyH("LEFT");
+            row.nameText:SetWordWrap(false);
+
+            if (meta ~= nil and meta ~= "") then
+                row.metaText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+                row.metaText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
+                row.metaText:SetJustifyH("RIGHT");
+                row.metaText:SetText("|cffaaaaaa" .. meta .. "|r");
+            end
+
+            if (not isEnabled) then
+                row.nameText:SetText("|cff666666" .. label .. "|r");
+                if (row.metaText) then
+                    row.metaText:SetText("|cff666666" .. tostring(meta or "") .. "|r");
+                end
+            elseif (isSelected) then
+                row.nameText:SetText("|cffb9f3c8" .. label .. "|r");
+                if (row.metaText) then
+                    row.metaText:SetText("|cffb9f3c8" .. tostring(meta or "") .. "|r");
+                end
+            elseif (isAccent) then
+                row.nameText:SetText("|cffffd100" .. label .. "|r");
+                if (row.metaText) then
+                    row.metaText:SetText("|cffd7d7d7" .. tostring(meta or "") .. "|r");
+                end
+            else
+                row.nameText:SetText("|cffdddddd" .. label .. "|r");
+                if (row.metaText) then
+                    row.metaText:SetText("|cff9a9a9a" .. tostring(meta or "") .. "|r");
+                end
+            end
+
+            if (subtitle and subtitle ~= "") then
+                row.subtitleText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+                row.subtitleText:SetPoint("TOPLEFT", row.nameText, "BOTTOMLEFT", 0, -2);
+                row.subtitleText:SetText("|cff888888" .. subtitle .. "|r");
+                row.subtitleText:SetJustifyH("LEFT");
+            end
+
+            row:SetScript("OnEnter", function(selfFrame)
+                if (isEnabled and not isSelected) then
+                    selfFrame.highlight:Show();
+                end
+            end);
+            row:SetScript("OnLeave", function(selfFrame)
+                selfFrame.highlight:Hide();
+            end);
+            row:SetScript("OnClick", function()
+                if (not isEnabled) then
+                    return;
+                end
+
+                self.onSelect(item, index);
+            end);
+
+            if (index == total) then
+                row.separator:Hide();
+            end
+
+            if (self.onPostCreate) then
+                self.onPostCreate(row, item, index);
+            end
+        end
+
+        return (total * self.rowHeight);
+    end
+
+    return sidebar;
+end
+
+function Layout:ShowCopyUrlDialog(gui, url, title)
+    local frameName = _G.FRAME_NAME;
+
+    if (self.copyUrlDialog) then
+        self.copyUrlDialog:ReleaseChildren();
+        self.copyUrlDialog:Release();
+        self.copyUrlDialog = nil;
+    end
+
+    local dialog = gui:Create("Window");
+    dialog:SetTitle(title or "Copy URL");
+    dialog:SetWidth(720);
+    dialog:SetHeight(90);
+    dialog:EnableResize(false);
+    dialog:SetLayout("Flow");
+    dialog.frame:SetFrameStrata("DIALOG");
+    dialog.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
+    dialog.previousEscapeFrame = frameName and _G[frameName] or nil;
+
+    local urlWidget = gui:Create("SFX-Info-URL");
+    urlWidget:SetLabel("URL");
+    urlWidget:SetText(url or "");
+    urlWidget:SetDisabled(false);
+    urlWidget:SetFullWidth(true);
+    dialog:AddChild(urlWidget);
+
+    if (frameName) then
+        _G[frameName] = dialog.frame;
+    end
+
+    dialog:SetCallback("OnClose", function(widget)
+        widget:ReleaseChildren();
+        widget:Release();
+        if (self.copyUrlDialog == widget) then
+            self.copyUrlDialog = nil;
+        end
+        if (frameName) then
+            _G[frameName] = widget.previousEscapeFrame;
+        end
+    end);
+
+    self.copyUrlDialog = dialog;
+    return dialog;
 end
 
 function Layout:GetContainerPanel(parent, options)

@@ -39,53 +39,479 @@ local valuesForDropdown = {
     ["Online Status"] = "Online Status",
 };
 
-function GoWTeams:AppendTeam(teamData)
-    local itemGroup = self.GUI:Create("InlineGroup");
-    itemGroup:SetFullWidth(true);
-    if (teamData.name ~= nil and teamData.name ~= "") then
-        itemGroup:SetTitle(teamData.name);
+local LIST_PANEL_HEIGHT = 430;
+local TEAM_ROW_HEIGHT = 52;
+local TEAM_LIST_TOP_PADDING = 8;
+local TEAM_DETAIL_PANEL_HEIGHT = 470;
+local TEAM_DETAIL_LEFT_WIDTH = 220;
+local TEAM_DETAIL_RIGHT_WIDTH = 740;
+local TEAM_DETAIL_FILTER_ROW_HEIGHT = 32;
+local TEAM_DETAIL_ROSTER_ROW_HEIGHT = 38;
+
+local function GetDisplayRealmName(realmName)
+    if (not realmName or realmName == "") then
+        return "";
     end
 
-    local listGap = self.GUI:Create("SimpleGroup");
-    listGap:SetFullWidth(true);
-    listGap:SetHeight(10);
+    return tostring(realmName):gsub("(%l)(%u)", "%1 %2");
+end
 
-    if (teamData.description ~= nil and teamData.description ~= "") then
-        local descriptionLabel = self.GUI:Create("SFX-Info");
-        descriptionLabel:SetLabel("Description");
-        descriptionLabel:SetText(teamData.description);
-        descriptionLabel:SetDisabled(false);
-        descriptionLabel:SetCallback("OnEnter", function(self)
-            local tooltip = LibQTip:Acquire("TeamDescriptionTooltip", 1, "LEFT");
-            GOW.tooltip = tooltip;
-
-            tooltip:AddHeader('|cffffcc00Team Description');
-            local line = tooltip:AddLine();
-            tooltip:SetCell(line, 1, teamData.description, "LEFT", 1, nil, 0, 0, 300, 50);
-            tooltip:SmartAnchorTo(self.frame);
-            tooltip:Show();
-        end);
-        descriptionLabel:SetCallback("OnLeave", function()
-            LibQTip:Release(GOW.tooltip);
-            GOW.tooltip = nil;
-        end);
-        itemGroup:AddChild(descriptionLabel);
+function GoWTeams:Hide()
+    if (self.nativeRoot) then
+        self.nativeRoot:Hide();
+        self.nativeRoot:SetParent(nil);
+        self.nativeRoot = nil;
     end
 
-    local membersLabel = self.GUI:Create("SFX-Info");
-    membersLabel:SetLabel("Members");
-    membersLabel:SetText(teamData.totalMembers);
-    itemGroup:AddChild(membersLabel);
+    self.rootHost = nil;
+    self.listPanel = nil;
+    self.teamRowCount = 0;
+end
 
-    local buttonsGroup = self.GUI:Create("SimpleGroup");
-    buttonsGroup:SetLayout("Flow");
-    buttonsGroup:SetFullWidth(true);
+function GoWTeams:UpdatePanelScroll(panel, contentHeight)
+    if (not panel or not panel.scrollFrame) then
+        return;
+    end
 
-    local viewTeamButton = self.GUI:Create("Button");
-    viewTeamButton:SetText("View Roster");
-    viewTeamButton:SetWidth(200);
-    viewTeamButton:SetCallback("OnClick", function()
+    panel.scrollFrame.contentHeight = contentHeight or 0;
+    panel.scrollFrame:SetVerticalScroll(0);
+end
+
+function GoWTeams:EnsureListPanel()
+    if (self.listPanel and self.nativeRoot and self.rootHost) then
+        return;
+    end
+
+    local containerScrollFrame = self.UI.containerScrollFrame;
+    local L = GOW.Layout;
+
+    self.rootHost = self.GUI:Create("SimpleGroup");
+    self.rootHost:SetFullWidth(true);
+    self.rootHost:SetFullHeight(true);
+    self.rootHost:SetHeight(LIST_PANEL_HEIGHT + 8);
+    containerScrollFrame:AddChild(self.rootHost);
+
+    local hostFrame = self.rootHost.frame;
+    self.nativeRoot = CreateFrame("Frame", nil, hostFrame);
+    self.nativeRoot:SetAllPoints(hostFrame);
+
+    local panelWidth = math.max(880, math.floor((hostFrame:GetWidth() > 0 and hostFrame:GetWidth() or 940) - 6));
+    self.listPanel = L:GetContainerPanel(self.nativeRoot, {
+        title = "TEAMS",
+        width = panelWidth,
+        height = LIST_PANEL_HEIGHT,
+        xOffset = 0,
+        topInset = 28,
+        sideInset = 10,
+        bottomInset = 10,
+    });
+    self.listPanel:SetPoint("TOPLEFT", self.nativeRoot, "TOPLEFT", 0, -1);
+    self.teamRowCount = 0;
+end
+
+function GoWTeams:ClearNativeChildren(parent)
+    if (not parent) then
+        return;
+    end
+
+    local children = { parent:GetChildren() };
+    for _, child in ipairs(children) do
+        child:Hide();
+        child:SetParent(nil);
+    end
+end
+
+function GoWTeams:DestroyTeamDetailsRoot()
+    if (self.teamDetailsRoot) then
+        self.teamDetailsRoot:Hide();
+        self.teamDetailsRoot:SetParent(nil);
+        self.teamDetailsRoot = nil;
+    end
+end
+
+function GoWTeams:BuildTeamFilters(teamData)
+    local filters = {
+        {
+            key = "ALL",
+            label = "All Roles",
+            count = #(teamData.members or {}),
+        }
+    };
+
+    local counts = {};
+    for _, member in ipairs(teamData.members or {}) do
+        local teamRole = member.teamRole or "Unknown";
+        counts[teamRole] = (counts[teamRole] or 0) + 1;
+    end
+
+    local orderedRoles = { "Main", "Alt", "Backup", "Trial" };
+    for _, teamRole in ipairs(orderedRoles) do
+        table.insert(filters, {
+            key = teamRole,
+            label = teamRole,
+            count = counts[teamRole] or 0,
+        });
+        counts[teamRole] = nil;
+    end
+
+    for teamRole, count in pairs(counts) do
+        table.insert(filters, {
+            key = teamRole,
+            label = teamRole,
+            count = count,
+        });
+    end
+
+    return filters;
+end
+
+function GoWTeams:BuildPresenceMap()
+    local presenceMap = {};
+    local numGuildMembers = GetNumGuildMembers();
+
+    for i = 1, numGuildMembers do
+        local name, rankName, _, _, _, _, _, _, online = GetGuildRosterInfo(i);
+        if (name) then
+            presenceMap[self:GetNormalizedFullName(name)] = {
+                online = online,
+                guildRankName = rankName,
+            };
+        end
+    end
+
+    if (C_Club and C_Club.GetSubscribedCommunities) then
+        local clubs = C_Club.GetSubscribedCommunities();
+        if (clubs) then
+            for _, club in ipairs(clubs) do
+                local clubMembers = C_Club.GetClubMembers(club.clubId);
+                if (clubMembers) then
+                    for _, clubMember in ipairs(clubMembers) do
+                        if (clubMember.name and clubMember.name ~= "") then
+                            local normalizedName = self:GetNormalizedFullName(clubMember.name);
+                            if (not presenceMap[normalizedName]) then
+                                presenceMap[normalizedName] = {
+                                    online = clubMember.isOnline,
+                                    guildRankName = "Non-Guildie",
+                                };
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return presenceMap;
+end
+
+function GoWTeams:GetMemberPresence(member, presenceMap)
+    local realmNormalized = member.realmNormalized or GetNormalizedRealmName();
+    local fullName = member.name .. "-" .. realmNormalized;
+    local info = presenceMap[self:GetNormalizedFullName(fullName)];
+
+    if (info) then
+        return info.online == true, info.guildRankName or "";
+    end
+
+    return false, "Non-Guildie";
+end
+
+function GoWTeams:GetFilteredTeamMembers(teamData, selectedFilter, presenceMap)
+    local filteredMembers = {};
+
+    for _, member in ipairs(teamData.members or {}) do
+        if (selectedFilter == "ALL" or member.teamRole == selectedFilter) then
+            table.insert(filteredMembers, member);
+        end
+    end
+
+    table.sort(filteredMembers, function(a, b)
+        local aOnline = select(1, self:GetMemberPresence(a, presenceMap));
+        local bOnline = select(1, self:GetMemberPresence(b, presenceMap));
+        if (aOnline ~= bOnline) then
+            return aOnline and not bOnline;
+        end
+
+        if ((a.teamRole or "") ~= (b.teamRole or "")) then
+            return (a.teamRole or "") < (b.teamRole or "");
+        end
+
+        return (a.name or "") < (b.name or "");
+    end);
+
+    return filteredMembers;
+end
+
+function GoWTeams:CreateTeamInviteButton(parent, member, canInvite, buttonText)
+    local L = GOW.Layout;
+    local btn = L:CreateActionButton(parent, {
+        text = buttonText,
+        width = 76,
+        isActive = canInvite,
+        onClick = function(selfButton)
+        local inviteName = member.name .. "-" .. (member.realmNormalized or GetNormalizedRealmName());
+        GOW.Helper:InviteToParty(inviteName);
+        selfButton:Disable();
+        selfButton.btnText:SetText("Pending");
+        selfButton.btnText:SetTextColor(0.65, 0.65, 0.65);
+        end
+    });
+
+    return btn;
+end
+
+function GoWTeams:CreateTeamRosterRow(parent, member, index, total, presenceMap)
+    local L = GOW.Layout;
+    local row = CreateFrame("Frame", nil, parent, "BackdropTemplate");
+    row:SetHeight(TEAM_DETAIL_ROSTER_ROW_HEIGHT);
+    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * TEAM_DETAIL_ROSTER_ROW_HEIGHT));
+    row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -((index - 1) * TEAM_DETAIL_ROSTER_ROW_HEIGHT));
+
+    row.highlight = L:CreateRowHighlight(row, 0.04);
+    row.separator = L:CreateRowSeparator(row);
+
+    row.factionIcon = row:CreateTexture(nil, "ARTWORK");
+    row.factionIcon:SetSize(16, 16);
+    row.factionIcon:SetPoint("LEFT", row, "LEFT", 10, 0);
+    row.factionIcon:SetTexture(GOW.Helper:GetFactionIcon(member.faction));
+
+    local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    nameText:SetPoint("LEFT", row.factionIcon, "RIGHT", 8, 5);
+    nameText:SetPoint("RIGHT", row, "RIGHT", -590, 5);
+    nameText:SetJustifyH("LEFT");
+    nameText:SetWordWrap(false);
+
+    local _, classFileName = GetClassInfo(member.classId or 0);
+    local classColor = GOW.Helper:GetClassColor(classFileName);
+    if (classColor) then
+        nameText:SetText(string.format("|cff%02x%02x%02x%s|r", classColor.r * 255, classColor.g * 255, classColor.b * 255, member.name or ""));
+    else
+        nameText:SetText(member.name or "");
+    end
+
+    local realmText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    realmText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -1);
+    realmText:SetPoint("RIGHT", nameText, "RIGHT", 0, -1);
+    realmText:SetText("|cff888888" .. GetDisplayRealmName(member.realmNormalized) .. "|r");
+    realmText:SetJustifyH("LEFT");
+    realmText:SetWordWrap(false);
+
+    local specContainer = CreateFrame("Frame", nil, row);
+    specContainer:SetPoint("LEFT", row, "LEFT", 200, 0);
+    specContainer:SetSize(120, 18);
+
+    local role = roles[member.specRoleId or 0];
+    if (role and role.iconTexCoords) then
+        local roleIcon = specContainer:CreateTexture(nil, "ARTWORK");
+        roleIcon:SetTexture("Interface/LFGFrame/UI-LFG-ICON-PORTRAITROLES");
+        roleIcon:SetSize(16, 16);
+        roleIcon:SetPoint("LEFT", specContainer, "LEFT", 0, 0);
+        roleIcon:SetTexCoord(unpack(role.iconTexCoords));
+    end
+
+    local specText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    specText:SetPoint("LEFT", specContainer, "LEFT", 20, 0);
+    specText:SetPoint("RIGHT", specContainer, "RIGHT", 0, 0);
+    specText:SetJustifyH("LEFT");
+    specText:SetWordWrap(false);
+    specText:SetText(member.spec or "");
+
+    local groupText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    groupText:SetPoint("LEFT", row, "LEFT", 340, 0);
+    groupText:SetWidth(80);
+    groupText:SetJustifyH("LEFT");
+    groupText:SetText("|cffaaaaaa" .. (member.teamRole or "") .. "|r");
+
+    local tokenText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    tokenText:SetPoint("LEFT", row, "LEFT", 420, 0);
+    tokenText:SetWidth(100);
+    tokenText:SetJustifyH("LEFT");
+    tokenText:SetWordWrap(false);
+    tokenText:SetText(member.armorToken or "");
+    local tokenColorR, tokenColorG, tokenColorB = self:GoWHexToRGB(member.armorTokenColor or "");
+    tokenText:SetTextColor(tokenColorR, tokenColorG, tokenColorB);
+
+    local isConnected, guildRankName = self:GetMemberPresence(member, presenceMap);
+    local rankText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    rankText:SetPoint("LEFT", row, "LEFT", 525, 0);
+    rankText:SetWidth(110);
+    rankText:SetJustifyH("LEFT");
+    rankText:SetWordWrap(false);
+    rankText:SetText("|cffaaaaaa" .. (guildRankName or "") .. "|r");
+
+    local currentPlayerName = UnitName("player");
+    local canInvite = isConnected and member.name ~= currentPlayerName;
+    local buttonText = canInvite and "Invite" or "Offline";
+
+    if (member.name == currentPlayerName) then
+        buttonText = "You";
+        canInvite = false;
+    elseif (IsInGroup()) then
+        local numGroup = GetNumGroupMembers();
+        local unitPrefix = IsInRaid() and "raid" or "party";
+        local memberFullName = member.name .. "-" .. (member.realmNormalized or GetNormalizedRealmName());
+        for i = 1, numGroup do
+            local unitName = UnitName(unitPrefix .. i);
+            if (unitName and (unitName == memberFullName or unitName == member.name)) then
+                buttonText = "Joined";
+                canInvite = false;
+                break;
+            end
+        end
+    end
+
+    row.inviteButton = self:CreateTeamInviteButton(row, member, canInvite, buttonText);
+    row.inviteButton:SetPoint("RIGHT", row, "RIGHT", -6, 0);
+
+    if (index == total) then
+        row.separator:Hide();
+    end
+
+    return row;
+end
+
+function GoWTeams:RenderTeamDetailsPopup(teamData, selectedFilter)
+    local L = GOW.Layout;
+    local windowFrame = GoWTeamTabContainer.frame;
+
+    self:DestroyTeamDetailsRoot();
+
+    local nativeRoot = CreateFrame("Frame", nil, windowFrame);
+    nativeRoot:SetPoint("TOPLEFT", windowFrame, "TOPLEFT", 12, -32);
+    nativeRoot:SetPoint("BOTTOMRIGHT", windowFrame, "BOTTOMRIGHT", -12, 12);
+    self.teamDetailsRoot = nativeRoot;
+
+    local leftPanel = L:GetContainerPanel(nativeRoot, {
+        title = "ROLES",
+        width = TEAM_DETAIL_LEFT_WIDTH,
+        height = TEAM_DETAIL_PANEL_HEIGHT,
+        xOffset = 0,
+        topInset = 34,
+        sideInset = 8,
+        bottomInset = 8,
+    });
+    leftPanel:SetPoint("TOPLEFT", nativeRoot, "TOPLEFT", 6, -6);
+
+    local rightPanel = L:GetContainerPanel(nativeRoot, {
+        title = "ROSTER",
+        width = TEAM_DETAIL_RIGHT_WIDTH,
+        height = TEAM_DETAIL_PANEL_HEIGHT,
+        xOffset = TEAM_DETAIL_LEFT_WIDTH + 12,
+        topInset = 66,
+        sideInset = 8,
+        bottomInset = 8,
+    });
+    rightPanel:SetPoint("TOPLEFT", nativeRoot, "TOPLEFT", TEAM_DETAIL_LEFT_WIDTH + 12, -6);
+
+    local filters = self:BuildTeamFilters(teamData);
+    local presenceMap = self:BuildPresenceMap();
+    local filteredMembers = self:GetFilteredTeamMembers(teamData, selectedFilter, presenceMap);
+
+    local sidebar = L:CreateSidebarList(leftPanel.scrollChild, {
+        rowHeight = TEAM_DETAIL_FILTER_ROW_HEIGHT,
+        getLabel = function(item) return item.label end,
+        getMeta = function(item) return tostring(item.count or 0) end,
+        isSelected = function(item) return item.key == selectedFilter end,
+        isEnabled = function(item) return item.key == "ALL" or (item.count or 0) > 0 end,
+        isAccent = function(item) return item.key == "ALL" end,
+        onSelect = function(item)
+            self:RenderTeamDetailsPopup(teamData, item.key);
+        end,
+    });
+    local leftHeight = math.max(sidebar:Render(filters), 1);
+    leftPanel.scrollChild:SetHeight(leftHeight);
+    leftPanel.scrollFrame.contentHeight = leftHeight;
+
+    local summaryFrame = CreateFrame("Frame", nil, rightPanel);
+    summaryFrame:SetPoint("TOPLEFT", rightPanel, "TOPLEFT", 10, -30);
+    summaryFrame:SetPoint("TOPRIGHT", rightPanel, "TOPRIGHT", -10, -30);
+    summaryFrame:SetHeight(28);
+
+    local purposeOffset = 0;
+    if (teamData.purpose and teamData.purpose ~= "") then
+        local purposeBadge = L:CreateTextBadge(summaryFrame, {
+            text = teamData.purpose,
+            minWidth = 32,
+            paddingX = 10,
+        });
+        purposeBadge:SetPoint("LEFT", summaryFrame, "LEFT", 0, 0);
+        purposeOffset = purposeBadge:GetWidth() + 8;
+    end
+
+    local summaryText = summaryFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    summaryText:SetPoint("LEFT", summaryFrame, "LEFT", purposeOffset, 0);
+    summaryText:SetPoint("RIGHT", summaryFrame, "RIGHT", 0, 0);
+    summaryText:SetJustifyH("LEFT");
+    summaryText:SetWordWrap(false);
+    summaryText:SetText("|cff888888" .. ((teamData.description and teamData.description ~= "") and teamData.description or "No description provided") .. "|r");
+
+    local headerRow = CreateFrame("Frame", nil, rightPanel.scrollChild);
+    headerRow:SetHeight(18);
+    headerRow:SetPoint("TOPLEFT", rightPanel.scrollChild, "TOPLEFT", 0, 0);
+    headerRow:SetPoint("TOPRIGHT", rightPanel.scrollChild, "TOPRIGHT", 0, 0);
+
+    local function CreateHeaderLabel(text, xOffset, width)
+        local label = headerRow:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        label:SetPoint("LEFT", headerRow, "LEFT", xOffset, 0);
+        label:SetWidth(width);
+        label:SetJustifyH("LEFT");
+        label:SetText("|cffaaaaaa" .. text .. "|r");
+    end
+
+    CreateHeaderLabel("Name", 34, 130);
+    CreateHeaderLabel("Spec", 200, 120);
+    CreateHeaderLabel("Group", 340, 80);
+    CreateHeaderLabel("Token", 420, 100);
+    CreateHeaderLabel("Rank", 525, 110);
+
+    local rowsAnchor = CreateFrame("Frame", nil, rightPanel.scrollChild);
+    rowsAnchor:SetPoint("TOPLEFT", headerRow, "BOTTOMLEFT", 0, -4);
+    rowsAnchor:SetPoint("TOPRIGHT", headerRow, "BOTTOMRIGHT", 0, -4);
+    rowsAnchor:SetHeight(math.max(1, #filteredMembers * TEAM_DETAIL_ROSTER_ROW_HEIGHT));
+
+    if (#filteredMembers == 0) then
+        local emptyText = rightPanel.scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+        emptyText:SetPoint("TOPLEFT", rowsAnchor, "TOPLEFT", 10, -10);
+        emptyText:SetText("|cff888888No team members found.|r");
+    else
+        for index, member in ipairs(filteredMembers) do
+            self:CreateTeamRosterRow(rowsAnchor, member, index, #filteredMembers, presenceMap);
+        end
+    end
+
+    local contentHeight = 22 + 4 + (#filteredMembers * TEAM_DETAIL_ROSTER_ROW_HEIGHT);
+    if (#filteredMembers == 0) then
+        contentHeight = 70;
+    end
+    rightPanel.scrollChild:SetHeight(contentHeight);
+    rightPanel.scrollFrame.contentHeight = contentHeight;
+end
+
+function GoWTeams:OpenTeamDetails(teamData)
+    self.CORE:DestroyTeamContainer();
+    C_GuildInfo.GuildRoster();
+
+    GoWTeamTabContainer = self.GUI:Create("Window");
+    GoWTeamTabContainer:SetTitle(teamData.name or "Team");
+    GoWTeamTabContainer:SetWidth(1000);
+    GoWTeamTabContainer:SetHeight(550);
+    GoWTeamTabContainer:EnableResize(false);
+    GoWTeamTabContainer.frame:SetPoint("CENTER", UIParent, "CENTER", 40, -40);
+    GoWTeamTabContainer.frame:SetFrameStrata("HIGH");
+    GoWTeamTabContainer:SetLayout("Fill");
+    GoWTeamTabContainer.closebutton:SetPoint("TOPRIGHT", -2, -2);
+    self:SetBackdrop();
+
+    _G[FRAME_NAME] = GoWTeamTabContainer.frame;
+    GoWTeamTabContainer:SetCallback("OnClose", function()
+        self:DestroyTeamDetailsRoot();
         self.CORE:DestroyTeamContainer();
+    end);
+
+    self:RenderTeamDetailsPopup(teamData, "ALL");
+    return;
+end
+--[[
 
         -- //SECTION Team Details (TD) - Tables and Variables
         local teamNavItems = {}; -- holds the different team groups (Main, Alt, Backup, Trial) and used to render the nav buttons
@@ -740,52 +1166,93 @@ function GoWTeams:AppendTeam(teamData)
                 end;
             end;
         end;
-    end);
     C_GuildInfo.GuildRoster();
-    buttonsGroup:AddChild(viewTeamButton);
+end
 
-    local inviteToPartyButton = self.GUI:Create("Button");
-    inviteToPartyButton:SetText("Invite Team");
-    inviteToPartyButton:SetWidth(120);
-    inviteToPartyButton:SetCallback("OnClick", function()
-        self.CORE:DestroyTeamContainer();
-        self.CORE:InviteAllTeamMembersToPartyCheck(teamData);
+]]
+function GoWTeams:AppendTeam(teamData)
+    if (not teamData) then
+        return;
+    end
+
+    self:EnsureListPanel();
+
+    local L = GOW.Layout;
+    local index = (self.teamRowCount or 0) + 1;
+    local row = CreateFrame("Button", nil, self.listPanel.scrollChild, "BackdropTemplate");
+    row:SetHeight(TEAM_ROW_HEIGHT);
+    row:SetPoint("TOPLEFT", self.listPanel.scrollChild, "TOPLEFT", 0, -(TEAM_LIST_TOP_PADDING + ((index - 1) * TEAM_ROW_HEIGHT)));
+    row:SetPoint("TOPRIGHT", self.listPanel.scrollChild, "TOPRIGHT", 0, -(TEAM_LIST_TOP_PADDING + ((index - 1) * TEAM_ROW_HEIGHT)));
+
+    row.highlight = L:CreateRowHighlight(row, 0.06);
+    row.separator = L:CreateRowSeparator(row);
+    L:ApplyBackdrop(row, 0, 0, 0, 0, 0, 0, 0, 0);
+
+    local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+    nameText:SetPoint("TOPLEFT", row, "TOPLEFT", 12, -8);
+    nameText:SetPoint("RIGHT", row, "RIGHT", -140, 0);
+    nameText:SetJustifyH("LEFT");
+    nameText:SetWordWrap(false);
+    nameText:SetText(teamData.name or "");
+
+    local detailAnchor = CreateFrame("Frame", nil, row);
+    detailAnchor:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -4);
+    detailAnchor:SetPoint("RIGHT", row, "RIGHT", -140, 0);
+    detailAnchor:SetHeight(18);
+
+    local purposeBadge;
+    if (teamData.purpose and teamData.purpose ~= "") then
+        purposeBadge = L:CreateTextBadge(detailAnchor, {
+            text = teamData.purpose,
+            minWidth = 28,
+            paddingX = 10,
+        });
+        purposeBadge:SetPoint("LEFT", detailAnchor, "LEFT", 0, 0);
+    end
+
+    local detailsText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    if (purposeBadge) then
+        detailsText:SetPoint("LEFT", purposeBadge, "RIGHT", 8, 0);
+    else
+        detailsText:SetPoint("LEFT", detailAnchor, "LEFT", 0, 0);
+    end
+    detailsText:SetPoint("RIGHT", detailAnchor, "RIGHT", 0, 0);
+    detailsText:SetJustifyH("LEFT");
+    detailsText:SetWordWrap(false);
+
+    local description = teamData.description;
+    if (description == nil or description == "") then
+        description = "No description provided";
+    end
+    detailsText:SetText("|cff888888" .. description .. "|r");
+
+    local membersText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    membersText:SetPoint("RIGHT", row, "RIGHT", -110, 0);
+    membersText:SetJustifyH("RIGHT");
+    membersText:SetText("|cffaaaaaa" .. tostring(teamData.totalMembers or 0) .. "|r");
+
+    local button = L:CreateActionButton(row, {
+        text = "View Roster",
+        width = 92,
+        onClick = function()
+            self:OpenTeamDetails(teamData);
+        end
+    });
+    button:SetPoint("RIGHT", row, "RIGHT", -10, 0);
+
+    row:SetScript("OnEnter", function(selfFrame)
+        selfFrame.highlight:Show();
     end);
-    buttonsGroup:AddChild(inviteToPartyButton);
-
-    local setOfficerNotesButton = self.GUI:Create("Button");
-    local canEdit = GoWTeams:CanEditOfficerNote();
-    setOfficerNotesButton:SetDisabled(not canEdit);
-    setOfficerNotesButton:SetText("Sync Officer Notes");
-    setOfficerNotesButton:SetWidth(160);
-    setOfficerNotesButton:SetCallback("OnClick", function()
-        self.CORE:DestroyTeamContainer();
-        GoWTeams:SyncOfficerNotes(teamData);
+    row:SetScript("OnLeave", function(selfFrame)
+        selfFrame.highlight:Hide();
     end);
-    setOfficerNotesButton:SetCallback("OnEnter", function(self)
-        local tooltip = LibQTip:Acquire("SyncOfficerTooltip", 1, "LEFT");
-        GOW.tooltip = tooltip;
-
-        tooltip:AddHeader('|cffffcc00Sync Officer Notes|r');
-        local line = tooltip:AddLine();
-        local tooltipText = "Click to apply the GoW team tags to all team members' officer notes.\n\n" .. "This will add the tag GoW:<team_id> to each member's officer note.\n\n" .. "You must have permission to edit officer notes in your guild.";
-        tooltip:SetCell(line, 1, tooltipText, "LEFT", 1, nil, 0, 0, 300, 50);
-        tooltip:SmartAnchorTo(self.frame);
-        tooltip:Show();
+    row:SetScript("OnClick", function()
+        self:OpenTeamDetails(teamData);
     end);
-    setOfficerNotesButton:SetCallback("OnLeave", function()
-        LibQTip:Release(GOW.tooltip);
-        GOW.tooltip = nil;
-    end);
-    buttonsGroup:AddChild(setOfficerNotesButton);
 
-    if self.UI.containerScrollFrame then
-        self.UI.containerScrollFrame:AddChild(itemGroup);
-        self.UI.containerScrollFrame:AddChild(listGap);
-    end;
-    -- //!SECTION
-
-    itemGroup:AddChild(buttonsGroup);
+    self.teamRowCount = index;
+    self.listPanel.scrollChild:SetHeight(TEAM_LIST_TOP_PADDING + (index * TEAM_ROW_HEIGHT));
+    self:UpdatePanelScroll(self.listPanel, TEAM_LIST_TOP_PADDING + (index * TEAM_ROW_HEIGHT));
 end
 
 -- //!SECTION

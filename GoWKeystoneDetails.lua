@@ -12,11 +12,6 @@ local RIGHT_ROW_HEIGHT = 28;
 local RIGHT_ROW_SPACING = 0;
 local RIGHT_PANEL_WIDTH = 730;
 
-local function GetClassColor(classFileName)
-    local classColorSource = CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS;
-    return classColorSource and classColorSource[classFileName] or nil;
-end
-
 function GoWKeystoneDetails:new(core, ui, gui)
     local self = setmetatable({}, GoWKeystoneDetails);
     self.CORE = core;
@@ -258,69 +253,6 @@ function GoWKeystoneDetails:UpdatePanelScroll(panel, contentHeight)
     panel.scrollFrame:SetVerticalScroll(0);
 end
 
-function GoWKeystoneDetails:CreateLeftFilterRow(parent, filter, index, total)
-    local L = GOW.Layout;
-    local row = CreateFrame("Button", nil, parent, "BackdropTemplate");
-    row:SetHeight(LEFT_ROW_HEIGHT);
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * LEFT_ROW_HEIGHT));
-    row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -((index - 1) * LEFT_ROW_HEIGHT));
-
-    row.highlight = L:CreateRowHighlight(row, 0.06);
-    row.separator = L:CreateRowSeparator(row);
-
-    row.nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    row.nameText:SetPoint("LEFT", row, "LEFT", 10, 0);
-    row.nameText:SetPoint("RIGHT", row, "RIGHT", -42, 0);
-    row.nameText:SetJustifyH("LEFT");
-
-    row.countText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    row.countText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    row.countText:SetJustifyH("RIGHT");
-
-    local isSelected = (filter.name == self.selectedDungeon);
-    local isEnabled = filter.enabled == true;
-
-    if (isSelected) then
-        L:ApplyBackdrop(row, L.constants.SUB_ACTIVE_COLOR.r, L.constants.SUB_ACTIVE_COLOR.g, L.constants.SUB_ACTIVE_COLOR.b, 0.22, L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.45);
-    else
-        L:ApplyBackdrop(row, 0, 0, 0, 0, 0, 0, 0, 0);
-    end
-
-    if (not isEnabled) then
-        row.nameText:SetText("|cff666666" .. filter.name .. "|r");
-        row.countText:SetText("|cff666666" .. tostring(filter.count or 0) .. "|r");
-    elseif (isSelected) then
-        row.nameText:SetText("|cffb9f3c8" .. filter.name .. "|r");
-        row.countText:SetText("|cffb9f3c8" .. tostring(filter.count or 0) .. "|r");
-    else
-        row.nameText:SetText("|cffdddddd" .. filter.name .. "|r");
-        row.countText:SetText("|cff9a9a9a" .. tostring(filter.count or 0) .. "|r");
-    end
-
-    row:SetScript("OnEnter", function(self)
-        if (not isSelected and isEnabled) then
-            self.highlight:Show();
-        end
-    end);
-    row:SetScript("OnLeave", function(self)
-        self.highlight:Hide();
-    end);
-    row:SetScript("OnClick", function()
-        if (not isEnabled) then
-            return;
-        end
-
-        self.selectedDungeon = filter.name;
-        self:Render();
-    end);
-
-    if (index == total) then
-        row.separator:Hide();
-    end
-
-    return row;
-end
-
 function GoWKeystoneDetails:CreateLevelBadge(parent, text)
     local L = GOW.Layout;
     local badge = CreateFrame("Frame", nil, parent, "BackdropTemplate");
@@ -339,22 +271,16 @@ end
 
 function GoWKeystoneDetails:CreateInviteButton(parent, row)
     local L = GOW.Layout;
-    local btn = L:CreateSubFilterBtn(parent, row.canInvite and "Invite" or row.buttonText, 70);
-    btn:SetHeight(FILTER_BUTTON_HEIGHT);
-    btn:SetWidth(62);
-    L:SetButtonActive(btn, row.canInvite);
-    if (not row.canInvite) then
-        btn.btnText:SetText("|cff888888" .. row.buttonText .. "|r");
-    end
-
-    btn:SetScript("OnClick", function()
-        if (not row.canInvite) then
-            return;
-        end
-
+    local btn = L:CreateActionButton(parent, {
+        text = row.canInvite and "Invite" or row.buttonText,
+        width = 62,
+        height = FILTER_BUTTON_HEIGHT,
+        isActive = row.canInvite,
+        onClick = function()
         self:InviteName(row.inviteName);
         self:Render();
-    end);
+        end
+    });
 
     return btn;
 end
@@ -380,7 +306,7 @@ function GoWKeystoneDetails:CreateRightRow(parent, row, index)
     frame.nameText:SetJustifyH("LEFT");
     frame.nameText:SetWordWrap(false);
 
-    local classColor = GetClassColor(row.classFileName);
+    local classColor = GOW.Helper:GetClassColor(row.classFileName);
     if (classColor) then
         frame.nameText:SetText(string.format("|cff%02x%02x%02x%s|r", classColor.r * 255, classColor.g * 255, classColor.b * 255, row.name or ""));
     else
@@ -418,7 +344,7 @@ function GoWKeystoneDetails:CreateRightRow(parent, row, index)
 end
 
 function GoWKeystoneDetails:RenderEmptyRightPanel(panel, message)
-    local text = panel.scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    local text = panel.scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     text:SetPoint("TOPLEFT", panel.scrollChild, "TOPLEFT", 10, -8);
     text:SetPoint("RIGHT", panel.scrollChild, "RIGHT", -10, 0);
     text:SetJustifyH("LEFT");
@@ -438,11 +364,6 @@ function GoWKeystoneDetails:Render()
     local dungeonFilters = self:GetSeasonDungeonFilters(allRows);
     self:NormalizeSelectedDungeon(dungeonFilters);
     local rows = self:FilterRows(allRows);
-    if (#allRows == 0) then
-        self.CORE:AppendMessage("No keystones found for this guild yet.", false);
-        self.CORE:AppendScrollBottomPadding();
-        return;
-    end
 
     self.rootHost = self.GUI:Create("SimpleGroup");
     self.rootHost:SetFullWidth(true);
@@ -476,20 +397,36 @@ function GoWKeystoneDetails:Render()
         bottomInset = 8
     });
 
-    local refreshBtn = L:CreateSubFilterBtn(rightPanel, "Refresh", 70);
+    local refreshBtn = L:CreateActionButton(rightPanel, {
+        text = "Refresh",
+        width = 70,
+        onClick = function()
+            GOW.Keystones:Refresh();
+            self:Render();
+        end
+    });
     refreshBtn:SetPoint("RIGHT", rightPanel.headerBar, "RIGHT", 0, 0);
-    refreshBtn:SetScript("OnClick", function()
-        GOW.Keystones:Refresh();
-        self:Render();
-    end);
 
-    for index, filter in ipairs(dungeonFilters) do
-        self:CreateLeftFilterRow(leftPanel.scrollChild, filter, index, #dungeonFilters);
-    end
-    self:UpdatePanelScroll(leftPanel, math.max(#dungeonFilters * LEFT_ROW_HEIGHT, 1));
-    leftPanel.scrollChild:SetHeight(math.max(#dungeonFilters * LEFT_ROW_HEIGHT, 1));
+    local sidebar = L:CreateSidebarList(leftPanel.scrollChild, {
+        rowHeight = LEFT_ROW_HEIGHT,
+        getLabel = function(item) return item.name end,
+        getMeta = function(item) return tostring(item.count or 0) end,
+        isSelected = function(item) return item.name == self.selectedDungeon end,
+        isEnabled = function(item) return item.enabled == true end,
+        isAccent = function(item) return item.name == "All Dungeons" end,
+        onSelect = function(item)
+            self.selectedDungeon = item.name;
+            self:Render();
+        end,
+    });
+    local leftHeight = math.max(sidebar:Render(dungeonFilters), 1);
+    self:UpdatePanelScroll(leftPanel, leftHeight);
+    leftPanel.scrollChild:SetHeight(leftHeight);
 
-    if (#rows == 0) then
+    if (#allRows == 0) then
+        self:RenderEmptyRightPanel(rightPanel, "No keystones found for this guild yet.");
+        self:UpdatePanelScroll(rightPanel, 60);
+    elseif (#rows == 0) then
         self:RenderEmptyRightPanel(rightPanel, "No keystones found for the selected dungeon.");
         self:UpdatePanelScroll(rightPanel, 60);
     else

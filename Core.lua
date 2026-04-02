@@ -637,6 +637,9 @@ function Core:RefreshApplication()
 		GOW.Wishlists:HideCoreFrames();
 	end
 
+	if (GOW.teams and GOW.teams.Hide) then
+		GOW.teams:Hide();
+	end
 	if (GOW.keystoneDetails) then
 		GOW.keystoneDetails:Hide();
 	end
@@ -676,6 +679,9 @@ function Core:ToggleWindow()
 	if (containerFrame:IsShown()) then
 		containerFrame:Hide();
 		Core:DestroyEventInviteDialog();
+		if (GOW.teams and GOW.teams.Hide) then
+			GOW.teams:Hide();
+		end
 		if (GOW.keystoneDetails) then
 			GOW.keystoneDetails:Hide();
 		end
@@ -774,6 +780,10 @@ end
 function Core:CreateTeams()
 	if (selectedTab ~= "teams") then
 		return;
+	end
+
+	if (GOW.teams and GOW.teams.Hide) then
+		GOW.teams:Hide();
 	end
 
 	if (ns.TEAMS == nil) then
@@ -2104,6 +2114,9 @@ function GuildsOfWow_OnAddonButtonClick(name, mouseButton)
 end
 
 function Core:DestroyTeamContainer()
+	if (GOW.teams and GOW.teams.DestroyTeamDetailsRoot) then
+		GOW.teams:DestroyTeamDetailsRoot();
+	end
 	if _G.GoWTeamTabContainer then
 		_G.GoWTeamTabContainer:ReleaseChildren();
 		_G.GoWTeamTabContainer:Release();

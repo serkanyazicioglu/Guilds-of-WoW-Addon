@@ -73,60 +73,6 @@ function GoWRecruitmentDetails:GetInviteLink(application)
     return application.name .. "-" .. application.realmNormalized;
 end
 
-function GoWRecruitmentDetails:CreateListRow(parent, application, index, total)
-    local L = GOW.Layout;
-    local row = CreateFrame("Button", nil, parent, "BackdropTemplate");
-    row:SetHeight(LEFT_ROW_HEIGHT);
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * LEFT_ROW_HEIGHT));
-    row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -((index - 1) * LEFT_ROW_HEIGHT));
-
-    row.highlight = L:CreateRowHighlight(row, 0.06);
-    row.separator = L:CreateRowSeparator(row);
-
-    local isSelected = (index == self.selectedApplicationIndex);
-    if (isSelected) then
-        L:ApplyBackdrop(row, L.constants.SUB_ACTIVE_COLOR.r, L.constants.SUB_ACTIVE_COLOR.g, L.constants.SUB_ACTIVE_COLOR.b, 0.22, L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.45);
-    else
-        L:ApplyBackdrop(row, 0, 0, 0, 0, 0, 0, 0, 0);
-    end
-
-    row.nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    row.nameText:SetPoint("LEFT", row, "LEFT", 10, 6);
-    row.nameText:SetPoint("RIGHT", row, "RIGHT", -70, 6);
-    row.nameText:SetJustifyH("LEFT");
-    row.nameText:SetWordWrap(false);
-    row.nameText:SetText(application.name or "");
-
-    row.classText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    row.classText:SetPoint("TOPLEFT", row.nameText, "BOTTOMLEFT", 0, -2);
-    row.classText:SetText("|cff888888" .. (application.class or "") .. "|r");
-    row.classText:SetJustifyH("LEFT");
-
-    row.statusText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    row.statusText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    row.statusText:SetJustifyH("RIGHT");
-    row.statusText:SetText("|cffaaaaaa" .. (application.status or "") .. "|r");
-
-    row:SetScript("OnEnter", function(selfFrame)
-        if (not isSelected) then
-            selfFrame.highlight:Show();
-        end
-    end);
-    row:SetScript("OnLeave", function(selfFrame)
-        selfFrame.highlight:Hide();
-    end);
-    row:SetScript("OnClick", function()
-        self.selectedApplicationIndex = index;
-        self:Render();
-    end);
-
-    if (index == total) then
-        row.separator:Hide();
-    end
-
-    return row;
-end
-
 function GoWRecruitmentDetails:AddDetailLine(parent, yOffset, label, value, multiline)
     local labelText = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     labelText:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, yOffset);
@@ -180,21 +126,6 @@ function GoWRecruitmentDetails:AddDurationDetailLine(parent, yOffset, label, tim
     return nextOffset, labelText, valueText;
 end
 
-function GoWRecruitmentDetails:CreateActionButton(parent, text, width, isActive, onClick)
-    local btn = GOW.Layout:CreateSubFilterBtn(parent, text, width);
-    btn:SetHeight(18);
-    GOW.Layout:SetButtonActive(btn, isActive);
-    if (not isActive) then
-        btn.btnText:SetText("|cff888888" .. text .. "|r");
-    end
-    btn:SetScript("OnClick", function()
-        if (isActive and onClick) then
-            onClick();
-        end
-    end);
-    return btn;
-end
-
 function GoWRecruitmentDetails:RenderDetails(panel, application)
     local content = panel.scrollChild;
     if (not application) then
@@ -233,33 +164,55 @@ function GoWRecruitmentDetails:RenderDetails(panel, application)
     buttonRow1:SetPoint("TOPLEFT", content, "TOPLEFT", 12, yOffset - 10);
     buttonRow1:SetSize(440, 22);
 
-    local inviteToGuildBtn = self:CreateActionButton(buttonRow1, inGuild and "In Guild" or "Invite to Guild", 110, not inGuild, function()
+    local inviteToGuildBtn = GOW.Layout:CreateActionButton(buttonRow1, {
+        text = inGuild and "In Guild" or "Invite to Guild",
+        width = 110,
+        isActive = not inGuild,
+        onClick = function()
         self.CORE:OpenDialogWithData("CONFIRM_INVITE_TO_GUILD", application.name, nil, inviteLink);
-    end);
+        end
+    });
     inviteToGuildBtn:SetPoint("LEFT", buttonRow1, "LEFT", 0, 0);
 
-    local inviteToPartyBtn = self:CreateActionButton(buttonRow1, "Invite to Party", 110, true, function()
+    local inviteToPartyBtn = GOW.Layout:CreateActionButton(buttonRow1, {
+        text = "Invite to Party",
+        width = 110,
+        onClick = function()
         C_PartyInfo.InviteUnit(inviteLink);
-    end);
+        end
+    });
     inviteToPartyBtn:SetPoint("LEFT", inviteToGuildBtn, "RIGHT", 8, 0);
 
-    local addFriendBtn = self:CreateActionButton(buttonRow1, "Add Friend", 110, friendInfo == nil, function()
+    local addFriendBtn = GOW.Layout:CreateActionButton(buttonRow1, {
+        text = "Add Friend",
+        width = 110,
+        isActive = friendInfo == nil,
+        onClick = function()
         self.CORE:OpenDialogWithData("CONFIRM_ADD_FRIEND", application.name, nil, inviteLink);
-    end);
+        end
+    });
     addFriendBtn:SetPoint("LEFT", inviteToPartyBtn, "RIGHT", 8, 0);
 
     local buttonRow2 = CreateFrame("Frame", nil, content);
     buttonRow2:SetPoint("TOPLEFT", buttonRow1, "BOTTOMLEFT", 0, -8);
     buttonRow2:SetSize(440, 22);
 
-    local whisperBtn = self:CreateActionButton(buttonRow2, "Whisper", 110, true, function()
+    local whisperBtn = GOW.Layout:CreateActionButton(buttonRow2, {
+        text = "Whisper",
+        width = 110,
+        onClick = function()
         self.CORE:OpenDialogWithData("WHISPER_PLAYER", nil, nil, inviteLink);
-    end);
+        end
+    });
     whisperBtn:SetPoint("LEFT", buttonRow2, "LEFT", 0, 0);
 
-    local copyBtn = self:CreateActionButton(buttonRow2, "Copy Link", 110, true, function()
-        self.CORE:OpenDialogWithData("COPY_TEXT", nil, nil, application.webUrl);
-    end);
+    local copyBtn = GOW.Layout:CreateActionButton(buttonRow2, {
+        text = "Copy Link",
+        width = 110,
+        onClick = function()
+        GOW.Layout:ShowCopyUrlDialog(self.GUI, application.webUrl, "Application URL");
+        end
+    });
     copyBtn:SetPoint("LEFT", whisperBtn, "RIGHT", 8, 0);
 
     local finalHeight = math.abs(yOffset) + 90;
@@ -269,6 +222,7 @@ end
 
 function GoWRecruitmentDetails:Render()
     local containerScrollFrame = self.UI.containerScrollFrame;
+    local L = GOW.Layout;
 
     self:Hide();
     containerScrollFrame:ReleaseChildren();
@@ -293,7 +247,7 @@ function GoWRecruitmentDetails:Render()
     self.nativeRoot:SetPoint("TOPRIGHT", hostFrame, "TOPRIGHT", -8, 0);
     self.nativeRoot:SetHeight(PANEL_HEIGHT);
 
-    local leftPanel = GOW.Layout:GetContainerPanel(self.nativeRoot, {
+    local leftPanel = L:GetContainerPanel(self.nativeRoot, {
         xOffset = 0,
         width = LEFT_PANEL_WIDTH,
         height = PANEL_HEIGHT,
@@ -303,7 +257,7 @@ function GoWRecruitmentDetails:Render()
         sideInset = 8,
         bottomInset = 8
     });
-    local rightPanel = GOW.Layout:GetContainerPanel(self.nativeRoot, {
+    local rightPanel = L:GetContainerPanel(self.nativeRoot, {
         xOffset = LEFT_PANEL_WIDTH + 6,
         width = RIGHT_PANEL_WIDTH,
         height = PANEL_HEIGHT,
@@ -314,11 +268,28 @@ function GoWRecruitmentDetails:Render()
         bottomInset = 8
     });
 
-    for index, application in ipairs(applications) do
-        self:CreateListRow(leftPanel.scrollChild, application, index, #applications);
-    end
+    local sidebar = L:CreateSidebarList(leftPanel.scrollChild, {
+        rowHeight = LEFT_ROW_HEIGHT,
+        getLabel = function(item) return item.name end,
+        getSubtitle = function(item) return item.class end,
+        getMeta = function(item) return item.status end,
+        isSelected = function(item)
+            return item == self:GetSelectedApplication();
+        end,
+        isEnabled = function() return true end,
+        onSelect = function(item, index)
+            self.selectedApplicationIndex = index;
+            self:Render();
+        end,
+        onPostCreate = function(row, item, index)
+            if (row.separator) then
+                row.separator:SetDrawLayer("OVERLAY");
+                row.separator:SetVertexColor(0.25, 0.25, 0.3, 0.28);
+            end
+        end,
+    });
 
-    local leftHeight = math.max(#applications * LEFT_ROW_HEIGHT, 1);
+    local leftHeight = math.max(sidebar:Render(applications), 1);
     leftPanel.scrollChild:SetHeight(leftHeight);
     self:UpdatePanelScroll(leftPanel, leftHeight);
 

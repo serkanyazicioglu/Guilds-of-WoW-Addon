@@ -36,6 +36,11 @@ function Helper:GetFactionIcon(faction)
     return factionIcons.Neutral;
 end
 
+function Helper:GetClassColor(classFileName)
+    local classColorSource = CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS;
+    return classColorSource and classColorSource[classFileName] or nil;
+end
+
 function Helper:GetGowGameVersionId()
     if (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE) then
         return 1;
