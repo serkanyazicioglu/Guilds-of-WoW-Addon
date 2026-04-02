@@ -13,6 +13,15 @@ local eventInviteRolesForFilter = {
     ["DPS"] = "DPS"
 };
 
+local LIST_PANEL_HEIGHT = 430;
+local EVENT_ROW_HEIGHT = 68;
+local EVENT_LIST_TOP_PADDING = 8;
+local EVENT_DETAIL_PANEL_HEIGHT = 470;
+local EVENT_DETAIL_LEFT_WIDTH = 220;
+local EVENT_DETAIL_RIGHT_WIDTH = 740;
+local EVENT_DETAIL_FILTER_ROW_HEIGHT = 32;
+local EVENT_DETAIL_ROSTER_ROW_HEIGHT = 38;
+
 local InviteStatuses = {
     {
         EnumCalendarStatus = Enum.CalendarStatus.Available,
@@ -80,11 +89,261 @@ function GoWEventDetails:new(core, ui, gui)
     self.CORE = core;
     self.UI = ui;
     self.GUI = gui;
+    self.rootHost = nil;
+    self.nativeRoot = nil;
+    self.listPanel = nil;
+    self.eventRowCount = 0;
     self.eventInviteDialog = nil;
+    self.eventInviteRoot = nil;
     self.eventInviteActiveEvent = nil;
     self.eventInviteCurrentRoleFilter = "All";
     self.eventInvitePendingMembers = {};
     return self;
+end
+
+function GoWEventDetails:Hide()
+    if (self.nativeRoot) then
+        self.nativeRoot:Hide();
+        self.nativeRoot:SetParent(nil);
+        self.nativeRoot = nil;
+    end
+
+    self.rootHost = nil;
+    self.listPanel = nil;
+    self.eventRowCount = 0;
+end
+
+function GoWEventDetails:UpdatePanelScroll(panel, contentHeight)
+    if (not panel or not panel.scrollFrame) then
+        return;
+    end
+
+    panel.scrollFrame.contentHeight = contentHeight or 0;
+    panel.scrollFrame:SetVerticalScroll(0);
+    if (panel.UpdateScrollBar) then
+        panel:UpdateScrollBar();
+    end
+end
+
+function GoWEventDetails:EnsureListPanel()
+    if (self.listPanel and self.nativeRoot and self.rootHost) then
+        return;
+    end
+
+    local containerScrollFrame = self.UI.containerScrollFrame;
+    local L = GOW.Layout;
+
+    self.rootHost = self.GUI:Create("SimpleGroup");
+    self.rootHost:SetFullWidth(true);
+    self.rootHost:SetFullHeight(true);
+    self.rootHost:SetHeight(LIST_PANEL_HEIGHT + 8);
+    containerScrollFrame:AddChild(self.rootHost);
+
+    local hostFrame = self.rootHost.frame;
+    self.nativeRoot = CreateFrame("Frame", nil, hostFrame);
+    self.nativeRoot:SetAllPoints(hostFrame);
+
+    local panelWidth = math.max(880, math.floor((hostFrame:GetWidth() > 0 and hostFrame:GetWidth() or 940) - 6));
+    self.listPanel = L:GetContainerPanel(self.nativeRoot, {
+        title = "EVENTS",
+        width = panelWidth,
+        height = LIST_PANEL_HEIGHT,
+        xOffset = 0,
+        topInset = 28,
+        sideInset = 10,
+        bottomInset = 10,
+    });
+    self.listPanel:SetPoint("TOPLEFT", self.nativeRoot, "TOPLEFT", 0, -1);
+    self.eventRowCount = 0;
+end
+
+function GoWEventDetails:GetAudienceText(event)
+    if (event.calendarType == GOW.consts.GUILD_EVENT) then
+        if (event.isEventMember) then
+            return "All guildies";
+        end
+
+        return "All guildies, not eligible";
+    end
+
+    local totalMembers = event.totalMembers or 0;
+    local text = tostring(totalMembers) .. ((totalMembers == 1) and " member" or " members");
+    if (not event.isEventMember) then
+        text = text .. ", not eligible";
+    end
+
+    return text;
+end
+
+function GoWEventDetails:AppendEvent(event)
+    if (not event) then
+        return false;
+    end
+
+    self:EnsureListPanel();
+
+    local L = GOW.Layout;
+    local index = (self.eventRowCount or 0) + 1;
+    local row = CreateFrame("Frame", nil, self.listPanel.scrollChild, "BackdropTemplate");
+    row:SetHeight(EVENT_ROW_HEIGHT);
+    row:SetPoint("TOPLEFT", self.listPanel.scrollChild, "TOPLEFT", 0, -(EVENT_LIST_TOP_PADDING + ((index - 1) * EVENT_ROW_HEIGHT)));
+    row:SetPoint("TOPRIGHT", self.listPanel.scrollChild, "TOPRIGHT", 0, -(EVENT_LIST_TOP_PADDING + ((index - 1) * EVENT_ROW_HEIGHT)));
+
+    row.highlight = L:CreateRowHighlight(row, 0.06);
+    row.separator = L:CreateRowSeparator(row);
+    L:ApplyBackdrop(row, 0, 0, 0, 0, 0, 0, 0, 0);
+
+    row:SetScript("OnEnter", function(selfFrame)
+        selfFrame.highlight:Show();
+    end);
+    row:SetScript("OnLeave", function(selfFrame)
+        selfFrame.highlight:Hide();
+    end);
+
+    local canAddEvent = event.isEventManager and GOW.Helper:IsInGameCalendarAccessible();
+    local eventIndex = select(1, self.CORE:searchForEvent(event));
+    local hasInviteAction = event.isEventManager and event.eventEndDate >= C_DateAndTime.GetServerTimeLocal();
+
+    local actionWidth = 0;
+    local actions = {};
+
+    table.insert(actions, {
+        text = "Copy Link",
+        width = 90,
+        isActive = true,
+        onClick = function()
+            GOW.Layout:ShowCopyUrlDialog(self.GUI, event.webUrl, "Event URL");
+        end
+    });
+    actionWidth = actionWidth + 90;
+
+    if (canAddEvent and eventIndex < 0) then
+        table.insert(actions, {
+            text = "Copy Key",
+            width = 90,
+            isActive = true,
+            onClick = function()
+                self.CORE:OpenDialogWithData("COPY_TEXT", nil, nil, event.eventKey);
+            end
+        });
+        actionWidth = actionWidth + 98;
+    end
+
+    if (hasInviteAction) then
+        table.insert(actions, {
+            text = "Invite Attendees",
+            width = 120,
+            isActive = true,
+            onClick = function()
+                if (eventIndex > 0) then
+                    self.CORE:OpenDialog("INVITE_TO_PARTY_USE_CALENDAR");
+                else
+                    self:OpenEventAttendeesInviteDialog(event);
+                end
+            end
+        });
+        actionWidth = actionWidth + 128;
+    end
+
+    if (canAddEvent) then
+        local createButtonText = "Create Event";
+        local createButtonActive = true;
+        local createButtonClick = function()
+            self.CORE:CreateCalendarEvent(event);
+        end
+
+        if (eventIndex == 0) then
+            createButtonText = "Event Passed";
+            createButtonActive = false;
+            createButtonClick = nil;
+        elseif (eventIndex > 0) then
+            createButtonText = "Event Created";
+            createButtonActive = false;
+            createButtonClick = nil;
+        end
+
+        table.insert(actions, {
+            text = createButtonText,
+            width = 104,
+            isActive = createButtonActive,
+            onClick = createButtonClick
+        });
+        actionWidth = actionWidth + 112;
+    end
+
+    local buttonRight = -10;
+    for _, action in ipairs(actions) do
+        local button = L:CreateActionButton(row, action);
+        button:SetPoint("TOPRIGHT", row, "TOPRIGHT", buttonRight, -8);
+        buttonRight = buttonRight - action.width - 8;
+    end
+
+    local rightInset = math.max(180, actionWidth + 24);
+
+    local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+    nameText:SetPoint("TOPLEFT", row, "TOPLEFT", 12, -8);
+    nameText:SetPoint("RIGHT", row, "RIGHT", -rightInset, 0);
+    nameText:SetJustifyH("LEFT");
+    nameText:SetWordWrap(false);
+    nameText:SetText(event.title or "");
+
+    local detailAnchor = CreateFrame("Frame", nil, row);
+    detailAnchor:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -4);
+    detailAnchor:SetPoint("RIGHT", row, "RIGHT", -rightInset, 0);
+    detailAnchor:SetHeight(18);
+
+    local calendarBadge = L:CreateTextBadge(detailAnchor, {
+        text = (event.calendarType == GOW.consts.GUILD_EVENT) and "Guild Event" or "Player Event",
+        minWidth = 36,
+        paddingX = 10,
+    });
+    calendarBadge:SetPoint("LEFT", detailAnchor, "LEFT", 0, 0);
+    calendarBadge:EnableMouse(true);
+    calendarBadge:SetScript("OnEnter", function(selfFrame)
+        local tooltip = LibQTip:Acquire("EventCalendarTypeTooltip", 1, "LEFT");
+        GOW.tooltip = tooltip;
+
+        tooltip:AddHeader("|cffffcc00About Event Attendances");
+        local line = tooltip:AddLine();
+        tooltip:SetCell(line, 1, "When no filter is selected in-game addon will create 'Guild Event' and all guildies will be able to sign up. This selection is suitable for large meetings. Site attendance data will not migrate to in-game with this selection but will migrate from game to GoW.\r\n\r\nWhen filtration is enabled or audience is set to team event, addon will create 'Player Event' and will only invite eligible characters. Attendance synchronization will work bidirectional. Player events cannot invite more than 100 members so you should narrow the audience by item level or change audience to team event.", "LEFT", 1, nil, 0, 0, 300, 50);
+        tooltip:SmartAnchorTo(selfFrame);
+        tooltip:Show();
+    end);
+    calendarBadge:SetScript("OnLeave", function()
+        LibQTip:Release(GOW.tooltip);
+        GOW.tooltip = nil;
+    end);
+
+    local metaText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    metaText:SetPoint("LEFT", calendarBadge, "RIGHT", 8, 0);
+    metaText:SetPoint("RIGHT", detailAnchor, "RIGHT", 0, 0);
+    metaText:SetJustifyH("LEFT");
+    metaText:SetWordWrap(false);
+
+    local metaParts = {
+        (event.dateText or "") .. ((event.hourText and event.hourText ~= "") and (", " .. event.hourText) or ""),
+        event.durationText or "",
+        self:GetAudienceText(event)
+    };
+    if (event.team and event.team ~= "") then
+        table.insert(metaParts, event.team);
+    end
+    metaText:SetText("|cffaaaaaa" .. table.concat(metaParts, "  •  ") .. "|r");
+
+    local description = event.description;
+    if (description and description ~= "") then
+        local descriptionText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        descriptionText:SetPoint("TOPLEFT", detailAnchor, "BOTTOMLEFT", 0, -6);
+        descriptionText:SetPoint("RIGHT", row, "RIGHT", -rightInset, 0);
+        descriptionText:SetJustifyH("LEFT");
+        descriptionText:SetWordWrap(false);
+        descriptionText:SetText("|cff888888" .. description .. "|r");
+    end
+
+    self.eventRowCount = index;
+    self.listPanel.scrollChild:SetHeight(EVENT_LIST_TOP_PADDING + (index * EVENT_ROW_HEIGHT));
+    self:UpdatePanelScroll(self.listPanel, EVENT_LIST_TOP_PADDING + (index * EVENT_ROW_HEIGHT));
+    return true;
 end
 
 function GoWEventDetails:NormalizeCharacterKey(characterName)
@@ -241,244 +500,271 @@ function GoWEventDetails:GetInvitableMemberNames(rows)
     return inviteNames;
 end
 
+function GoWEventDetails:DestroyEventInviteRoot()
+    if (self.eventInviteRoot) then
+        self.eventInviteRoot:Hide();
+        self.eventInviteRoot:SetParent(nil);
+        self.eventInviteRoot = nil;
+    end
+end
+
+function GoWEventDetails:BuildEventInviteFilters(event)
+    local counts = {
+        All = 0,
+        Tank = 0,
+        Healer = 0,
+        DPS = 0,
+    };
+
+    for _, row in ipairs(self:BuildEventInviteRows(event, "All")) do
+        counts.All = counts.All + 1;
+        if (counts[row.roleName] ~= nil) then
+            counts[row.roleName] = counts[row.roleName] + 1;
+        end
+    end
+
+    return {
+        { key = "All", label = "All Roles", count = counts.All },
+        { key = "Tank", label = "Tank", count = counts.Tank },
+        { key = "Healer", label = "Healer", count = counts.Healer },
+        { key = "DPS", label = "DPS", count = counts.DPS },
+    };
+end
+
+function GoWEventDetails:CreateEventInviteButton(parent, row)
+    local L = GOW.Layout;
+    return L:CreateActionButton(parent, {
+        text = row.canInvite and "Invite" or row.buttonText,
+        width = 76,
+        isActive = row.canInvite,
+        onClick = function()
+            GOW.Helper:InviteToParty(row.inviteName);
+            self.eventInvitePendingMembers[row.inviteName] = true;
+            self:RenderEventInviteRows();
+
+            C_Timer.After(60, function()
+                self.eventInvitePendingMembers[row.inviteName] = nil;
+                if (self.eventInviteDialog and self.eventInviteDialog:IsShown()) then
+                    self:RenderEventInviteRows();
+                end
+            end);
+        end
+    });
+end
+
+function GoWEventDetails:CreateEventInviteRow(parent, row, index, total)
+    local L = GOW.Layout;
+    local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate");
+    frame:SetHeight(EVENT_DETAIL_ROSTER_ROW_HEIGHT);
+    frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * EVENT_DETAIL_ROSTER_ROW_HEIGHT));
+    frame:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -((index - 1) * EVENT_DETAIL_ROSTER_ROW_HEIGHT));
+
+    frame.highlight = L:CreateRowHighlight(frame, 0.04);
+    frame.separator = L:CreateRowSeparator(frame);
+
+    frame.factionIcon = frame:CreateTexture(nil, "ARTWORK");
+    frame.factionIcon:SetSize(16, 16);
+    frame.factionIcon:SetPoint("LEFT", frame, "LEFT", 10, 0);
+    frame.factionIcon:SetTexture(GOW.Helper:GetFactionIcon(row.faction));
+
+    local nameText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    nameText:SetPoint("LEFT", frame.factionIcon, "RIGHT", 8, 0);
+    nameText:SetWidth(135);
+    nameText:SetJustifyH("LEFT");
+    nameText:SetWordWrap(false);
+
+    local _, classFile = GetClassInfo(row.classId or 0);
+    local classColor = GOW.Helper:GetClassColor(classFile);
+    if (classColor) then
+        nameText:SetText(string.format("|cff%02x%02x%02x%s|r", classColor.r * 255, classColor.g * 255, classColor.b * 255, row.name or ""));
+    else
+        nameText:SetText(row.name or "");
+    end
+
+    local realmText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    realmText:SetPoint("LEFT", frame, "LEFT", 170, 0);
+    realmText:SetWidth(130);
+    realmText:SetJustifyH("LEFT");
+    realmText:SetWordWrap(false);
+    realmText:SetText("|cffaaaaaa" .. (row.realm or "") .. "|r");
+
+    local classText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    classText:SetPoint("LEFT", frame, "LEFT", 300, 0);
+    classText:SetWidth(100);
+    classText:SetJustifyH("LEFT");
+    classText:SetWordWrap(false);
+    classText:SetText("|cffdddddd" .. (row.className or (GetClassInfo(row.classId or 0) or "Unknown")) .. "|r");
+
+    local roleContainer = CreateFrame("Frame", nil, frame);
+    roleContainer:SetPoint("LEFT", frame, "LEFT", 405, 0);
+    roleContainer:SetSize(120, 18);
+
+    local roleData = roles[row.roleId];
+    if (roleData and roleData.iconTexCoords) then
+        local roleIcon = roleContainer:CreateTexture(nil, "ARTWORK");
+        roleIcon:SetTexture("Interface/LFGFrame/UI-LFG-ICON-PORTRAITROLES");
+        roleIcon:SetSize(16, 16);
+        roleIcon:SetPoint("LEFT", roleContainer, "LEFT", 0, 0);
+        roleIcon:SetTexCoord(unpack(roleData.iconTexCoords));
+    end
+
+    local specText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    specText:SetPoint("LEFT", roleContainer, "LEFT", 20, 0);
+    specText:SetWidth(100);
+    specText:SetJustifyH("LEFT");
+    specText:SetWordWrap(false);
+    specText:SetText(row.specName or row.roleName or "");
+
+    local statusText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    statusText:SetPoint("LEFT", frame, "LEFT", 535, 0);
+    statusText:SetWidth(125);
+    statusText:SetJustifyH("LEFT");
+    statusText:SetWordWrap(false);
+    statusText:SetText((row.inviteStatusInfo and row.inviteStatusInfo.Name) or "Unknown");
+    if (row.inviteStatusInfo and row.inviteStatusInfo.Color) then
+        statusText:SetTextColor(row.inviteStatusInfo.Color.r, row.inviteStatusInfo.Color.g, row.inviteStatusInfo.Color.b);
+    end
+
+    frame.inviteButton = self:CreateEventInviteButton(frame, row);
+    frame.inviteButton:SetPoint("RIGHT", frame, "RIGHT", -6, 0);
+
+    if (index == total) then
+        frame.separator:Hide();
+    end
+
+    return frame;
+end
+
 function GoWEventDetails:RenderEventInviteRows()
     if (self.eventInviteDialog == nil or self.eventInviteActiveEvent == nil) then
         return;
     end
 
-    self.eventInviteDialog:ReleaseChildren();
-
-    local controlsGroup = self.GUI:Create("SimpleGroup");
-    controlsGroup:SetLayout("Flow");
-    controlsGroup:SetWidth(740);
-    controlsGroup:SetHeight(30);
-
-    local roleFilter = self.GUI:Create("Dropdown");
-    roleFilter:SetLabel("  Filter by Role");
-    roleFilter:SetList(eventInviteRolesForFilter, { "All", "Tank", "Healer", "DPS" });
-    roleFilter:SetValue(self.eventInviteCurrentRoleFilter);
-    roleFilter:SetWidth(150);
-    roleFilter.label:SetFontObject(GameFontNormal);
-    roleFilter:SetCallback("OnValueChanged", function(widget)
-        self.eventInviteCurrentRoleFilter = widget:GetValue() or "All";
-        self:RenderEventInviteRows();
-    end);
-    controlsGroup:AddChild(roleFilter);
-
-    local currentRows = self:BuildEventInviteRows(self.eventInviteActiveEvent, self.eventInviteCurrentRoleFilter);
+    local L = GOW.Layout;
+    local windowFrame = self.eventInviteDialog.frame;
+    local currentEvent = self.eventInviteActiveEvent;
+    local currentRows = self:BuildEventInviteRows(currentEvent, self.eventInviteCurrentRoleFilter);
     local inviteAllMembers = self:GetInvitableMemberNames(currentRows);
+    local filters = self:BuildEventInviteFilters(currentEvent);
 
-    local marginGap = self.GUI:Create("SimpleGroup");
-    marginGap:SetLayout("Flow");
-    marginGap:SetHeight(40);
-    marginGap:SetWidth(5);
-    controlsGroup:AddChild(marginGap);
+    self:DestroyEventInviteRoot();
 
-    local inviteAllButton = self.GUI:Create("Button");
-    inviteAllButton:SetText("Invite Members");
-    inviteAllButton:SetWidth(150);
-    inviteAllButton:SetDisabled(#inviteAllMembers == 0);
-    inviteAllButton:SetCallback("OnEnter", function(widget)
-        GameTooltip:SetOwner(widget.frame, "ANCHOR_TOP");
-        GameTooltip:SetText("Invite Attending and Confirmed players to your Party.", 1, 1, 1, 1, true);
-        GameTooltip:Show();
-    end);
-    inviteAllButton:SetCallback("OnLeave", function()
-        GameTooltip:Hide();
-    end);
-    inviteAllButton:SetCallback("OnClick", function()
-        if (#inviteAllMembers > 0) then
-            self.CORE:OpenDialogWithData("CONFIRM_INVITE_TO_PARTY", #inviteAllMembers, nil, { inviteNames = inviteAllMembers });
-        else
-            self.CORE:OpenDialog("INVITE_TO_PARTY_NOONE_FOUND");
-        end
-    end);
-    controlsGroup:AddChild(inviteAllButton);
+    local nativeRoot = CreateFrame("Frame", nil, windowFrame);
+    nativeRoot:SetPoint("TOPLEFT", windowFrame, "TOPLEFT", 12, -32);
+    nativeRoot:SetPoint("BOTTOMRIGHT", windowFrame, "BOTTOMRIGHT", -12, 12);
+    self.eventInviteRoot = nativeRoot;
 
-    self.eventInviteDialog:AddChild(controlsGroup);
+    local leftPanel = L:GetContainerPanel(nativeRoot, {
+        title = "ROLES",
+        width = EVENT_DETAIL_LEFT_WIDTH,
+        height = EVENT_DETAIL_PANEL_HEIGHT,
+        xOffset = 0,
+        topInset = 34,
+        sideInset = 8,
+        bottomInset = 8,
+    });
+    leftPanel:SetPoint("TOPLEFT", nativeRoot, "TOPLEFT", 6, -6);
 
-    local eventRosterContainer = self.GUI:Create("InlineGroup");
-    eventRosterContainer:SetFullHeight(true);
-    eventRosterContainer:SetLayout("Fill");
-    eventRosterContainer:SetFullWidth(true);
-    self.eventInviteDialog:AddChild(eventRosterContainer);
+    local rightPanel = L:GetContainerPanel(nativeRoot, {
+        title = "ATTENDANCE",
+        width = EVENT_DETAIL_RIGHT_WIDTH,
+        height = EVENT_DETAIL_PANEL_HEIGHT,
+        xOffset = EVENT_DETAIL_LEFT_WIDTH + 12,
+        topInset = 66,
+        sideInset = 8,
+        bottomInset = 8,
+    });
+    rightPanel:SetPoint("TOPLEFT", nativeRoot, "TOPLEFT", EVENT_DETAIL_LEFT_WIDTH + 12, -6);
 
-    local rowsContainer = self.GUI:Create("ScrollFrame");
-    rowsContainer:SetFullHeight(true);
-    rowsContainer:SetLayout("List");
-    rowsContainer:SetFullWidth(true);
-    eventRosterContainer:AddChild(rowsContainer);
-
-    local headerRow = self.GUI:Create("SimpleGroup");
-    headerRow:SetLayout("Flow");
-    headerRow:SetFullWidth(true);
-    headerRow:SetHeight(24);
-    headerRow.frame:SetFrameLevel(2);
-
-    local headerColorR = (NORMAL_FONT_COLOR and NORMAL_FONT_COLOR.r) or 1;
-    local headerColorG = (NORMAL_FONT_COLOR and NORMAL_FONT_COLOR.g) or 0.82;
-    local headerColorB = (NORMAL_FONT_COLOR and NORMAL_FONT_COLOR.b) or 0;
-
-    local factionHeaderSpacer = self.GUI:Create("Label");
-    factionHeaderSpacer:SetText(" ");
-    factionHeaderSpacer:SetWidth(30);
-    headerRow:AddChild(factionHeaderSpacer);
-
-    local nameHeader = self.GUI:Create("Label");
-    nameHeader:SetText("Name");
-    nameHeader:SetWidth(160);
-    nameHeader:SetFontObject(GameFontNormal);
-    nameHeader:SetColor(headerColorR, headerColorG, headerColorB);
-    headerRow:AddChild(nameHeader);
-    local realmHeader = self.GUI:Create("Label");
-    realmHeader:SetText("Realm");
-    realmHeader:SetWidth(160);
-    realmHeader:SetFontObject(GameFontNormal);
-    realmHeader:SetColor(headerColorR, headerColorG, headerColorB);
-    headerRow:AddChild(realmHeader);
-
-    local classHeader = self.GUI:Create("Label");
-    classHeader:SetText("Class");
-    classHeader:SetWidth(130);
-    classHeader:SetFontObject(GameFontNormal);
-    classHeader:SetColor(headerColorR, headerColorG, headerColorB);
-    headerRow:AddChild(classHeader);
-
-    local roleHeader = self.GUI:Create("Label");
-    roleHeader:SetText("Role");
-    roleHeader:SetWidth(130);
-    roleHeader:SetFontObject(GameFontNormal);
-    roleHeader:SetColor(headerColorR, headerColorG, headerColorB);
-    headerRow:AddChild(roleHeader);
-
-    local statusHeader = self.GUI:Create("Label");
-    statusHeader:SetText("Invitation Status");
-    statusHeader:SetWidth(180);
-    statusHeader:SetFontObject(GameFontNormal);
-    statusHeader:SetColor(headerColorR, headerColorG, headerColorB);
-    headerRow:AddChild(statusHeader);
-
-    rowsContainer:AddChild(headerRow);
-
-    for _, row in ipairs(currentRows) do
-        local memberContainer = self.GUI:Create("SimpleGroup");
-        memberContainer:SetLayout("Flow");
-        memberContainer:SetFullWidth(true);
-        memberContainer:SetHeight(30);
-        memberContainer.frame:SetFrameLevel(2);
-
-        local factionIcon = self.GUI:Create("Label");
-        factionIcon:SetImage(GOW.Helper:GetFactionIcon(row.faction));
-        factionIcon:SetImageSize(30, 30);
-        factionIcon:SetWidth(30);
-        factionIcon:SetHeight(30);
-        memberContainer:AddChild(factionIcon);
-
-        local memberNameLabel = self.GUI:Create("Label");
-        memberNameLabel:SetWidth(160);
-        memberNameLabel:SetText(row.name);
-        memberNameLabel:SetFontObject(GameFontNormal);
-
-        local _, classFile = GetClassInfo(row.classId);
-        if (classFile) then
-            local getClassColor = GetClassColorObj or C_ClassColor.GetClassColor;
-            local classColor = getClassColor(classFile);
-            memberNameLabel:SetColor(classColor.r, classColor.g, classColor.b);
-        end
-        memberContainer:AddChild(memberNameLabel);
-        local realmLabel = self.GUI:Create("Label");
-        realmLabel:SetWidth(160);
-        realmLabel:SetText(row.realm or "");
-        realmLabel:SetFontObject(GameFontNormal);
-        memberContainer:AddChild(realmLabel);
-
-        local classLabel = self.GUI:Create("Label");
-        classLabel:SetWidth(130);
-        classLabel:SetText(row.className or (GetClassInfo(row.classId) or "Unknown"));
-        classLabel:SetFontObject(GameFontNormal);
-        memberContainer:AddChild(classLabel);
-
-        local roleAndIconGroup = self.GUI:Create("SimpleGroup");
-        roleAndIconGroup:SetWidth(130);
-        roleAndIconGroup:SetHeight(30);
-        roleAndIconGroup:SetLayout("Flow");
-
-        local roleData = roles[row.roleId];
-        local coords = roleData and roleData.iconTexCoords;
-        if coords then
-            local roleIcon = self.GUI:Create("Icon");
-            roleIcon:SetImageSize(16, 16);
-            roleIcon:SetWidth(16);
-            roleIcon:SetHeight(30);
-            roleIcon:SetImage("Interface/LFGFrame/UI-LFG-ICON-PORTRAITROLES");
-            roleIcon.image:SetPoint("TOP", roleIcon.frame, "TOP", -3, -6);
-            roleIcon.image:SetTexCoord(unpack(coords));
-            roleIcon:SetCallback("OnEnter", function(self)
-                local tooltip = LibQTip:Acquire("RoleIconTooltip", 1, "LEFT");
-                GOW.tooltip = tooltip;
-
-                tooltip:AddHeader("|cffffcc00" .. (roleData.name or row.roleName or "Role"));
-                tooltip:SmartAnchorTo(self.frame);
-                tooltip:Show();
-            end);
-            roleIcon:SetCallback("OnLeave", function()
-                LibQTip:Release(GOW.tooltip);
-                GOW.tooltip = nil;
-            end);
-            roleAndIconGroup:AddChild(roleIcon);
-        end
-
-        local specLabel = self.GUI:Create("Label");
-        specLabel:SetWidth(110);
-        specLabel:SetText(row.specName);
-        specLabel:SetFontObject(GameFontNormal);
-        roleAndIconGroup:AddChild(specLabel);
-
-        memberContainer:AddChild(roleAndIconGroup);
-
-        local rowIsAttendanceEligible = row.roleId > 0 and row.inviteStatusInfo and row.inviteStatusInfo.IsEligibleToAttend == true;
-        local statusLabel = self.GUI:Create("Label");
-        statusLabel:SetWidth(180);
-        statusLabel:SetText((row.inviteStatusInfo and row.inviteStatusInfo.Name) or "Unknown");
-        statusLabel:SetFontObject(GameFontNormal);
-        if (row.inviteStatusInfo and row.inviteStatusInfo.Color) then
-            statusLabel:SetColor(row.inviteStatusInfo.Color.r, row.inviteStatusInfo.Color.g, row.inviteStatusInfo.Color.b);
-        end
-        memberContainer:AddChild(statusLabel);
-
-        if (rowIsAttendanceEligible) then
-            local inviteButton = self.GUI:Create("Button");
-            inviteButton:SetWidth(125);
-            if (row.canInvite) then
-                inviteButton:SetText("Invite");
-                inviteButton:SetDisabled(false);
+    local inviteAllButton = L:CreateActionButton(rightPanel, {
+        text = "Invite Members",
+        width = 120,
+        isActive = #inviteAllMembers > 0,
+        onClick = function()
+            if (#inviteAllMembers > 0) then
+                self.CORE:OpenDialogWithData("CONFIRM_INVITE_TO_PARTY", #inviteAllMembers, nil, { inviteNames = inviteAllMembers });
             else
-                inviteButton:SetText(row.buttonText);
-                inviteButton:SetDisabled(true);
+                self.CORE:OpenDialog("INVITE_TO_PARTY_NOONE_FOUND");
             end
-
-            inviteButton:SetCallback("OnClick", function()
-                GOW.Helper:InviteToParty(row.inviteName);
-                self.eventInvitePendingMembers[row.inviteName] = true;
-                self:RenderEventInviteRows();
-
-                C_Timer.After(60, function()
-                    self.eventInvitePendingMembers[row.inviteName] = nil;
-                    if (self.eventInviteDialog and self.eventInviteDialog:IsShown()) then
-                        self:RenderEventInviteRows();
-                    end
-                end);
-            end);
-            memberContainer:AddChild(inviteButton);
-        else
-            local buttonSpacer = self.GUI:Create("Label");
-            buttonSpacer:SetText("");
-            buttonSpacer:SetWidth(110);
-            memberContainer:AddChild(buttonSpacer);
         end
+    });
+    inviteAllButton:SetPoint("RIGHT", rightPanel.headerBar, "RIGHT", 0, 0);
 
-        rowsContainer:AddChild(memberContainer);
+    local sidebar = L:CreateSidebarList(leftPanel.scrollChild, {
+        rowHeight = EVENT_DETAIL_FILTER_ROW_HEIGHT,
+        getLabel = function(item) return item.label end,
+        getMeta = function(item) return tostring(item.count or 0) end,
+        isSelected = function(item) return item.key == self.eventInviteCurrentRoleFilter end,
+        isEnabled = function(item) return item.key == "All" or (item.count or 0) > 0 end,
+        isAccent = function(item) return item.key == "All" end,
+        onSelect = function(item)
+            self.eventInviteCurrentRoleFilter = item.key;
+            self:RenderEventInviteRows();
+        end,
+    });
+    local leftHeight = math.max(sidebar:Render(filters), 1);
+    leftPanel.scrollChild:SetHeight(leftHeight);
+    self:UpdatePanelScroll(leftPanel, leftHeight);
+
+    local summaryFrame = CreateFrame("Frame", nil, rightPanel);
+    summaryFrame:SetPoint("TOPLEFT", rightPanel, "TOPLEFT", 10, -30);
+    summaryFrame:SetPoint("TOPRIGHT", rightPanel, "TOPRIGHT", -10, -30);
+    summaryFrame:SetHeight(28);
+
+    local audienceBadge = L:CreateTextBadge(summaryFrame, {
+        text = self:GetAudienceText(currentEvent),
+        minWidth = 32,
+        paddingX = 10,
+    });
+    audienceBadge:SetPoint("LEFT", summaryFrame, "LEFT", 0, 0);
+
+    local summaryText = summaryFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    summaryText:SetPoint("LEFT", audienceBadge, "RIGHT", 8, 0);
+    summaryText:SetPoint("RIGHT", summaryFrame, "RIGHT", 0, 0);
+    summaryText:SetJustifyH("LEFT");
+    summaryText:SetWordWrap(false);
+    summaryText:SetText("|cff888888" .. (currentEvent.title or "") .. "|r");
+
+    local headerRow = CreateFrame("Frame", nil, rightPanel.scrollChild);
+    headerRow:SetHeight(18);
+    headerRow:SetPoint("TOPLEFT", rightPanel.scrollChild, "TOPLEFT", 0, 0);
+    headerRow:SetPoint("TOPRIGHT", rightPanel.scrollChild, "TOPRIGHT", 0, 0);
+
+    local function CreateHeaderLabel(text, xOffset, width)
+        local label = headerRow:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        label:SetPoint("LEFT", headerRow, "LEFT", xOffset, 0);
+        label:SetWidth(width);
+        label:SetJustifyH("LEFT");
+        label:SetText("|cffaaaaaa" .. text .. "|r");
     end
+
+    CreateHeaderLabel("Name", 34, 135);
+    CreateHeaderLabel("Realm", 170, 130);
+    CreateHeaderLabel("Class", 300, 100);
+    CreateHeaderLabel("Role", 405, 120);
+    CreateHeaderLabel("Status", 535, 125);
+
+    local rowsAnchor = CreateFrame("Frame", nil, rightPanel.scrollChild);
+    rowsAnchor:SetPoint("TOPLEFT", headerRow, "BOTTOMLEFT", 0, -4);
+    rowsAnchor:SetPoint("TOPRIGHT", headerRow, "BOTTOMRIGHT", 0, -4);
+    rowsAnchor:SetHeight(math.max(1, #currentRows * EVENT_DETAIL_ROSTER_ROW_HEIGHT));
+
+    if (#currentRows == 0) then
+        local emptyText = rightPanel.scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+        emptyText:SetPoint("TOPLEFT", rowsAnchor, "TOPLEFT", 10, -10);
+        emptyText:SetText("|cff888888No attendees found for this role.|r");
+    else
+        for index, row in ipairs(currentRows) do
+            self:CreateEventInviteRow(rowsAnchor, row, index, #currentRows);
+        end
+    end
+
+    local contentHeight = 22 + 4 + (#currentRows * EVENT_DETAIL_ROSTER_ROW_HEIGHT);
+    if (#currentRows == 0) then
+        contentHeight = 70;
+    end
+    rightPanel.scrollChild:SetHeight(contentHeight);
+    self:UpdatePanelScroll(rightPanel, contentHeight);
 end
 
 function GoWEventDetails:SetBackdrop()
@@ -524,6 +810,7 @@ function GoWEventDetails:OpenEventAttendeesInviteDialog(event)
         self.eventInviteDialog.closebutton:SetPoint("TOPRIGHT", -2, -2);
         self:SetBackdrop();
         self.eventInviteDialog:SetCallback("OnClose", function()
+            self:DestroyEventInviteRoot();
             self:DestroyEventInviteDialog();
         end);
     end
@@ -540,6 +827,7 @@ end
 
 function GoWEventDetails:DestroyEventInviteDialog()
     if (self.eventInviteDialog) then
+        self:DestroyEventInviteRoot();
         self.eventInviteDialog:ReleaseChildren();
         self.eventInviteDialog:Release();
         self.eventInviteDialog = nil;

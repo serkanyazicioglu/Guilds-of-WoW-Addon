@@ -637,6 +637,9 @@ function Core:RefreshApplication()
 		GOW.Wishlists:HideCoreFrames();
 	end
 
+	if (GOW.eventDetails and GOW.eventDetails.Hide) then
+		GOW.eventDetails:Hide();
+	end
 	if (GOW.teams and GOW.teams.Hide) then
 		GOW.teams:Hide();
 	end
@@ -679,6 +682,9 @@ function Core:ToggleWindow()
 	if (containerFrame:IsShown()) then
 		containerFrame:Hide();
 		Core:DestroyEventInviteDialog();
+		if (GOW.eventDetails and GOW.eventDetails.Hide) then
+			GOW.eventDetails:Hide();
+		end
 		if (GOW.teams and GOW.teams.Hide) then
 			GOW.teams:Hide();
 		end
@@ -717,6 +723,9 @@ function Core:CreateUpcomingEvents()
 	end
 
 	containerScrollFrame:ReleaseChildren();
+	if (GOW.eventDetails and GOW.eventDetails.Hide) then
+		GOW.eventDetails:Hide();
+	end
 
 	if (ns.UPCOMING_EVENTS == nil) then
 		Core:AppendMessage(
@@ -760,7 +769,7 @@ function Core:CreateUpcomingEvents()
 				local upcomingEvent = ns.UPCOMING_EVENTS.events[i];
 
 				if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
-					if (Core:AppendCalendarList(upcomingEvent)) then
+					if (GOW.eventDetails and GOW.eventDetails.AppendEvent and GOW.eventDetails:AppendEvent(upcomingEvent)) then
 						hasAnyData = true;
 					end
 				end
@@ -1018,12 +1027,26 @@ function Core:AppendMessage(message, appendReloadUIButton)
 		blankMargin2:SetHeight(10);
 		itemGroup:AddChild(blankMargin2);
 
-		local reloadUIButton = GOW.GUI:Create("Button");
-		reloadUIButton:SetText("Reload UI");
-		reloadUIButton:SetCallback("OnClick", function()
-			ReloadUI();
-		end);
-		itemGroup:AddChild(reloadUIButton);
+		local buttonHost = GOW.GUI:Create("SimpleGroup");
+		buttonHost:SetLayout("Manual");
+		buttonHost:SetFullWidth(true);
+		buttonHost:SetHeight(28);
+		itemGroup:AddChild(buttonHost);
+
+		local existingChildren = { buttonHost.frame:GetChildren() };
+		for _, child in ipairs(existingChildren) do
+			child:Hide();
+			child:SetParent(nil);
+		end
+
+		local reloadUIButton = GOW.Layout:CreateActionButton(buttonHost.frame, {
+			text = "Reload UI",
+			width = 90,
+			onClick = function()
+				ReloadUI();
+			end
+		});
+		reloadUIButton:SetPoint("TOPLEFT", buttonHost.frame, "TOPLEFT", 0, -2);
 	end
 
 	containerScrollFrame:AddChild(itemGroup);
@@ -1235,7 +1258,7 @@ function Core:AppendCalendarList(event)
 	copyLinkButton:SetText("Copy Link");
 	copyLinkButton:SetWidth(100);
 	copyLinkButton:SetCallback("OnClick", function()
-		Core:OpenDialogWithData("COPY_TEXT", nil, nil, event.webUrl);
+		GOW.Layout:ShowCopyUrlDialog(GOW.GUI, event.webUrl, "Event URL");
 	end);
 	buttonsGroup:AddChild(copyLinkButton);
 

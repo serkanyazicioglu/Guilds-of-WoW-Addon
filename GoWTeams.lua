@@ -75,6 +75,9 @@ function GoWTeams:UpdatePanelScroll(panel, contentHeight)
 
     panel.scrollFrame.contentHeight = contentHeight or 0;
     panel.scrollFrame:SetVerticalScroll(0);
+    if (panel.UpdateScrollBar) then
+        panel:UpdateScrollBar();
+    end
 end
 
 function GoWTeams:EnsureListPanel()

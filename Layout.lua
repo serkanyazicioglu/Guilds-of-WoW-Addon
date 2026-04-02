@@ -6,6 +6,7 @@ GOW.Layout = Layout;
 Layout.constants = {
     GOW_ACCENT_COLOR = { r = 0.1, g = 0.8, b = 0.3 },
     SUB_ACTIVE_COLOR = { r = 0.1, g = 0.8, b = 0.3, a = 0.3 },
+    SUB_ACTIVE_HOVER_COLOR = { r = 0.14, g = 0.9, b = 0.36, a = 0.42 },
     SUB_INACTIVE_COLOR = { r = 0.15, g = 0.15, b = 0.18, a = 0.8 },
     STANDARD_BACKDROP = {
         bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -46,6 +47,7 @@ function Layout:CreateActionButton(parent, options)
     btn:SetHeight(opts.height or 18);
     btn:SetWidth(width);
     self:SetButtonActive(btn, isActive);
+    btn.isActionActive = isActive;
 
     if (not isActive) then
         btn.btnText:SetText("|cff888888" .. text .. "|r");
@@ -63,6 +65,17 @@ function Layout:CreateActionButton(parent, options)
         end
 
         onClick(btn);
+    end);
+    btn:SetScript("OnEnter", function(selfButton)
+        if (not selfButton.isActionActive) then
+            return;
+        end
+
+        selfButton:SetBackdropColor(self.constants.SUB_ACTIVE_HOVER_COLOR.r, self.constants.SUB_ACTIVE_HOVER_COLOR.g, self.constants.SUB_ACTIVE_HOVER_COLOR.b, self.constants.SUB_ACTIVE_HOVER_COLOR.a);
+        selfButton:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.75);
+    end);
+    btn:SetScript("OnLeave", function(selfButton)
+        self:SetButtonActive(selfButton, selfButton.isActionActive);
     end);
 
     return btn;
@@ -296,6 +309,8 @@ function Layout:GetContainerPanel(parent, options)
     local sideInset = opts.sideInset or 8;
     local bottomInset = opts.bottomInset or 8;
     local headerHeight = opts.headerHeight or 24;
+    local scrollBarWidth = opts.scrollBarWidth or 4;
+    local scrollBarGap = opts.scrollBarGap or 1;
 
     local panel = CreateFrame("Frame", nil, parent, "BackdropTemplate");
     panel:SetSize(width, height);
@@ -332,8 +347,58 @@ function Layout:GetContainerPanel(parent, options)
 
     panel.scrollFrame = CreateFrame("ScrollFrame", nil, panel);
     panel.scrollFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", sideInset, -topInset);
-    panel.scrollFrame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -sideInset, bottomInset);
+    panel.scrollFrame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -(sideInset + scrollBarWidth + scrollBarGap), bottomInset);
     panel.scrollFrame:EnableMouseWheel(true);
+    panel.scrollFrame.contentHeight = 0;
+
+    panel.scrollBar = CreateFrame("Slider", nil, panel, "BackdropTemplate");
+    panel.scrollBar:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -sideInset, -topInset);
+    panel.scrollBar:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -sideInset, bottomInset);
+    panel.scrollBar:SetWidth(scrollBarWidth);
+    panel.scrollBar:SetOrientation("VERTICAL");
+    panel.scrollBar:SetMinMaxValues(0, 0);
+    panel.scrollBar:SetValueStep(1);
+    panel.scrollBar:SetObeyStepOnDrag(false);
+    panel.scrollBar:SetValue(0);
+    self:ApplyBackdrop(panel.scrollBar, 0.05, 0.05, 0.07, 0.9, 0.2, 0.2, 0.24, 0.8);
+
+    panel.scrollBar.thumb = panel.scrollBar:CreateTexture(nil, "OVERLAY");
+    panel.scrollBar.thumb:SetTexture("Interface\\Buttons\\WHITE8x8");
+    panel.scrollBar.thumb:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.75);
+    panel.scrollBar.thumb:SetSize(math.max(2, scrollBarWidth - 2), 24);
+    panel.scrollBar:SetThumbTexture(panel.scrollBar.thumb);
+    panel.scrollBar:Hide();
+
+    panel.scrollBar:SetScript("OnValueChanged", function(selfBar, value)
+        panel.scrollFrame:SetVerticalScroll(value or 0);
+    end);
+
+    panel.scrollFrame:SetScript("OnVerticalScroll", function(selfFrame, offset)
+        selfFrame:SetVerticalScroll(offset);
+        if (panel.scrollBar and panel.scrollBar:IsShown()) then
+            panel.scrollBar:SetValue(offset);
+        end
+    end);
+
+    function panel:UpdateScrollBar()
+        local maxScroll = math.max(0, (self.scrollFrame.contentHeight or 0) - self.scrollFrame:GetHeight());
+        self.scrollBar:SetMinMaxValues(0, maxScroll);
+
+        if (maxScroll > 0) then
+            self.scrollBar:Show();
+        else
+            self.scrollBar:Hide();
+            self.scrollFrame:SetVerticalScroll(0);
+        end
+
+        local current = self.scrollFrame:GetVerticalScroll() or 0;
+        if (current > maxScroll) then
+            current = maxScroll;
+            self.scrollFrame:SetVerticalScroll(current);
+        end
+        self.scrollBar:SetValue(current);
+    end
+
     panel.scrollFrame:SetScript("OnMouseWheel", function(self, delta)
         local current = self:GetVerticalScroll() or 0;
         local maxScroll = math.max(0, (self.contentHeight or 0) - self:GetHeight());
@@ -344,10 +409,11 @@ function Layout:GetContainerPanel(parent, options)
             nextScroll = maxScroll;
         end
         self:SetVerticalScroll(nextScroll);
+        panel:UpdateScrollBar();
     end);
 
     panel.scrollChild = CreateFrame("Frame", nil, panel.scrollFrame);
-    panel.scrollChild:SetSize(width - (sideInset * 2), 1);
+    panel.scrollChild:SetSize(width - (sideInset * 2) - scrollBarWidth - scrollBarGap, 1);
     panel.scrollFrame:SetScrollChild(panel.scrollChild);
 
     return panel;
