@@ -11,6 +11,10 @@ embed.xml
 
 Core.lua
 Helper.lua
+Layout.lua
+Duration.lua
+GoWKeystoneDetails.lua
+GoWRecruitmentDetails.lua
 GoWTeams.lua
 GoWEventDetails.lua
 GoWComm.lua

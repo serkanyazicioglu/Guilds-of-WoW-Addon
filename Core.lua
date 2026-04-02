@@ -198,6 +198,7 @@ function GOW:OnInitialize()
 	GOW.teams = GoWTeams:new(Core, self.UI, self.GUI);
 	GOW.eventDetails = GoWEventDetails:new(Core, self.UI, self.GUI);
 	GOW.keystoneDetails = GoWKeystoneDetails:new(Core, self.UI, self.GUI);
+	GOW.recruitmentDetails = GoWRecruitmentDetails:new(Core, self.UI, self.GUI);
 
 	if (ns.UPCOMING_EVENTS == nil or ns.TEAMS == nil or ns.RECRUITMENT_APPLICATIONS == nil) then
 		GOW.Logger:PrintErrorMessage("Data is not fetched! Please make sure your sync app is installed and working properly.");
@@ -639,6 +640,9 @@ function Core:RefreshApplication()
 	if (GOW.keystoneDetails) then
 		GOW.keystoneDetails:Hide();
 	end
+	if (GOW.recruitmentDetails) then
+		GOW.recruitmentDetails:Hide();
+	end
 
 	if (selectedTab == "events") then
 		containerScrollFrame.frame:Show();
@@ -674,6 +678,9 @@ function Core:ToggleWindow()
 		Core:DestroyEventInviteDialog();
 		if (GOW.keystoneDetails) then
 			GOW.keystoneDetails:Hide();
+		end
+		if (GOW.recruitmentDetails) then
+			GOW.recruitmentDetails:Hide();
 		end
 	else
 		if (CalendarFrame) then
@@ -852,8 +859,7 @@ function Core:CreateRecruitmentApplications()
 
 		local regionId = GOW.Helper:GetCurrentRegionByGameVersion();
 
-		local hasAnyData = false;
-
+		local applications = {};
 		local guildRoster = GOW.DB.profile.guilds[Core:GetGuildKey()];
 
 		if (isInGuild and ns.RECRUITMENT_APPLICATIONS.totalApplications > 0) then
@@ -861,14 +867,18 @@ function Core:CreateRecruitmentApplications()
 				local recruitmentApplication = ns.RECRUITMENT_APPLICATIONS.recruitmentApplications[i]
 
 				if (guildName == recruitmentApplication.guild and realmName == recruitmentApplication.guildRealmNormalized and regionId == recruitmentApplication.guildRegionId) then
-					hasAnyData = true;
-					Core:AppendRecruitmentList(guildRoster, recruitmentApplication);
+					table.insert(applications, recruitmentApplication);
 				end
 			end
 		end
 
-		if (not hasAnyData) then
+		if (#applications == 0) then
 			Core:AppendMessage("This guild doesn't have any guild recruitment application, or you are not a recruitment manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
+		elseif (GOW.recruitmentDetails) then
+			GOW.recruitmentDetails:SetApplications(applications, guildRoster);
+			GOW.recruitmentDetails:Render();
+		else
+			Core:AppendMessage("Recruitment module not loaded.", true);
 		end
 	end
 
