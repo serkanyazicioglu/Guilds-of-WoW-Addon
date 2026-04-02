@@ -15,6 +15,7 @@ db\wishlists.lua
 
 Core.lua
 Helper.lua
+Layout.lua
 GoWKeystones.lua
 GoWKeystoneDetails.lua
 GoWWishlists.lua

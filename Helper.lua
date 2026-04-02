@@ -8,6 +8,11 @@ local roles = {
     [2] = { name = "Healer", iconTexCoords = { 0.296875, 0.59375, 0, 0.296875 } },
     [3] = { name = "DPS", iconTexCoords = { 0.296875, 0.59375, 0.296875, 0.63 } }
 };
+local factionIcons = {
+    Alliance = "Interface\\Icons\\INV_BannerPVP_02",
+    Horde = "Interface\\Icons\\INV_BannerPVP_01",
+    Neutral = "Interface\\Icons\\Achievement_character_pandaren_female"
+};
 
 function Helper:GetRoles()
     return roles;
@@ -19,6 +24,16 @@ function Helper:GetRole(roleId)
     end
 
     return roles[tonumber(roleId or 0)];
+end
+
+function Helper:GetFactionIcon(faction)
+    if (faction == 1 or faction == "Alliance") then
+        return factionIcons.Alliance;
+    elseif (faction == 0 or faction == "Horde") then
+        return factionIcons.Horde;
+    end
+
+    return factionIcons.Neutral;
 end
 
 function Helper:GetGowGameVersionId()

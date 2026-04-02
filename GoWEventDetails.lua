@@ -368,11 +368,7 @@ function GoWEventDetails:RenderEventInviteRows()
         memberContainer.frame:SetFrameLevel(2);
 
         local factionIcon = self.GUI:Create("Label");
-        if row.faction == 1 then
-            factionIcon:SetImage(652156);
-        else
-            factionIcon:SetImage(652155);
-        end;
+        factionIcon:SetImage(GOW.Helper:GetFactionIcon(row.faction));
         factionIcon:SetImageSize(30, 30);
         factionIcon:SetWidth(30);
         factionIcon:SetHeight(30);

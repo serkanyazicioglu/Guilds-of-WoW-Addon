@@ -438,9 +438,7 @@ function GoWWishlists:FormatSlotBadge(itemId)
 end
 
 function GoWWishlists:ApplyBackdrop(frame, bgR, bgG, bgB, bgA, borderR, borderG, borderB, borderA)
-    frame:SetBackdrop(self.constants.STANDARD_BACKDROP);
-    frame:SetBackdropColor(bgR, bgG, bgB, bgA or 1);
-    frame:SetBackdropBorderColor(borderR, borderG, borderB, borderA or 1);
+    GOW.Layout:ApplyBackdrop(frame, bgR, bgG, bgB, bgA, borderR, borderG, borderB, borderA);
 end
 
 function GoWWishlists:RefreshWishlistViews()
@@ -919,17 +917,7 @@ function GoWWishlists:ClearChildren(parent, ...)
 end
 
 function GoWWishlists:CreateSubFilterBtn(btnParent, label, width)
-    local btn = CreateFrame("Button", nil, btnParent, "BackdropTemplate");
-    btn:SetHeight(18);
-    btn:SetWidth(width);
-    self:ApplyBackdrop(btn, self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a, 0.3, 0.3, 0.3, 0.4);
-
-    local btnText = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    btnText:SetPoint("CENTER", btn, "CENTER", 0, 0);
-    btnText:SetText(label);
-    btn.btnText = btnText;
-
-    return btn;
+    return GOW.Layout:CreateSubFilterBtn(btnParent, label, width);
 end
 
 function GoWWishlists:CreatePopupFilterBtn(parent, label, width, ownerKey, getOptions, getCurrentValue, onSelect)
@@ -951,13 +939,7 @@ function GoWWishlists:CreatePopupFilterBtn(parent, label, width, ownerKey, getOp
 end
 
 function GoWWishlists:SetButtonActive(btn, isActive)
-    if isActive then
-        btn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
-        btn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
-    else
-        btn:SetBackdropColor(self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a);
-        btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4);
-    end
+    GOW.Layout:SetButtonActive(btn, isActive);
 end
 
 function GoWWishlists:SetButtonActiveWithIcon(btn, iconTex, isActive)
@@ -982,12 +964,7 @@ function GoWWishlists:SetTabActive(tab, isActive)
 end
 
 function GoWWishlists:CreateRowHighlight(frame, alpha)
-    local highlight = frame:CreateTexture(nil, "BACKGROUND");
-    highlight:SetTexture("Interface\\Buttons\\WHITE8x8");
-    highlight:SetAllPoints();
-    highlight:SetVertexColor(1, 1, 1, alpha or 0.04);
-    highlight:Hide();
-    return highlight;
+    return GOW.Layout:CreateRowHighlight(frame, alpha);
 end
 
 function GoWWishlists:CreateRowIcon(parent, borderSize, leftOffset)
@@ -1006,13 +983,7 @@ function GoWWishlists:CreateRowIcon(parent, borderSize, leftOffset)
 end
 
 function GoWWishlists:CreateRowSeparator(parent)
-    local sep = parent:CreateTexture(nil, "ARTWORK");
-    sep:SetTexture("Interface\\Buttons\\WHITE8x8");
-    sep:SetVertexColor(0.25, 0.25, 0.3, 0.15);
-    sep:SetHeight(1);
-    sep:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 6, 0);
-    sep:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -6, 0);
-    return sep;
+    return GOW.Layout:CreateRowSeparator(parent);
 end
 
 function GoWWishlists:CreateItemTooltipZone(row, iconBorder)

@@ -636,6 +636,10 @@ function Core:RefreshApplication()
 		GOW.Wishlists:HideCoreFrames();
 	end
 
+	if (GOW.keystoneDetails) then
+		GOW.keystoneDetails:Hide();
+	end
+
 	if (selectedTab == "events") then
 		containerScrollFrame.frame:Show();
 		Core:CreateUpcomingEvents();
@@ -668,6 +672,9 @@ function Core:ToggleWindow()
 	if (containerFrame:IsShown()) then
 		containerFrame:Hide();
 		Core:DestroyEventInviteDialog();
+		if (GOW.keystoneDetails) then
+			GOW.keystoneDetails:Hide();
+		end
 	else
 		if (CalendarFrame) then
 			HideUIPanel(CalendarFrame);

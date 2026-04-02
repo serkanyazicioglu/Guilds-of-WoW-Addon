@@ -8,6 +8,72 @@ local libKeystone = nil;
 local libKeystoneData = {};
 local openRaidLibKeystoneData = nil;
 local latestEntries = {};
+local debugKeystoneMapIds = nil;
+
+local function GetDisplayRealmName(normalizedRealmName, guid)
+	if (guid and GetPlayerInfoByGUID) then
+		local _, _, _, _, _, characterName, realmName = GetPlayerInfoByGUID(guid);
+		if (characterName and realmName and realmName ~= "") then
+			return realmName;
+		end
+	end
+
+	if (not normalizedRealmName or normalizedRealmName == "") then
+		return GetRealmName();
+	end
+
+	return normalizedRealmName:gsub("(%l)(%u)", "%1 %2");
+end
+
+local function GetDisplayNameParts(fullName)
+	local shortName, realm = strsplit("-", fullName or "");
+
+	if (not shortName or shortName == "") then
+		shortName = fullName or "";
+	end
+
+	if (not realm or realm == "") then
+		realm = GetNormalizedRealmName();
+	end
+
+	return shortName, realm;
+end
+
+local function GetDebugKeystoneMapIds()
+	if (debugKeystoneMapIds ~= nil) then
+		return debugKeystoneMapIds;
+	end
+
+	debugKeystoneMapIds = {};
+
+	if (C_ChallengeMode and C_ChallengeMode.GetMapTable) then
+		for _, mapId in ipairs(C_ChallengeMode.GetMapTable() or {}) do
+			local dungeonName = C_ChallengeMode.GetMapUIInfo(mapId);
+			if (dungeonName and dungeonName ~= "") then
+				table.insert(debugKeystoneMapIds, mapId);
+			end
+		end
+	end
+
+	return debugKeystoneMapIds;
+end
+
+local function GetRandomDebugKeystone()
+	local mapIds = GetDebugKeystoneMapIds();
+	if (#mapIds == 0) then
+		return nil, nil;
+	end
+
+	return math.random(2, 15), mapIds[math.random(1, #mapIds)];
+end
+
+local function GetCurrentMaxPlayerLevel()
+	if (GetMaxLevelForLatestExpansion) then
+		return GetMaxLevelForLatestExpansion();
+	end
+
+	return MAX_PLAYER_LEVEL or 80;
+end
 
 local function RebuildLatestEntries()
 	latestEntries = {};
@@ -22,19 +88,43 @@ local function RebuildLatestEntries()
 	end
 
 	local me = GOW.Helper:GetCurrentCharacterUniqueKey();
+	local playerFaction = UnitFactionGroup("player");
+	local maxPlayerLevel = GetCurrentMaxPlayerLevel();
 
 	for i = 1, numTotalMembers do
-		local name, _, _, level = GetGuildRosterInfo(i);
+		local name, _, _, level, className, _, _, _, _, _, classFileName, _, _, _, _, _, guid = GetGuildRosterInfo(i);
 		if (name) then
 			local normalizedName = GOW.Helper:GetNormalizedCharacterName(name);
+			local characterName, realmName = GetDisplayNameParts(name);
+			local displayRealmName = GetDisplayRealmName(realmName, guid);
 			local keystoneLevel, keystoneMapId = Keystones:GetGuildMemberKeystone(name, level, normalizedName == me);
+
+			if ((not keystoneLevel or not keystoneMapId) and GOW.consts.ENABLE_DEBUGGING and (level or 0) >= maxPlayerLevel) then
+				keystoneLevel, keystoneMapId = GetRandomDebugKeystone();
+			end
 
 			if (keystoneLevel and keystoneMapId) then
 				local dungeonName = C_ChallengeMode.GetMapUIInfo(keystoneMapId);
+				local classId = nil;
+				if (classFileName and GetNumClasses and GetClassInfo) then
+					for classIndex = 1, GetNumClasses() do
+						local _, currentClassFileName, currentClassId = GetClassInfo(classIndex);
+						if (currentClassFileName == classFileName) then
+							classId = currentClassId or classIndex;
+							break;
+						end
+					end
+				end;
 
 				table.insert(latestEntries, {
-					name = name,
+					name = characterName,
+					realm = displayRealmName,
+					fullName = name,
 					normalizedName = normalizedName,
+					className = className,
+					classFileName = classFileName,
+					classId = classId,
+					faction = playerFaction,
 					keystoneLevel = keystoneLevel,
 					keystoneMapId = keystoneMapId,
 					dungeonName = dungeonName or "Unknown",
