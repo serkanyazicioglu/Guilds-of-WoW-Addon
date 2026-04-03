@@ -1,5 +1,12 @@
 local addonName, addon = ...
 local GOW = GuildsOfWow;
+local addonVersion = "Unknown";
+
+if (C_AddOns and C_AddOns.GetAddOnMetadata) then
+    addonVersion = C_AddOns.GetAddOnMetadata(addonName, "Version") or addonVersion;
+elseif (GetAddOnMetadata) then
+    addonVersion = GetAddOnMetadata(addonName, "Version") or addonVersion;
+end
 
 local AceConfig = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
@@ -8,6 +15,13 @@ local optionsTable = {
     type = "group",
     name = GOW.consts.APP_NAME,
     args = {
+        AddonVersion = {
+            type = "description",
+            order = 100,
+            name = "Version: " .. addonVersion,
+            fontSize = "medium",
+            width = "full",
+        },
         BagSettings = {
             type = "group",
             inline = true,
