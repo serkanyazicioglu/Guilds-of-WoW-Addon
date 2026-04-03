@@ -286,14 +286,6 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
         contentBottom = 0,
     });
 
-    local reloadBtn = L:CreateActionButton(container, {
-        text = "Reload UI",
-        width = 80,
-        tooltip = "Reload the UI",
-        onClick = function() ReloadUI() end,
-    });
-    reloadBtn:SetPoint("TOPRIGHT", container, "TOPRIGHT", -4, -4);
-
     container:Hide();
     self.frames.coreWishlists = container;
     return container;

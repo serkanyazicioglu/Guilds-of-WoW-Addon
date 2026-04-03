@@ -85,13 +85,16 @@ function Layout:CreateActionButton(parent, options)
     end);
     btn:SetScript("OnLeave", function(selfButton)
         self:SetButtonActive(selfButton, selfButton.isActionActive);
-        GameTooltip:Hide();
+        if GameTooltip:GetOwner() == selfButton then
+            GameTooltip:Hide();
+        end
     end);
 
     return btn;
 end
 
 function Layout:SetButtonActive(btn, isActive)
+    btn.isActionActive = isActive;
     if (isActive) then
         btn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
         btn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
