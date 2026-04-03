@@ -277,6 +277,7 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
         personalTabOffsetX = 4,
         personalTabOffsetY = -4,
         compactRightRelativeTo = container,
+        compactRightPoint = "TOPRIGHT",
         compactRightRelativePoint = "TOPRIGHT",
         compactRightOffsetX = -4,
         contentOffsetX = -4,
