@@ -6,7 +6,7 @@ GuildsOfWow = GOW;
 
 GOW.consts = {
 	INVITE_INTERVAL = 2,
-	ENABLE_DEBUGGING = true,
+	ENABLE_DEBUGGING = false,
 	GUILD_EVENT = 1,
 	PLAYER_EVENT = 2,
 	APP_NAME = "Guilds of WoW"
