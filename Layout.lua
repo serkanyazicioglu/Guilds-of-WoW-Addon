@@ -307,7 +307,12 @@ function Layout:ShowCopyUrlDialog(gui, url, title)
     return dialog;
 end
 
-function Layout:RenderWarningState(gui, containerScrollFrame, header, message, secondaryMessage, displayReloadButton)
+function Layout:RenderWarningState(gui, containerScrollFrame, header, message, secondaryMessage, displayReloadButton, iconTexture)
+    local effectiveIconTexture = iconTexture;
+    if (effectiveIconTexture == nil or effectiveIconTexture == "") then
+        effectiveIconTexture = "Interface\\AddOns\\GuildsOfWoW\\icons\\diamond-exclamation-solid.png";
+    end
+
     local rootHost = gui:Create("SimpleGroup");
     rootHost:SetFullWidth(true);
     rootHost:SetFullHeight(true);
@@ -330,15 +335,34 @@ function Layout:RenderWarningState(gui, containerScrollFrame, header, message, s
     });
     panel:SetPoint("TOPLEFT", nativeRoot, "TOPLEFT", 0, -3);
 
+    local primaryAnchor = panel.scrollChild;
+    local primaryOffsetY = -90;
+
+    if (effectiveIconTexture and effectiveIconTexture ~= "") then
+        local iconSize = 24;
+        if (effectiveIconTexture == "Interface\\AddOns\\GuildsOfWoW\\icons\\hourglass-clock-solid.png") then
+            iconSize = 30;
+        elseif (effectiveIconTexture == "Interface\\AddOns\\GuildsOfWoW\\icons\\diamond-exclamation-solid.png") then
+            iconSize = 22;
+        end
+
+        local warningIcon = panel.scrollChild:CreateTexture(nil, "OVERLAY");
+        warningIcon:SetTexture(effectiveIconTexture);
+        warningIcon:SetSize(iconSize, iconSize);
+        warningIcon:SetPoint("TOP", panel.scrollChild, "TOP", 0, -72);
+        primaryAnchor = warningIcon;
+        primaryOffsetY = -42;
+    end
+
     local primaryText = panel.scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
-    primaryText:SetPoint("TOP", panel.scrollChild, "TOP", 0, -90);
+    primaryText:SetPoint("TOP", primaryAnchor, "TOP", 0, primaryOffsetY);
     primaryText:SetPoint("LEFT", panel.scrollChild, "LEFT", 40, 0);
     primaryText:SetPoint("RIGHT", panel.scrollChild, "RIGHT", -40, 0);
     primaryText:SetJustifyH("CENTER");
     primaryText:SetJustifyV("TOP");
     primaryText:SetText("|cff888888" .. (message or "") .. "|r");
 
-    local contentHeight = 180;
+    local contentHeight = effectiveIconTexture and 200 or 180;
     if (secondaryMessage and secondaryMessage ~= "") then
         local secondaryText = panel.scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
         secondaryText:SetPoint("TOP", primaryText, "BOTTOM", 0, -18);
@@ -347,7 +371,7 @@ function Layout:RenderWarningState(gui, containerScrollFrame, header, message, s
         secondaryText:SetJustifyH("CENTER");
         secondaryText:SetJustifyV("TOP");
         secondaryText:SetText("|cff777777" .. secondaryMessage .. "|r");
-        contentHeight = 220;
+        contentHeight = effectiveIconTexture and 240 or 220;
     end
 
     if (displayReloadButton) then
@@ -360,10 +384,10 @@ function Layout:RenderWarningState(gui, containerScrollFrame, header, message, s
         });
         if (secondaryMessage and secondaryMessage ~= "") then
             reloadButton:SetPoint("TOP", primaryText, "BOTTOM", 0, -56);
-            contentHeight = 270;
+            contentHeight = effectiveIconTexture and 290 or 270;
         else
             reloadButton:SetPoint("TOP", primaryText, "BOTTOM", 0, -20);
-            contentHeight = 230;
+            contentHeight = effectiveIconTexture and 250 or 230;
         end
     end
 

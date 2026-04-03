@@ -174,10 +174,10 @@ function GoWEventDetails:GetAudienceText(event)
     return text;
 end
 
-function GoWEventDetails:RenderEmptyState(message, secondaryMessage, displayReloadButton)
+function GoWEventDetails:RenderEmptyState(message, secondaryMessage, displayReloadButton, iconTexture)
     self:Hide();
     self.UI.containerScrollFrame:ReleaseChildren();
-    local state = GOW.Layout:RenderWarningState(self.GUI, self.UI.containerScrollFrame, "EVENTS", message, secondaryMessage, displayReloadButton == true);
+    local state = GOW.Layout:RenderWarningState(self.GUI, self.UI.containerScrollFrame, "EVENTS", message, secondaryMessage, displayReloadButton == true, iconTexture);
     self.rootHost = state.rootHost;
     self.nativeRoot = state.nativeRoot;
     self.listPanel = state.panel;

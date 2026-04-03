@@ -755,7 +755,11 @@ function Core:CreateUpcomingEvents()
 
 		if (ns.UPCOMING_EVENTS.totalEvents > 0) then
 			if (not isEventProcessCompleted or isNewEventBeingCreated or C_Calendar.IsActionPending()) then
-				Core:AppendMessage("Addon is busy right now! Please wait for a while...");
+				if (GOW.eventDetails and GOW.eventDetails.RenderEmptyState) then
+            GOW.eventDetails:RenderEmptyState("Addon is busy right now! Please wait for a while...", nil, false, "Interface\\AddOns\\GuildsOfWoW\\icons\\hourglass-clock-solid.png");
+				else
+					Core:AppendMessage("Addon is busy right now! Please wait for a while...");
+				end
 				isPropogatingUpdate = false;
 				return;
 			end
