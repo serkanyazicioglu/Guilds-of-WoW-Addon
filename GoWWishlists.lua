@@ -627,21 +627,12 @@ function GoWWishlists:UpdateNoteIcon(icon, notes)
 end
 
 function GoWWishlists:CreateGainBadge(parent)
-    local badge = CreateFrame("Frame", nil, parent, "BackdropTemplate");
-    badge:SetHeight(16);
-    badge:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    local badge = L:CreateTextBadge(parent, {
+        height = 16,
+        bgR = 0.05, bgG = 0.15, bgB = 0.05, bgA = 0.85,
+        borderR = 0.1, borderG = 0.8, borderB = 0.3, borderA = 0.6,
+        paddingX = 12,
     });
-    badge:SetBackdropColor(0.05, 0.15, 0.05, 0.85);
-    badge:SetBackdropBorderColor(0.1, 0.8, 0.3, 0.6);
-
-    local text = badge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    text:SetPoint("CENTER", badge, "CENTER", 0, 0);
-    text:SetJustifyH("CENTER");
-    badge.text = text;
 
     badge:EnableMouse(true);
     badge:SetScript("OnEnter", function(self)
@@ -744,21 +735,13 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
 end
 
 function GoWWishlists:CreateTierBadge(parent)
-    local badge = CreateFrame("Frame", nil, parent, "BackdropTemplate");
-    badge:SetSize(16, 16);
-    badge:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    local badge = L:CreateTextBadge(parent, {
+        text = "|cffffd700T|r",
+        height = 16, minWidth = 16, paddingX = 0,
+        bgR = 0.15, bgG = 0.12, bgB = 0.02, bgA = 0.85,
+        borderR = 0.9, borderG = 0.75, borderB = 0.2, borderA = 0.6,
     });
-    badge:SetBackdropColor(0.15, 0.12, 0.02, 0.85);
-    badge:SetBackdropBorderColor(0.9, 0.75, 0.2, 0.6);
-
-    local text = badge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    text:SetPoint("CENTER", badge, "CENTER", 0, 0);
-    text:SetText("|cffffd700T|r");
-    badge.text = text;
+    badge:SetSize(16, 16);
 
     badge:EnableMouse(true);
     badge:SetScript("OnEnter", function(self)
@@ -778,22 +761,14 @@ function GoWWishlists:UpdateTierBadge(badge, isTierSetPiece)
 end
 
 function GoWWishlists:CreateCatalystBadge(parent)
-    local badge = CreateFrame("Frame", nil, parent, "BackdropTemplate");
+    local badge = L:CreateTextBadge(parent, {
+        text = "|cff5ef5f5C|r",
+        height = 16, minWidth = 16, paddingX = 0,
+        bgR = 0.04, bgG = 0.10, bgB = 0.10, bgA = 0.85,
+        borderR = 0.37, borderG = 0.96, borderB = 0.96, borderA = 0.3,
+    });
     badge:SetSize(16, 16);
     badge:SetHitRectInsets(-4, -4, -4, -4);
-    badge:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 },
-    });
-    badge:SetBackdropColor(0.04, 0.10, 0.10, 0.85);
-    badge:SetBackdropBorderColor(0.37, 0.96, 0.96, 0.3);
-
-    local text = badge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    text:SetPoint("CENTER", badge, "CENTER", 0, 0);
-    text:SetText("|cff5ef5f5C|r");
-    badge.text = text;
 
     badge:EnableMouse(true);
     badge:SetScript("OnEnter", function(self)

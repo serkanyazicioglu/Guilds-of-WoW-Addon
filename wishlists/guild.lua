@@ -596,10 +596,9 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         sortBtn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
         lootPanel.guildSortBtn = sortBtn;
 
-        local obtainedBtn = CreateFrame("Button", nil, lootPanel, "BackdropTemplate");
+        local obtainedBtn = L:CreateSubFilterBtn(lootPanel, "", 18);
         obtainedBtn:SetSize(18, 14);
         obtainedBtn:SetPoint("LEFT", sortBtn, "RIGHT", 4, 0);
-        L:ApplyBackdrop(obtainedBtn, L.constants.SUB_INACTIVE_COLOR.r, L.constants.SUB_INACTIVE_COLOR.g, L.constants.SUB_INACTIVE_COLOR.b, L.constants.SUB_INACTIVE_COLOR.a, 0.3, 0.3, 0.3, 0.4);
         local eyeTex = obtainedBtn:CreateTexture(nil, "ARTWORK");
         eyeTex:SetSize(12, 12);
         eyeTex:SetPoint("CENTER", obtainedBtn, "CENTER", 0, 0);
