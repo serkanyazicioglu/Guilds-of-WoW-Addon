@@ -41,6 +41,13 @@ function GoWRecruitmentDetails:UpdatePanelScroll(panel, contentHeight)
     end
 end
 
+function GoWRecruitmentDetails:RenderEmptyState(message, secondaryMessage, displayReloadButton)
+    self:Hide();
+    self.UI.containerScrollFrame:ReleaseChildren();
+    local state = GOW.Layout:RenderWarningState(self.GUI, self.UI.containerScrollFrame, "RECRUITMENT", message, secondaryMessage, displayReloadButton == true);
+    self.nativeRoot = state.nativeRoot;
+end
+
 function GoWRecruitmentDetails:GetApplications()
     return self.filteredApplications or {};
 end
@@ -234,7 +241,7 @@ function GoWRecruitmentDetails:Render()
     self:NormalizeSelection();
 
     if (#applications == 0) then
-        self.CORE:AppendMessage("This guild doesn't have any guild recruitment application, or you are not a recruitment manager!", true);
+        self:RenderEmptyState("This guild doesn't have any guild recruitment application, or you are not a recruitment manager!");
         self.CORE:AppendScrollBottomPadding();
         return;
     end

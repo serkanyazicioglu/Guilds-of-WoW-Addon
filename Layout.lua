@@ -307,6 +307,80 @@ function Layout:ShowCopyUrlDialog(gui, url, title)
     return dialog;
 end
 
+function Layout:RenderWarningState(gui, containerScrollFrame, header, message, secondaryMessage, displayReloadButton)
+    local rootHost = gui:Create("SimpleGroup");
+    rootHost:SetFullWidth(true);
+    rootHost:SetFullHeight(true);
+    containerScrollFrame:AddChild(rootHost);
+
+    local hostFrame = rootHost.frame;
+    local nativeRoot = CreateFrame("Frame", nil, hostFrame);
+    nativeRoot:SetAllPoints(hostFrame);
+
+    local panelHeight = math.max(430, math.floor((hostFrame:GetHeight() > 0 and hostFrame:GetHeight() or 440) - 6));
+    local panelWidth = math.max(880, math.floor(hostFrame:GetWidth() > 0 and hostFrame:GetWidth() or 946));
+    local panel = self:GetContainerPanel(nativeRoot, {
+        title = header or "",
+        width = panelWidth,
+        height = panelHeight,
+        xOffset = 0,
+        topInset = 28,
+        sideInset = 10,
+        bottomInset = 10,
+    });
+    panel:SetPoint("TOPLEFT", nativeRoot, "TOPLEFT", 0, -3);
+
+    local primaryText = panel.scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+    primaryText:SetPoint("TOP", panel.scrollChild, "TOP", 0, -90);
+    primaryText:SetPoint("LEFT", panel.scrollChild, "LEFT", 40, 0);
+    primaryText:SetPoint("RIGHT", panel.scrollChild, "RIGHT", -40, 0);
+    primaryText:SetJustifyH("CENTER");
+    primaryText:SetJustifyV("TOP");
+    primaryText:SetText("|cff888888" .. (message or "") .. "|r");
+
+    local contentHeight = 180;
+    if (secondaryMessage and secondaryMessage ~= "") then
+        local secondaryText = panel.scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+        secondaryText:SetPoint("TOP", primaryText, "BOTTOM", 0, -18);
+        secondaryText:SetPoint("LEFT", panel.scrollChild, "LEFT", 40, 0);
+        secondaryText:SetPoint("RIGHT", panel.scrollChild, "RIGHT", -40, 0);
+        secondaryText:SetJustifyH("CENTER");
+        secondaryText:SetJustifyV("TOP");
+        secondaryText:SetText("|cff777777" .. secondaryMessage .. "|r");
+        contentHeight = 220;
+    end
+
+    if (displayReloadButton) then
+        local reloadButton = self:CreateActionButton(panel.scrollChild, {
+            text = "Reload UI",
+            width = 90,
+            onClick = function()
+                ReloadUI();
+            end
+        });
+        if (secondaryMessage and secondaryMessage ~= "") then
+            reloadButton:SetPoint("TOP", primaryText, "BOTTOM", 0, -56);
+            contentHeight = 270;
+        else
+            reloadButton:SetPoint("TOP", primaryText, "BOTTOM", 0, -20);
+            contentHeight = 230;
+        end
+    end
+
+    panel.scrollChild:SetHeight(contentHeight);
+    panel.scrollFrame.contentHeight = contentHeight;
+    panel.scrollFrame:SetVerticalScroll(0);
+    if (panel.UpdateScrollBar) then
+        panel:UpdateScrollBar();
+    end
+
+    return {
+        rootHost = rootHost,
+        nativeRoot = nativeRoot,
+        panel = panel,
+    };
+end
+
 function Layout:GetContainerPanel(parent, options)
     local opts = type(options) == "table" and options or {};
 

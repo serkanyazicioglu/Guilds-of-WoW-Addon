@@ -112,6 +112,16 @@ function GoWTeams:EnsureListPanel()
     self.teamRowCount = 0;
 end
 
+function GoWTeams:RenderEmptyState(message, secondaryMessage, displayReloadButton)
+    self:Hide();
+    self.UI.containerScrollFrame:ReleaseChildren();
+    local state = GOW.Layout:RenderWarningState(self.GUI, self.UI.containerScrollFrame, "TEAMS", message, secondaryMessage, displayReloadButton == true);
+    self.rootHost = state.rootHost;
+    self.nativeRoot = state.nativeRoot;
+    self.listPanel = state.panel;
+    self.teamRowCount = 0;
+end
+
 function GoWTeams:ClearNativeChildren(parent)
     if (not parent) then
         return;

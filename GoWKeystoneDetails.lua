@@ -256,6 +256,14 @@ function GoWKeystoneDetails:UpdatePanelScroll(panel, contentHeight)
     end
 end
 
+function GoWKeystoneDetails:RenderState(message, showLeftPanel, displayReloadButton)
+    self:Hide();
+    self.UI.containerScrollFrame:ReleaseChildren();
+    local state = GOW.Layout:RenderWarningState(self.GUI, self.UI.containerScrollFrame, "KEYSTONES", message, nil, displayReloadButton == true);
+    self.rootHost = state.rootHost;
+    self.nativeRoot = state.nativeRoot;
+end
+
 function GoWKeystoneDetails:CreateLevelBadge(parent, text)
     local L = GOW.Layout;
     local badge = CreateFrame("Frame", nil, parent, "BackdropTemplate");
