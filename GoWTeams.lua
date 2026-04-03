@@ -98,7 +98,7 @@ function GoWTeams:EnsureListPanel()
     self.nativeRoot = CreateFrame("Frame", nil, hostFrame);
     self.nativeRoot:SetAllPoints(hostFrame);
 
-    local panelWidth = math.max(880, math.floor((hostFrame:GetWidth() > 0 and hostFrame:GetWidth() or 940) - 6));
+    local panelWidth = math.max(880, math.floor(hostFrame:GetWidth() > 0 and hostFrame:GetWidth() or 946));
     self.listPanel = L:GetContainerPanel(self.nativeRoot, {
         title = "TEAMS",
         width = panelWidth,
@@ -108,7 +108,7 @@ function GoWTeams:EnsureListPanel()
         sideInset = 10,
         bottomInset = 10,
     });
-    self.listPanel:SetPoint("TOPLEFT", self.nativeRoot, "TOPLEFT", 0, -1);
+    self.listPanel:SetPoint("TOPLEFT", self.nativeRoot, "TOPLEFT", 0, -3);
     self.teamRowCount = 0;
 end
 

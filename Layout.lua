@@ -114,10 +114,19 @@ function Layout:CreateTextBadge(parent, options)
     local opts = type(options) == "table" and options or {};
     local badge = CreateFrame("Frame", nil, parent, "BackdropTemplate");
     local height = opts.height or 16;
+    local bgR = opts.bgR or 0.05;
+    local bgG = opts.bgG or 0.15;
+    local bgB = opts.bgB or 0.05;
+    local bgA = opts.bgA or 0.85;
+    local borderR = opts.borderR or 0.1;
+    local borderG = opts.borderG or 0.8;
+    local borderB = opts.borderB or 0.3;
+    local borderA = opts.borderA or 0.6;
+
     badge:SetHeight(height);
     badge:SetBackdrop(self.constants.STANDARD_BACKDROP);
-    badge:SetBackdropColor(opts.bgR or 0.05, opts.bgG or 0.15, opts.bgB or 0.05, opts.bgA or 0.85);
-    badge:SetBackdropBorderColor(opts.borderR or 0.1, opts.borderG or 0.8, opts.borderB or 0.3, opts.borderA or 0.6);
+    badge:SetBackdropColor(bgR, bgG, bgB, bgA);
+    badge:SetBackdropBorderColor(borderR, borderG, borderB, borderA);
 
     local text = badge:CreateFontString(nil, "OVERLAY", opts.fontObject or "GameFontNormalSmall");
     text:SetPoint("CENTER", badge, "CENTER", 0, 0);

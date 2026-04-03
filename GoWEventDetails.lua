@@ -13,7 +13,6 @@ local eventInviteRolesForFilter = {
     ["DPS"] = "DPS"
 };
 
-local LIST_PANEL_HEIGHT = 430;
 local EVENT_ROW_HEIGHT = 68;
 local EVENT_LIST_TOP_PADDING = 8;
 local EVENT_DETAIL_PANEL_HEIGHT = 470;
@@ -136,24 +135,24 @@ function GoWEventDetails:EnsureListPanel()
     self.rootHost = self.GUI:Create("SimpleGroup");
     self.rootHost:SetFullWidth(true);
     self.rootHost:SetFullHeight(true);
-    self.rootHost:SetHeight(LIST_PANEL_HEIGHT + 8);
     containerScrollFrame:AddChild(self.rootHost);
 
     local hostFrame = self.rootHost.frame;
     self.nativeRoot = CreateFrame("Frame", nil, hostFrame);
     self.nativeRoot:SetAllPoints(hostFrame);
 
-    local panelWidth = math.max(880, math.floor((hostFrame:GetWidth() > 0 and hostFrame:GetWidth() or 940) - 6));
+    local panelHeight = math.max(430, math.floor((hostFrame:GetHeight() > 0 and hostFrame:GetHeight() or 440) - 6));
+    local panelWidth = math.max(880, math.floor(hostFrame:GetWidth() > 0 and hostFrame:GetWidth() or 946));
     self.listPanel = L:GetContainerPanel(self.nativeRoot, {
         title = "EVENTS",
         width = panelWidth,
-        height = LIST_PANEL_HEIGHT,
+        height = panelHeight,
         xOffset = 0,
         topInset = 28,
         sideInset = 10,
         bottomInset = 10,
     });
-    self.listPanel:SetPoint("TOPLEFT", self.nativeRoot, "TOPLEFT", 0, -1);
+    self.listPanel:SetPoint("TOPLEFT", self.nativeRoot, "TOPLEFT", 0, -3);
     self.eventRowCount = 0;
 end
 
