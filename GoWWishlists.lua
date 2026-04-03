@@ -146,7 +146,11 @@ end
 
 function GoWWishlists:IsWishlistDataStale()
     if not ns.WISHLISTS or not ns.WISHLISTS.exportTime then return false end
-    return (time() - ns.WISHLISTS.exportTime) > 1200;
+
+    local now = GetServerTime and GetServerTime() or time();
+    local staleThresholdSeconds = 20 * 60;
+
+    return (now - ns.WISHLISTS.exportTime) > staleThresholdSeconds;
 end
 
 function GoWWishlists:GetCurrentDifficultyName()
