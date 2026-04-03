@@ -1,6 +1,7 @@
 local GOW = GuildsOfWow;
 local GoWWishlists = {};
 GOW.Wishlists = GoWWishlists;
+local L = GOW.Layout;
 
 local ns = select(2, ...);
 
@@ -192,9 +193,6 @@ end
 GoWWishlists.constants.ALERT_DISPLAY_TIME = 60;
 GoWWishlists.constants.ALERT_FADE_TIME = 1.5;
 
-GoWWishlists.constants.GOW_ACCENT_COLOR = { r = 0.1, g = 0.8, b = 0.3 };
-GoWWishlists.constants.GOW_BG_COLOR = { r = 0.08, g = 0.08, b = 0.1 };
-
 GoWWishlists.constants.DIFF_COLORS = {
     ["Mythic"]      = { r = 0.616, g = 0, b = 1 },
     ["Heroic"]      = { r = 0, g = 0.439, b = 0.867 },
@@ -209,11 +207,8 @@ GoWWishlists.constants.DIFF_ABBREV = {
     ["LFR"]         = "LFR",
 };
 
-GoWWishlists.constants.SUB_ACTIVE_COLOR = { r = GoWWishlists.constants.GOW_ACCENT_COLOR.r, g = GoWWishlists.constants.GOW_ACCENT_COLOR.g, b = GoWWishlists.constants.GOW_ACCENT_COLOR.b, a = 0.3 };
-GoWWishlists.constants.SUB_INACTIVE_COLOR = { r = 0.15, g = 0.15, b = 0.18, a = 0.8 };
-
 GoWWishlists.constants.TAB_HEIGHT = 22;
-GoWWishlists.constants.TAB_ACTIVE_COLOR = { r = GoWWishlists.constants.GOW_ACCENT_COLOR.r, g = GoWWishlists.constants.GOW_ACCENT_COLOR.g, b = GoWWishlists.constants.GOW_ACCENT_COLOR.b, a = 0.25 };
+GoWWishlists.constants.TAB_ACTIVE_COLOR = { r = L.constants.GOW_ACCENT_COLOR.r, g = L.constants.GOW_ACCENT_COLOR.g, b = L.constants.GOW_ACCENT_COLOR.b, a = 0.25 };
 GoWWishlists.constants.TAB_INACTIVE_COLOR = { r = 0.15, g = 0.15, b = 0.18, a = 0.9 };
 
 GoWWishlists.constants.COLOR_ACCENT = "|cff00ff00";
@@ -232,13 +227,6 @@ GoWWishlists.constants.TAG_DISPLAY = {
 };
 
 GoWWishlists.constants.DIFFICULTIES = { "All", "Normal", "Heroic", "Mythic", "LFR" };
-
-GoWWishlists.constants.STANDARD_BACKDROP = {
-    bgFile = "Interface\\Buttons\\WHITE8x8",
-    edgeFile = "Interface\\Buttons\\WHITE8x8",
-    edgeSize = 1,
-    insets = { left = 1, right = 1, top = 1, bottom = 1 },
-};
 
 GoWWishlists.constants.SLOT_LABELS = {
     ["All"] = "All",
@@ -437,10 +425,6 @@ function GoWWishlists:FormatSlotBadge(itemId)
     return slotLabel;
 end
 
-function GoWWishlists:ApplyBackdrop(frame, bgR, bgG, bgB, bgA, borderR, borderG, borderB, borderA)
-    GOW.Layout:ApplyBackdrop(frame, bgR, bgG, bgB, bgA, borderR, borderG, borderB, borderA);
-end
-
 function GoWWishlists:RefreshWishlistViews()
     local browserFrame = self.frames.browserFrame;
     if browserFrame and browserFrame.compactBtn and browserFrame.compactBtn.UpdateState then
@@ -546,7 +530,7 @@ function GoWWishlists:SetupDifficultyDropdown(sourcePanel, onChangeCallback)
 
     local activeDiff = "All";
 
-    local btn = self:CreateSubFilterBtn(sourcePanel, "Diff: All", 80);
+    local btn = L:CreateSubFilterBtn(sourcePanel, "Diff: All", 80);
     btn:SetHeight(14);
     btn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
 
@@ -555,7 +539,7 @@ function GoWWishlists:SetupDifficultyDropdown(sourcePanel, onChangeCallback)
         btn.btnText:SetText("Diff: " .. diff);
         local textWidth = btn.btnText:GetStringWidth();
         btn:SetWidth(math.max(textWidth + 16, 60));
-        self:SetButtonActive(btn, diff ~= "All");
+        L:SetButtonActive(btn, diff ~= "All");
     end
 
     btn:SetScript("OnClick", function()
@@ -916,13 +900,9 @@ function GoWWishlists:ClearChildren(parent, ...)
     end
 end
 
-function GoWWishlists:CreateSubFilterBtn(btnParent, label, width)
-    return GOW.Layout:CreateSubFilterBtn(btnParent, label, width);
-end
-
 function GoWWishlists:CreatePopupFilterBtn(parent, label, width, ownerKey, getOptions, getCurrentValue, onSelect)
     local popupMenu = self:GetOrCreatePopupMenu();
-    local btn = self:CreateSubFilterBtn(parent, label, width);
+    local btn = L:CreateSubFilterBtn(parent, label, width);
     btn:SetHeight(14);
 
     btn:SetScript("OnClick", function()
@@ -938,15 +918,11 @@ function GoWWishlists:CreatePopupFilterBtn(parent, label, width, ownerKey, getOp
     return btn;
 end
 
-function GoWWishlists:SetButtonActive(btn, isActive)
-    GOW.Layout:SetButtonActive(btn, isActive);
-end
-
 function GoWWishlists:SetButtonActiveWithIcon(btn, iconTex, isActive)
-    self:SetButtonActive(btn, isActive);
+    L:SetButtonActive(btn, isActive);
     if iconTex then
         if isActive then
-            iconTex:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 1);
+            iconTex:SetVertexColor(L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 1);
         else
             iconTex:SetVertexColor(0.5, 0.5, 0.5, 0.6);
         end
@@ -956,15 +932,11 @@ end
 function GoWWishlists:SetTabActive(tab, isActive)
     if isActive then
         tab:SetBackdropColor(self.constants.TAB_ACTIVE_COLOR.r, self.constants.TAB_ACTIVE_COLOR.g, self.constants.TAB_ACTIVE_COLOR.b, self.constants.TAB_ACTIVE_COLOR.a);
-        tab:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
+        tab:SetBackdropBorderColor(L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.5);
     else
         tab:SetBackdropColor(self.constants.TAB_INACTIVE_COLOR.r, self.constants.TAB_INACTIVE_COLOR.g, self.constants.TAB_INACTIVE_COLOR.b, self.constants.TAB_INACTIVE_COLOR.a);
         tab:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.5);
     end
-end
-
-function GoWWishlists:CreateRowHighlight(frame, alpha)
-    return GOW.Layout:CreateRowHighlight(frame, alpha);
 end
 
 function GoWWishlists:CreateRowIcon(parent, borderSize, leftOffset)
@@ -980,10 +952,6 @@ function GoWWishlists:CreateRowIcon(parent, borderSize, leftOffset)
     icon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
 
     return iconBorder, icon;
-end
-
-function GoWWishlists:CreateRowSeparator(parent)
-    return GOW.Layout:CreateRowSeparator(parent);
 end
 
 function GoWWishlists:CreateItemTooltipZone(row, iconBorder)
@@ -1065,7 +1033,7 @@ function GoWWishlists:GetOrCreatePopupMenu()
     local popup = CreateFrame("Frame", "GoWDetailPopup", UIParent, "BackdropTemplate");
     popup:SetFrameStrata("TOOLTIP");
     popup:SetFrameLevel(1);
-    self:ApplyBackdrop(popup, 0.1, 0.1, 0.13, 0.96, 0.3, 0.3, 0.35, 0.8);
+    L:ApplyBackdrop(popup, 0.1, 0.1, 0.13, 0.96, 0.3, 0.3, 0.35, 0.8);
     popup:Hide();
     popup:SetClampedToScreen(true);
     popup.items = {};
@@ -1079,7 +1047,7 @@ function GoWWishlists:GetOrCreatePopupMenu()
         popup:Hide();
     end
 
-    local accentHex = string.format("%02x%02x%02x", self.constants.GOW_ACCENT_COLOR.r * 255, self.constants.GOW_ACCENT_COLOR.g * 255, self.constants.GOW_ACCENT_COLOR.b * 255);
+    local accentHex = string.format("%02x%02x%02x", L.constants.GOW_ACCENT_COLOR.r * 255, L.constants.GOW_ACCENT_COLOR.g * 255, L.constants.GOW_ACCENT_COLOR.b * 255);
 
     local function showPopup(anchor, options, currentValue, onSelect)
         clearPopup();

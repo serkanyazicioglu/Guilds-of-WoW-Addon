@@ -5,6 +5,7 @@ GOW.Layout = Layout;
 
 Layout.constants = {
     GOW_ACCENT_COLOR = { r = 0.1, g = 0.8, b = 0.3 },
+    GOW_BG_COLOR = { r = 0.08, g = 0.08, b = 0.1 },
     SUB_ACTIVE_COLOR = { r = 0.1, g = 0.8, b = 0.3, a = 0.3 },
     SUB_ACTIVE_HOVER_COLOR = { r = 0.14, g = 0.9, b = 0.36, a = 0.42 },
     SUB_INACTIVE_COLOR = { r = 0.15, g = 0.15, b = 0.18, a = 0.8 },
