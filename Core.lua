@@ -728,38 +728,25 @@ function Core:CreateUpcomingEvents()
 	end
 
 	if (ns.UPCOMING_EVENTS == nil) then
-		Core:AppendMessage(
-			"Upcoming events data is not found! Please make sure your sync app is installed and working properly!", true);
+		GOW.eventDetails:RenderEmptyState("Upcoming events data is not found! Please make sure your sync app is installed and working properly!", nil, true);
 	else
 		local isInGuild = IsInGuild();
 
 		if (not isInGuild) then
-			if (GOW.eventDetails and GOW.eventDetails.RenderEmptyState) then
-				GOW.eventDetails:RenderEmptyState("This character is not in a guild! You must be a guild member to use this feature.");
-			else
-				Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false);
-			end
+			GOW.eventDetails:RenderEmptyState("This character is not in a guild! You must be a guild member to use this feature.");
 			return;
 		end
 
 		local guildName, _, _, realmName = GetGuildInfo("player");
 
 		if (not guildName) then
-			if (GOW.eventDetails and GOW.eventDetails.RenderEmptyState) then
-				GOW.eventDetails:RenderEmptyState("This character is not in a guild! You must be a guild member to use this feature.");
-			else
-				Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false);
-			end
+			GOW.eventDetails:RenderEmptyState("This character is not in a guild! You must be a guild member to use this feature.");
 			return;
 		end
 
 		if (ns.UPCOMING_EVENTS.totalEvents > 0) then
 			if (not isEventProcessCompleted or isNewEventBeingCreated or C_Calendar.IsActionPending()) then
-				if (GOW.eventDetails and GOW.eventDetails.RenderEmptyState) then
-            GOW.eventDetails:RenderEmptyState("Addon is busy right now! Please wait for a while...", nil, false, "Interface\\AddOns\\GuildsOfWoW\\icons\\hourglass-clock-solid.png");
-				else
-					Core:AppendMessage("Addon is busy right now! Please wait for a while...");
-				end
+            	GOW.eventDetails:RenderEmptyState("Addon is busy right now! Please wait for a while...", nil, false, "Interface\\AddOns\\GuildsOfWoW\\icons\\hourglass-clock-solid.png");
 				isPropogatingUpdate = false;
 				return;
 			end
@@ -789,16 +776,11 @@ function Core:CreateUpcomingEvents()
 		end
 
 		if (not hasAnyData) then
-			if (GOW.eventDetails and GOW.eventDetails.RenderEmptyState) then
-				GOW.eventDetails:RenderEmptyState(
-					"This guild either doesn't have any upcoming events that you are a member of, or you are not an event manager!",
-					"Guild: " .. guildName .. " / " .. realmName,
-					true
-				);
-			else
-				Core:AppendMessage(
-					"This guild either doesn't have any upcoming events that you are a member of, or you are not an event manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
-			end
+			GOW.eventDetails:RenderEmptyState(
+				"This guild either doesn't have any upcoming events that you are a member of, or you are not an event manager!",
+				"Guild: " .. guildName .. " / " .. realmName,
+				true
+			);
 		end
 	end
 
@@ -818,32 +800,20 @@ function Core:CreateTeams()
 	if (ns.TEAMS == nil) then
 		if containerScrollFrame then
 			containerScrollFrame:ReleaseChildren();
-			if (GOW.teams and GOW.teams.RenderEmptyState) then
-				GOW.teams:RenderEmptyState("Team data is not found! Please make sure your sync app is installed and working properly!", nil, true);
-			else
-				Core:AppendMessage("Team data is not found! Please make sure your sync app is installed and working properly!", true);
-			end
+			GOW.teams:RenderEmptyState("Team data is not found! Please make sure your sync app is installed and working properly!", nil, true);
 		end
 	else
 		local isInGuild = IsInGuild();
 
 		if (isInGuild == false) then
-			if (GOW.teams and GOW.teams.RenderEmptyState) then
-				GOW.teams:RenderEmptyState("This character is not in a guild! You must be a guild member to use this feature.");
-			else
-				Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false);
-			end
+			GOW.teams:RenderEmptyState("This character is not in a guild! You must be a guild member to use this feature.");
 			return;
 		end
 
 		local guildName, _, _, realmName = GetGuildInfo("player");
 
 		if (guildName == nil) then
-			if (GOW.teams and GOW.teams.RenderEmptyState) then
-				GOW.teams:RenderEmptyState("This character is not in a guild! You must be a guild member to use this feature.");
-			else
-				Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false);
-			end
+			GOW.teams:RenderEmptyState("This character is not in a guild! You must be a guild member to use this feature.");
 			return;
 		end
 
@@ -871,11 +841,7 @@ function Core:CreateTeams()
 		end
 
 		if (not hasAnyData) then
-			if (GOW.teams and GOW.teams.RenderEmptyState) then
-				GOW.teams:RenderEmptyState("This guild doesn't have any team, or you are not a roster manager!", "Guild: " .. guildName .. " / " .. realmName, true);
-			else
-				Core:AppendMessage("This guild doesn't have any team, or you are not a roster manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
-			end
+			GOW.teams:RenderEmptyState("This guild doesn't have any team, or you are not a roster manager!", "Guild: " .. guildName .. " / " .. realmName, true);
 		end
 	end
 
@@ -890,31 +856,19 @@ function Core:CreateRecruitmentApplications()
 
 	if (ns.RECRUITMENT_APPLICATIONS == nil) then
 		containerScrollFrame:ReleaseChildren();
-		if (GOW.recruitmentDetails and GOW.recruitmentDetails.RenderEmptyState) then
-			GOW.recruitmentDetails:RenderEmptyState("Recruitment applications data is not found! Please make sure your sync app is installed and working properly!", nil, true);
-		else
-			Core:AppendMessage("Recruitment applications data is not found! Please make sure your sync app is installed and working properly!", true);
-		end
+		GOW.recruitmentDetails:RenderEmptyState("Recruitment applications data is not found! Please make sure your sync app is installed and working properly!", nil, true);
 	else
 		local isInGuild = IsInGuild();
 
 		if (isInGuild == false) then
-			if (GOW.recruitmentDetails and GOW.recruitmentDetails.RenderEmptyState) then
-				GOW.recruitmentDetails:RenderEmptyState("This character is not in a guild! You must be a guild member to use this feature.");
-			else
-				Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false);
-			end
+			GOW.recruitmentDetails:RenderEmptyState("This character is not in a guild! You must be a guild member to use this feature.");
 			return;
 		end
 
 		local guildName, _, _, realmName = GetGuildInfo("player");
 
 		if (guildName == nil) then
-			if (GOW.recruitmentDetails and GOW.recruitmentDetails.RenderEmptyState) then
-				GOW.recruitmentDetails:RenderEmptyState("This character is not in a guild! You must be a guild member to use this feature.");
-			else
-				Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false);
-			end
+			GOW.recruitmentDetails:RenderEmptyState("This character is not in a guild! You must be a guild member to use this feature.");
 			return;
 		end
 
@@ -940,11 +894,7 @@ function Core:CreateRecruitmentApplications()
 		end
 
 		if (#applications == 0) then
-			if (GOW.recruitmentDetails and GOW.recruitmentDetails.RenderEmptyState) then
-				GOW.recruitmentDetails:RenderEmptyState("This guild doesn't have any guild recruitment application, or you are not a recruitment manager!", "Guild: " .. guildName .. " / " .. realmName, true);
-			else
-				Core:AppendMessage("This guild doesn't have any guild recruitment application, or you are not a recruitment manager!\r\n\r\nGuild: " .. guildName .. " / " .. realmName, true);
-			end
+			GOW.recruitmentDetails:RenderEmptyState("This guild doesn't have any guild recruitment application, or you are not a recruitment manager!", "Guild: " .. guildName .. " / " .. realmName, true);
 		elseif (GOW.recruitmentDetails) then
 			GOW.recruitmentDetails:SetApplications(applications, guildRoster);
 			GOW.recruitmentDetails:Render();
@@ -965,21 +915,13 @@ function Core:CreateKeystones()
 	containerScrollFrame:ReleaseChildren();
 
 	if (not GOW.Helper:IsKeystonesEnabled()) then
-		if (GOW.keystoneDetails and GOW.keystoneDetails.RenderState) then
-			GOW.keystoneDetails:RenderState("Keystones are not available in this game version.", false);
-		else
-			Core:AppendMessage("Keystones are not available in this game version.", false);
-		end
+		GOW.keystoneDetails:RenderState("Keystones are not available in this game version.", false);
 		isPropogatingUpdate = false;
 		return;
 	end
 
 	if (not IsInGuild()) then
-		if (GOW.keystoneDetails and GOW.keystoneDetails.RenderState) then
-			GOW.keystoneDetails:RenderState("This character is not in a guild! You must be a guild member to use this feature.", false);
-		else
-			Core:AppendMessage("This character is not in a guild! You must be a guild member to use this feature.", false);
-		end
+		GOW.keystoneDetails:RenderState("This character is not in a guild! You must be a guild member to use this feature.", false);
 		isPropogatingUpdate = false;
 		return;
 	end
@@ -987,12 +929,7 @@ function Core:CreateKeystones()
 	if (GOW.keystoneDetails) then
 		GOW.keystoneDetails:Render();
 	else
-		if (GOW.keystoneDetails and GOW.keystoneDetails.RenderState) then
-			GOW.keystoneDetails:RenderState("Keystone module not loaded.", false, true);
-		else
-			Core:AppendMessage("Keystone module not loaded.", true);
-			Core:AppendScrollBottomPadding();
-		end
+		GOW.keystoneDetails:RenderState("Keystone module not loaded.", false, true);
 	end
 
 	isPropogatingUpdate = false;
