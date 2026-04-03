@@ -144,6 +144,15 @@ function GoWWishlists:BuildWishlistIndex()
     GOW.Logger:Debug("Wishlist index built: " .. #self.state.allItems .. " items indexed for " .. charInfo.nameLower .. "-" .. charInfo.realmLower);
 end
 
+function GoWWishlists:IsWishlistDataStale()
+    if not ns.WISHLISTS or not ns.WISHLISTS.exportTime then return false end
+
+    local now = GetServerTime and GetServerTime() or time();
+    local staleThresholdSeconds = 20 * 60;
+
+    return (now - ns.WISHLISTS.exportTime) > staleThresholdSeconds;
+end
+
 function GoWWishlists:GetCurrentDifficultyName()
     local _, _, difficultyId = GetInstanceInfo();
     return self.constants.DIFFICULTY_NAMES[difficultyId];

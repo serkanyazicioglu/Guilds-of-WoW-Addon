@@ -68,12 +68,6 @@ function Layout:CreateActionButton(parent, options)
         onClick(btn);
     end);
     btn:SetScript("OnEnter", function(selfButton)
-        if (not selfButton.isActionActive) then
-            return;
-        end
-
-        selfButton:SetBackdropColor(self.constants.SUB_ACTIVE_HOVER_COLOR.r, self.constants.SUB_ACTIVE_HOVER_COLOR.g, self.constants.SUB_ACTIVE_HOVER_COLOR.b, self.constants.SUB_ACTIVE_HOVER_COLOR.a);
-        selfButton:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.75);
         if opts.tooltip then
             GameTooltip:SetOwner(selfButton, "ANCHOR_BOTTOM");
             GameTooltip:AddLine(opts.tooltip, 1, 1, 1);
@@ -82,16 +76,26 @@ function Layout:CreateActionButton(parent, options)
             end
             GameTooltip:Show();
         end
+
+        if (not selfButton.isActionActive) then
+            return;
+        end
+
+        selfButton:SetBackdropColor(self.constants.SUB_ACTIVE_HOVER_COLOR.r, self.constants.SUB_ACTIVE_HOVER_COLOR.g, self.constants.SUB_ACTIVE_HOVER_COLOR.b, self.constants.SUB_ACTIVE_HOVER_COLOR.a);
+        selfButton:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.75);
     end);
     btn:SetScript("OnLeave", function(selfButton)
         self:SetButtonActive(selfButton, selfButton.isActionActive);
-        GameTooltip:Hide();
+        if GameTooltip:GetOwner() == selfButton then
+            GameTooltip:Hide();
+        end
     end);
 
     return btn;
 end
 
 function Layout:SetButtonActive(btn, isActive)
+    btn.isActionActive = isActive;
     if (isActive) then
         btn:SetBackdropColor(self.constants.SUB_ACTIVE_COLOR.r, self.constants.SUB_ACTIVE_COLOR.g, self.constants.SUB_ACTIVE_COLOR.b, self.constants.SUB_ACTIVE_COLOR.a);
         btn:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
