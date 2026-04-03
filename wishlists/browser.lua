@@ -3,30 +3,20 @@ local GoWWishlists = GOW.Wishlists;
 local L = GOW.Layout;
 
 function GoWWishlists:CreateCompactToggleButton(parent)
-    local compactBtn = L:CreateSubFilterBtn(parent, "", 60);
+    local compactBtn = L:CreateActionButton(parent, {
+        text = "Compact",
+        width = 60,
+        tooltip = "Toggle compact mode",
+        tooltipSubtext = "Reduces row height and hides slot and subclass badges",
+        onClick = function() self:ToggleCompactMode() end,
+    });
 
     local function updateCompactBtn()
-        if self.state.compactMode then
-            compactBtn.btnText:SetText("|cff00ff00Compact|r");
-            L:SetButtonActive(compactBtn, true);
-        else
-            compactBtn.btnText:SetText("Compact");
-            L:SetButtonActive(compactBtn, false);
-        end
+        L:SetButtonActive(compactBtn, self.state.compactMode);
+        compactBtn.btnText:SetText(self.state.compactMode and "|cff00ff00Compact|r" or "Compact");
     end
 
     compactBtn.UpdateState = updateCompactBtn;
-    compactBtn:SetScript("OnClick", function()
-        self:ToggleCompactMode();
-    end);
-    compactBtn:SetScript("OnEnter", function(btn)
-        GameTooltip:SetOwner(btn, "ANCHOR_BOTTOM");
-        GameTooltip:AddLine("Toggle compact mode", 1, 1, 1);
-        GameTooltip:AddLine("Reduces row height and hides slot and subclass badges", 0.7, 0.7, 0.7);
-        GameTooltip:Show();
-    end);
-    compactBtn:SetScript("OnLeave", function() GameTooltip:Hide() end);
-
     updateCompactBtn();
     return compactBtn;
 end
