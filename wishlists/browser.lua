@@ -220,7 +220,7 @@ function GoWWishlists:CreateWishlistBrowserFrame()
         personalTabOffsetX = -4,
         personalTabOffsetY = -4,
         compactRightRelativeTo = frame,
-        compactRightOffsetX = -92,
+        compactRightOffsetX = -8,
         contentOffsetX = -4,
         contentOffsetY = -8,
         contentRight = -4,
@@ -234,10 +234,13 @@ function GoWWishlists:CreateWishlistBrowserFrame()
         text = "Reload UI",
         width = 80,
         tooltip = "Reload the UI",
+        tooltipSubtext = "Wishlist data is more than 20 minutes old",
         onClick = function() ReloadUI() end,
     });
-    reloadBtn:SetPoint("LEFT", frame.compactBtn, "RIGHT", 4, 0);
+    reloadBtn:SetPoint("RIGHT", frame.compactBtn, "LEFT", -4, 0);
     reloadBtn:SetPoint("TOP", frame.compactBtn, "TOP", 0, 0);
+    reloadBtn:Hide();
+    frame.reloadBtn = reloadBtn;
 
     table.insert(UISpecialFrames, "GoWWishlistBrowserFrame");
 
@@ -248,6 +251,10 @@ end
 
 function GoWWishlists:ShowWishlistBrowserFrame()
     local frame = self:CreateWishlistBrowserFrame();
+
+    if frame.reloadBtn then
+        if self:IsWishlistDataStale() then frame.reloadBtn:Show() else frame.reloadBtn:Hide() end
+    end
 
     UpdateRosterTabVisibility(self, frame);
     frame.SetActiveTab(GetSavedTabIndex(frame));
@@ -264,27 +271,31 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
     local container = CreateFrame("Frame", "GoWCoreWishlistsContainer", parent);
     container:SetAllPoints(parent);
 
-    local reloadBtn = L:CreateActionButton(container, {
-        text = "Reload UI",
-        width = 80,
-        tooltip = "Reload the UI",
-        onClick = function() ReloadUI() end,
-    });
-    reloadBtn:SetPoint("TOPRIGHT", container, "TOPRIGHT", -4, -4);
-
     InitializeWishlistTabHost(self, container, {
         personalTabRelativeTo = container,
         personalTabRelativePoint = "TOPLEFT",
         personalTabOffsetX = 4,
         personalTabOffsetY = -4,
-        compactRightRelativeTo = reloadBtn,
-        compactRightRelativePoint = "LEFT",
+        compactRightRelativeTo = container,
+        compactRightRelativePoint = "TOPRIGHT",
         compactRightOffsetX = -4,
         contentOffsetX = -4,
         contentOffsetY = -6,
         contentRight = 0,
         contentBottom = 0,
     });
+
+    local reloadBtn = L:CreateActionButton(container, {
+        text = "Reload UI",
+        width = 80,
+        tooltip = "Reload the UI",
+        tooltipSubtext = "Wishlist data is more than 20 minutes old",
+        onClick = function() ReloadUI() end,
+    });
+    reloadBtn:SetPoint("RIGHT", container.compactBtn, "LEFT", -4, 0);
+    reloadBtn:SetPoint("TOP", container.compactBtn, "TOP", 0, 0);
+    reloadBtn:Hide();
+    container.reloadBtn = reloadBtn;
 
     container:Hide();
     self.frames.coreWishlists = container;
@@ -293,6 +304,10 @@ end
 
 function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
     local container = self:CreateCoreWishlistsFrame(parent);
+
+    if container.reloadBtn then
+        if self:IsWishlistDataStale() then container.reloadBtn:Show() else container.reloadBtn:Hide() end
+    end
 
     local subtitleProxy = { SetText = function(_, text) if setStatusFn then setStatusFn(text) end end };
     container.setStatusFn = setStatusFn;
