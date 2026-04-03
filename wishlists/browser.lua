@@ -1,37 +1,22 @@
 local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
+local L = GOW.Layout;
 
 function GoWWishlists:CreateCompactToggleButton(parent)
-    local compactBtn = CreateFrame("Button", nil, parent, "BackdropTemplate");
-    compactBtn:SetSize(60, 18);
-    self:ApplyBackdrop(compactBtn, self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a, 0.3, 0.3, 0.3, 0.4);
-
-    local compactBtnText = compactBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    compactBtnText:SetPoint("CENTER", compactBtn, "CENTER", 0, 0);
-    compactBtn.btnText = compactBtnText;
+    local compactBtn = L:CreateActionButton(parent, {
+        text = "Compact",
+        width = 60,
+        tooltip = "Toggle compact mode",
+        tooltipSubtext = "Reduces row height and hides slot and subclass badges",
+        onClick = function() self:ToggleCompactMode() end,
+    });
 
     local function updateCompactBtn()
-        if self.state.compactMode then
-            compactBtnText:SetText("|cff00ff00Compact|r");
-            self:SetButtonActive(compactBtn, true);
-        else
-            compactBtnText:SetText("Compact");
-            self:SetButtonActive(compactBtn, false);
-        end
+        L:SetButtonActive(compactBtn, self.state.compactMode);
+        compactBtn.btnText:SetText(self.state.compactMode and "|cff00ff00Compact|r" or "Compact");
     end
 
     compactBtn.UpdateState = updateCompactBtn;
-    compactBtn:SetScript("OnClick", function()
-        self:ToggleCompactMode();
-    end);
-    compactBtn:SetScript("OnEnter", function(btn)
-        GameTooltip:SetOwner(btn, "ANCHOR_BOTTOM");
-        GameTooltip:AddLine("Toggle compact mode", 1, 1, 1);
-        GameTooltip:AddLine("Reduces row height and hides slot and subclass badges", 0.7, 0.7, 0.7);
-        GameTooltip:Show();
-    end);
-    compactBtn:SetScript("OnLeave", function() GameTooltip:Hide() end);
-
     updateCompactBtn();
     return compactBtn;
 end
@@ -90,7 +75,7 @@ local function InitializeWishlistTabHost(self, host, options)
 
     local tabIndicator = host:CreateTexture(nil, "ARTWORK", nil, 2);
     tabIndicator:SetTexture("Interface\\Buttons\\WHITE8x8");
-    tabIndicator:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.9);
+    tabIndicator:SetVertexColor(L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.9);
     tabIndicator:SetHeight(2);
 
     local personalContainer = CreateFrame("Frame", options.personalContainerName, host);
@@ -200,11 +185,11 @@ function GoWWishlists:CreateWishlistBrowserFrame()
     end);
     frame:SetClampedToScreen(true);
 
-    self:ApplyBackdrop(frame, self.constants.GOW_BG_COLOR.r, self.constants.GOW_BG_COLOR.g, self.constants.GOW_BG_COLOR.b, 0.95, self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.7);
+    L:ApplyBackdrop(frame, L.constants.GOW_BG_COLOR.r, L.constants.GOW_BG_COLOR.g, L.constants.GOW_BG_COLOR.b, 0.95, L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.7);
 
     local topStripe = frame:CreateTexture(nil, "ARTWORK");
     topStripe:SetTexture("Interface\\Buttons\\WHITE8x8");
-    topStripe:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.9);
+    topStripe:SetVertexColor(L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.9);
     topStripe:SetHeight(2);
     topStripe:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1);
     topStripe:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1);
@@ -235,7 +220,7 @@ function GoWWishlists:CreateWishlistBrowserFrame()
         personalTabOffsetX = -4,
         personalTabOffsetY = -4,
         compactRightRelativeTo = frame,
-        compactRightOffsetX = -8,
+        compactRightOffsetX = -92,
         contentOffsetX = -4,
         contentOffsetY = -8,
         contentRight = -4,
@@ -244,6 +229,15 @@ function GoWWishlists:CreateWishlistBrowserFrame()
         guildContainerName = "GoWGuildContainer",
         onTabChanged = RefreshStandaloneTab,
     });
+
+    local reloadBtn = L:CreateActionButton(frame, {
+        text = "Reload UI",
+        width = 80,
+        tooltip = "Reload the UI",
+        onClick = function() ReloadUI() end,
+    });
+    reloadBtn:SetPoint("LEFT", frame.compactBtn, "RIGHT", 4, 0);
+    reloadBtn:SetPoint("TOP", frame.compactBtn, "TOP", 0, 0);
 
     table.insert(UISpecialFrames, "GoWWishlistBrowserFrame");
 
@@ -270,18 +264,35 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
     local container = CreateFrame("Frame", "GoWCoreWishlistsContainer", parent);
     container:SetAllPoints(parent);
 
+    local reloadBtn = L:CreateActionButton(container, {
+        text = "Reload UI",
+        width = 80,
+        tooltip = "Reload the UI",
+        onClick = function() ReloadUI() end,
+    });
+    reloadBtn:SetPoint("TOPRIGHT", container, "TOPRIGHT", -4, -4);
+
     InitializeWishlistTabHost(self, container, {
         personalTabRelativeTo = container,
         personalTabRelativePoint = "TOPLEFT",
         personalTabOffsetX = 4,
         personalTabOffsetY = -4,
-        compactRightRelativeTo = container,
+        compactRightRelativeTo = reloadBtn,
+        compactRightRelativePoint = "LEFT",
         compactRightOffsetX = -4,
         contentOffsetX = -4,
         contentOffsetY = -6,
         contentRight = 0,
         contentBottom = 0,
     });
+
+    local reloadBtn = L:CreateActionButton(container, {
+        text = "Reload UI",
+        width = 80,
+        tooltip = "Reload the UI",
+        onClick = function() ReloadUI() end,
+    });
+    reloadBtn:SetPoint("TOPRIGHT", container, "TOPRIGHT", -4, -4);
 
     container:Hide();
     self.frames.coreWishlists = container;

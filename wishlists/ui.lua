@@ -1,5 +1,6 @@
 local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
+local L = GOW.Layout;
 
 GoWWishlists.constants.BROWSER_BOSS_HEADER_HEIGHT = 24;
 GoWWishlists.constants.RAID_HEADER_HEIGHT = 18;
@@ -16,9 +17,9 @@ function GoWWishlists:CreateWishlistCardRow(parent, options)
         local sideBar = row:CreateTexture(nil, "ARTWORK", nil, 2);
         sideBar:SetTexture("Interface\\Buttons\\WHITE8x8");
         sideBar:SetVertexColor(
-            opts.leadingAccent.r or self.constants.GOW_ACCENT_COLOR.r,
-            opts.leadingAccent.g or self.constants.GOW_ACCENT_COLOR.g,
-            opts.leadingAccent.b or self.constants.GOW_ACCENT_COLOR.b,
+            opts.leadingAccent.r or L.constants.GOW_ACCENT_COLOR.r,
+            opts.leadingAccent.g or L.constants.GOW_ACCENT_COLOR.g,
+            opts.leadingAccent.b or L.constants.GOW_ACCENT_COLOR.b,
             opts.leadingAccent.a or 0.8
         );
         sideBar:SetWidth(opts.leadingAccent.width or 3);
@@ -81,8 +82,8 @@ function GoWWishlists:CreateWishlistCardRow(parent, options)
     row.catalystBadge = self:CreateCatalystBadge(inner);
     row.tierBadge = self:CreateTierBadge(inner);
 
-    self:CreateRowSeparator(row);
-    row.highlight = self:CreateRowHighlight(row);
+    L:CreateRowSeparator(row);
+    row.highlight = L:CreateRowHighlight(row);
     self:CreateItemTooltipZone(row, iconBorder);
 
     return row;
@@ -166,7 +167,7 @@ function GoWWishlists:CreateBossHeader(parent, bossName, itemCount)
 
     local bar = header:CreateTexture(nil, "ARTWORK");
     bar:SetTexture("Interface\\Buttons\\WHITE8x8");
-    bar:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.6);
+    bar:SetVertexColor(L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.6);
     bar:SetSize(3, 16);
     bar:SetPoint("LEFT", arrow, "RIGHT", 4, 0);
 
@@ -178,14 +179,9 @@ function GoWWishlists:CreateBossHeader(parent, bossName, itemCount)
     countText:SetPoint("LEFT", nameText, "RIGHT", 8, 0);
     countText:SetText("|cff888888(" .. itemCount .. ")|r");
 
-    local sep = header:CreateTexture(nil, "ARTWORK");
-    sep:SetTexture("Interface\\Buttons\\WHITE8x8");
-    sep:SetVertexColor(0.3, 0.3, 0.3, 0.3);
-    sep:SetHeight(1);
-    sep:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT", 6, 0);
-    sep:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", -6, 0);
+    L:CreateRowSeparator(header);
 
-    local highlight = self:CreateRowHighlight(header);
+    local highlight = L:CreateRowHighlight(header);
     header:SetScript("OnEnter", function(self) highlight:Show() end);
     header:SetScript("OnLeave", function(self) highlight:Hide() end);
 
@@ -220,7 +216,7 @@ function GoWWishlists:StyleScrollBar(scrollFrame)
     local thumb = scrollBar.ThumbTexture or scrollBar:GetThumbTexture();
     if thumb then
         thumb:SetTexture("Interface\\Buttons\\WHITE8x8");
-        thumb:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.5);
+        thumb:SetVertexColor(L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.5);
         thumb:SetSize(6, 40);
     end
 
@@ -246,7 +242,7 @@ end
 
 function GoWWishlists:CreatePanelFrame(parent, name)
     local panel = CreateFrame("Frame", name, parent, "BackdropTemplate");
-    self:ApplyBackdrop(panel, 0.06, 0.06, 0.08, 0.95, 0.2, 0.2, 0.25, 0.6);
+    L:ApplyBackdrop(panel, 0.06, 0.06, 0.08, 0.95, 0.2, 0.2, 0.25, 0.6);
 
     local headerBar = CreateFrame("Frame", nil, panel);
     headerBar:SetHeight(self.constants.PANEL_HEADER_HEIGHT);
@@ -320,11 +316,11 @@ function GoWWishlists:CreateBossRow(parent, bossName, itemCount, isAllBosses)
     local row = CreateFrame("Button", nil, parent);
     row:SetHeight(self.constants.BOSS_ROW_HEIGHT);
 
-    row.highlight = self:CreateRowHighlight(row);
+    row.highlight = L:CreateRowHighlight(row);
 
     local activeBar = row:CreateTexture(nil, "ARTWORK", nil, 2);
     activeBar:SetTexture("Interface\\Buttons\\WHITE8x8");
-    activeBar:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.8);
+    activeBar:SetVertexColor(L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.8);
     activeBar:SetWidth(3);
     activeBar:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0);
     activeBar:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0);
@@ -334,7 +330,7 @@ function GoWWishlists:CreateBossRow(parent, bossName, itemCount, isAllBosses)
     local activeBg = row:CreateTexture(nil, "BACKGROUND", nil, 1);
     activeBg:SetTexture("Interface\\Buttons\\WHITE8x8");
     activeBg:SetAllPoints();
-    activeBg:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.08);
+    activeBg:SetVertexColor(L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.08);
     activeBg:Hide();
     row.activeBg = activeBg;
 
@@ -475,7 +471,7 @@ end
 function GoWWishlists:CreateSearchBox(parent)
     local search = CreateFrame("EditBox", nil, parent, "BackdropTemplate");
     search:SetHeight(20);
-    self:ApplyBackdrop(search, 0.05, 0.05, 0.07, 0.9, 0.25, 0.25, 0.3, 0.5);
+    L:ApplyBackdrop(search, 0.05, 0.05, 0.07, 0.9, 0.25, 0.25, 0.3, 0.5);
     search:SetFontObject("GameFontNormalSmall");
     search:SetTextInsets(20, 6, 0, 0);
     search:SetAutoFocus(false);
@@ -536,9 +532,9 @@ function GoWWishlists:CreateLootHistoryRow(parent, showWinner)
 
     row.showWinner = showWinner;
 
-    self:CreateRowSeparator(row);
+    L:CreateRowSeparator(row);
 
-    row.highlight = self:CreateRowHighlight(row);
+    row.highlight = L:CreateRowHighlight(row);
     self:CreateItemTooltipZone(row, iconBorder);
 
     return row;

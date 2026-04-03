@@ -1,5 +1,6 @@
 local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
+local L = GOW.Layout;
 local ns = select(2, ...);
 
 GoWWishlists.constants.GUILD_MEMBER_ROW_HEIGHT = 22;
@@ -193,7 +194,7 @@ function GoWWishlists:CreateGuildItemRow(parent)
     gainBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
     row.gainBadge = gainBadge;
 
-    row.highlight = self:CreateRowHighlight(row);
+    row.highlight = L:CreateRowHighlight(row);
     self:CreateItemTooltipZone(row, iconBorder);
 
     return row;
@@ -292,7 +293,7 @@ function GoWWishlists:CreateGuildMemberRow(parent)
     row.catalystBadge = self:CreateCatalystBadge(row);
     row.catalystBadge:SetPoint("RIGHT", row.noteIcon, "LEFT", -4, 0);
 
-    row.highlight = self:CreateRowHighlight(row, 0.03);
+    row.highlight = L:CreateRowHighlight(row, 0.03);
 
     row:EnableMouse(true);
     row:SetScript("OnEnter", function(self) self.highlight:Show() end);
@@ -467,7 +468,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         rosterBar:SetHeight(22);
         rosterBar:SetPoint("TOPLEFT", rosterParent, "TOPLEFT", 0, 0);
         rosterBar:SetPoint("TOPRIGHT", rosterParent, "TOPRIGHT", 0, 0);
-        self:ApplyBackdrop(rosterBar, 0.06, 0.06, 0.08, 0.9, 0.2, 0.2, 0.2, 0.4);
+        L:ApplyBackdrop(rosterBar, 0.06, 0.06, 0.08, 0.9, 0.2, 0.2, 0.2, 0.4);
         panel3.guildRosterBar = rosterBar;
 
         local rosterLabel = rosterBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
@@ -475,7 +476,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         rosterLabel:SetText("|cff888888Roster:|r");
         rosterBar.rosterLabel = rosterLabel;
 
-        local rosterBtn = self:CreateSubFilterBtn(rosterBar, "All Members", 120);
+        local rosterBtn = L:CreateSubFilterBtn(rosterBar, "All Members", 120);
         rosterBtn:SetHeight(14);
         rosterBtn:SetPoint("LEFT", rosterLabel, "RIGHT", 4, 0);
         rosterBar.rosterBtn = rosterBtn;
@@ -497,7 +498,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
             rosterBtn.btnText:SetText(label);
             local textWidth = rosterBtn.btnText:GetStringWidth();
             rosterBtn:SetWidth(math.max(textWidth + 16, 80));
-            self:SetButtonActive(rosterBtn, guildRosterFilter ~= "all");
+            L:SetButtonActive(rosterBtn, guildRosterFilter ~= "all");
         end
 
         rosterBtn:SetScript("OnClick", function()
@@ -595,10 +596,9 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         sortBtn:SetPoint("TOPLEFT", headerBar, "BOTTOMLEFT", 4, -4);
         lootPanel.guildSortBtn = sortBtn;
 
-        local obtainedBtn = CreateFrame("Button", nil, lootPanel, "BackdropTemplate");
+        local obtainedBtn = L:CreateSubFilterBtn(lootPanel, "", 18);
         obtainedBtn:SetSize(18, 14);
         obtainedBtn:SetPoint("LEFT", sortBtn, "RIGHT", 4, 0);
-        self:ApplyBackdrop(obtainedBtn, self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a, 0.3, 0.3, 0.3, 0.4);
         local eyeTex = obtainedBtn:CreateTexture(nil, "ARTWORK");
         eyeTex:SetSize(12, 12);
         eyeTex:SetPoint("CENTER", obtainedBtn, "CENTER", 0, 0);
@@ -1048,21 +1048,21 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
     statsText:SetText("|cff888888" .. memberCount .. " members  |cff666666|||r  |cff888888" .. totalItems .. " items|r");
     yOffset = yOffset + 20;
 
-    local dateBtn = self:CreateSubFilterBtn(scrollChild, "Date", 50);
+    local dateBtn = L:CreateSubFilterBtn(scrollChild, "Date", 50);
     dateBtn:SetHeight(14);
     dateBtn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -yOffset);
 
-    local charBtn = self:CreateSubFilterBtn(scrollChild, "Character", 70);
+    local charBtn = L:CreateSubFilterBtn(scrollChild, "Character", 70);
     charBtn:SetHeight(14);
     charBtn:SetPoint("LEFT", dateBtn, "RIGHT", 4, 0);
 
     local function updateViewToggle()
         if guildHistoryView == "date" then
-            self:SetButtonActive(dateBtn, true);
-            self:SetButtonActive(charBtn, false);
+            L:SetButtonActive(dateBtn, true);
+            L:SetButtonActive(charBtn, false);
         else
-            self:SetButtonActive(charBtn, true);
-            self:SetButtonActive(dateBtn, false);
+            L:SetButtonActive(charBtn, true);
+            L:SetButtonActive(dateBtn, false);
         end
     end
 
@@ -1129,7 +1129,7 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
             charRow:SetHeight(22);
             charRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
             charRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
-            self:ApplyBackdrop(charRow, 0.1, 0.1, 0.13, 0.5, 0, 0, 0, 0);
+            L:ApplyBackdrop(charRow, 0.1, 0.1, 0.13, 0.5, 0, 0, 0, 0);
 
             local nameText = charRow:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
             nameText:SetPoint("LEFT", charRow, "LEFT", 12, 0);
@@ -1139,7 +1139,7 @@ function GoWWishlists:PopulateGuildDetailDefault(detailPanel, guildName, memberC
             countText:SetPoint("RIGHT", charRow, "RIGHT", -12, 0);
             countText:SetText("|cff888888" .. info.count .. " items|r");
 
-            local hl = self:CreateRowHighlight(charRow);
+            local hl = L:CreateRowHighlight(charRow);
             charRow:SetScript("OnEnter", function() hl:Show() end);
             charRow:SetScript("OnLeave", function() hl:Hide() end);
 

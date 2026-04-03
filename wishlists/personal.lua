@@ -1,5 +1,6 @@
 local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
+local L = GOW.Layout;
 
 function GoWWishlists:PopulatePersonalWishlistView(frame)
     local panel3 = frame.wishlist3Panel;
@@ -307,10 +308,9 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         detailPanel.updateSortLabel = updateSortLabel;
         detailPanel.updateSlotLabel = updateSlotLabel;
 
-        local obtainedBtn = CreateFrame("Button", nil, detailPanel, "BackdropTemplate");
+        local obtainedBtn = L:CreateSubFilterBtn(detailPanel, "", 18);
         obtainedBtn:SetSize(18, 14);
         obtainedBtn:SetPoint("LEFT", slotBtn, "RIGHT", 4, 0);
-        self:ApplyBackdrop(obtainedBtn, self.constants.SUB_INACTIVE_COLOR.r, self.constants.SUB_INACTIVE_COLOR.g, self.constants.SUB_INACTIVE_COLOR.b, self.constants.SUB_INACTIVE_COLOR.a, 0.3, 0.3, 0.3, 0.4);
         local eyeTex = obtainedBtn:CreateTexture(nil, "ARTWORK");
         eyeTex:SetSize(12, 12);
         eyeTex:SetPoint("CENTER", obtainedBtn, "CENTER", 0, 0);

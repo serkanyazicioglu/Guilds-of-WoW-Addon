@@ -5,6 +5,7 @@ GOW.Layout = Layout;
 
 Layout.constants = {
     GOW_ACCENT_COLOR = { r = 0.1, g = 0.8, b = 0.3 },
+    GOW_BG_COLOR = { r = 0.08, g = 0.08, b = 0.1 },
     SUB_ACTIVE_COLOR = { r = 0.1, g = 0.8, b = 0.3, a = 0.3 },
     SUB_ACTIVE_HOVER_COLOR = { r = 0.14, g = 0.9, b = 0.36, a = 0.42 },
     SUB_INACTIVE_COLOR = { r = 0.15, g = 0.15, b = 0.18, a = 0.8 },
@@ -73,9 +74,18 @@ function Layout:CreateActionButton(parent, options)
 
         selfButton:SetBackdropColor(self.constants.SUB_ACTIVE_HOVER_COLOR.r, self.constants.SUB_ACTIVE_HOVER_COLOR.g, self.constants.SUB_ACTIVE_HOVER_COLOR.b, self.constants.SUB_ACTIVE_HOVER_COLOR.a);
         selfButton:SetBackdropBorderColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.75);
+        if opts.tooltip then
+            GameTooltip:SetOwner(selfButton, "ANCHOR_BOTTOM");
+            GameTooltip:AddLine(opts.tooltip, 1, 1, 1);
+            if opts.tooltipSubtext then
+                GameTooltip:AddLine(opts.tooltipSubtext, 0.7, 0.7, 0.7);
+            end
+            GameTooltip:Show();
+        end
     end);
     btn:SetScript("OnLeave", function(selfButton)
         self:SetButtonActive(selfButton, selfButton.isActionActive);
+        GameTooltip:Hide();
     end);
 
     return btn;

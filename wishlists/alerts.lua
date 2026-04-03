@@ -1,5 +1,6 @@
 local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
+local L = GOW.Layout;
 
 function GoWWishlists:CreateAlertItemRow(parent, match, itemLink)
     local row = self:CreateWishlistCardRow(parent, {
@@ -32,18 +33,18 @@ function GoWWishlists:CreateWishlistAlertContainer()
     end);
     frame:SetClampedToScreen(true);
 
-    self:ApplyBackdrop(frame, self.constants.GOW_BG_COLOR.r, self.constants.GOW_BG_COLOR.g, self.constants.GOW_BG_COLOR.b, 0.92, self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.7);
+    L:ApplyBackdrop(frame, L.constants.GOW_BG_COLOR.r, L.constants.GOW_BG_COLOR.g, L.constants.GOW_BG_COLOR.b, 0.92, L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.7);
 
     local topStripe = frame:CreateTexture(nil, "ARTWORK");
     topStripe:SetTexture("Interface\\Buttons\\WHITE8x8");
-    topStripe:SetVertexColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.9);
+    topStripe:SetVertexColor(L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.9);
     topStripe:SetHeight(2);
     topStripe:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1);
     topStripe:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1);
 
     local glow = frame:CreateTexture(nil, "ARTWORK", nil, 1);
     glow:SetTexture("Interface\\Buttons\\WHITE8x8");
-    glow:SetGradient("VERTICAL", CreateColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0), CreateColor(self.constants.GOW_ACCENT_COLOR.r, self.constants.GOW_ACCENT_COLOR.g, self.constants.GOW_ACCENT_COLOR.b, 0.08));
+    glow:SetGradient("VERTICAL", CreateColor(L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0), CreateColor(L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.08));
     glow:SetHeight(30);
     glow:SetPoint("TOPLEFT", topStripe, "BOTTOMLEFT", 0, 0);
     glow:SetPoint("TOPRIGHT", topStripe, "BOTTOMRIGHT", 0, 0);
