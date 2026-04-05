@@ -255,6 +255,44 @@ function GoWTeams:GetFilteredTeamMembers(teamData, selectedFilter, presenceMap)
     return filteredMembers;
 end
 
+function GoWTeams:CanInviteTeamMember(member, presenceMap)
+    local isConnected = select(1, self:GetMemberPresence(member, presenceMap));
+    if (not isConnected) then
+        return false;
+    end
+
+    local currentPlayer = GOW.Helper:GetCurrentCharacterUniqueKey();
+    local memberFullName = member.name .. "-" .. (member.realmNormalized or GetNormalizedRealmName());
+    if (memberFullName == currentPlayer) then
+        return false;
+    end
+
+    if (IsInGroup()) then
+        local numGroup = GetNumGroupMembers();
+        local unitPrefix = IsInRaid() and "raid" or "party";
+        for i = 1, numGroup do
+            local unitName = UnitName(unitPrefix .. i);
+            if (unitName and (unitName == memberFullName or unitName == member.name)) then
+                return false;
+            end
+        end
+    end
+
+    return true;
+end
+
+function GoWTeams:GetInvitableTeamMembers(members, presenceMap)
+    local invitableMembers = {};
+
+    for _, member in ipairs(members or {}) do
+        if (self:CanInviteTeamMember(member, presenceMap)) then
+            table.insert(invitableMembers, member);
+        end
+    end
+
+    return invitableMembers;
+end
+
 function GoWTeams:CreateTeamInviteButton(parent, member, canInvite, buttonText)
     local L = GOW.Layout;
     local btn = L:CreateActionButton(parent, {
@@ -353,21 +391,17 @@ function GoWTeams:CreateTeamRosterRow(parent, member, index, total, presenceMap)
     rankText:SetText("|cffaaaaaa" .. (guildRankName or "") .. "|r");
 
     local currentPlayerName = UnitName("player");
-    local canInvite = isConnected and member.name ~= currentPlayerName;
+    local canInvite = self:CanInviteTeamMember(member, presenceMap);
     local buttonText = canInvite and "Invite" or "Offline";
 
     if (member.name == currentPlayerName) then
         buttonText = "You";
-        canInvite = false;
     elseif (IsInGroup()) then
-        local numGroup = GetNumGroupMembers();
-        local unitPrefix = IsInRaid() and "raid" or "party";
         local memberFullName = member.name .. "-" .. (member.realmNormalized or GetNormalizedRealmName());
-        for i = 1, numGroup do
-            local unitName = UnitName(unitPrefix .. i);
+        for i = 1, GetNumGroupMembers() do
+            local unitName = UnitName((IsInRaid() and "raid" or "party") .. i);
             if (unitName and (unitName == memberFullName or unitName == member.name)) then
                 buttonText = "Joined";
-                canInvite = false;
                 break;
             end
         end
@@ -419,6 +453,7 @@ function GoWTeams:RenderTeamDetailsPopup(teamData, selectedFilter)
     local filters = self:BuildTeamFilters(teamData);
     local presenceMap = self:BuildPresenceMap();
     local filteredMembers = self:GetFilteredTeamMembers(teamData, selectedFilter, presenceMap);
+    local invitableMembers = self:GetInvitableTeamMembers(filteredMembers, presenceMap);
 
     local sidebar = L:CreateSidebarList(leftPanel.scrollChild, {
         rowHeight = TEAM_DETAIL_FILTER_ROW_HEIGHT,
@@ -457,6 +492,21 @@ function GoWTeams:RenderTeamDetailsPopup(teamData, selectedFilter)
     summaryText:SetJustifyH("LEFT");
     summaryText:SetWordWrap(false);
     summaryText:SetText("|cff888888" .. ((teamData.description and teamData.description ~= "") and teamData.description or "No description provided") .. "|r");
+
+    local inviteAllButton = L:CreateActionButton(rightPanel, {
+        text = "Invite All",
+        width = 78,
+        isActive = #invitableMembers > 0,
+        tooltip = "Invite all currently visible roster members who can be invited.",
+        tooltipSubtext = "Follows the selected role filter and skips offline members, yourself, and players already in the group.",
+        onClick = function()
+            self.CORE:InviteAllTeamMembersToPartyCheck({
+                members = invitableMembers,
+                totalMembers = #invitableMembers,
+            });
+        end
+    });
+    inviteAllButton:SetPoint("RIGHT", rightPanel.headerBar, "RIGHT", 0, 0);
 
     local headerRow = CreateFrame("Frame", nil, rightPanel.scrollChild);
     headerRow:SetHeight(18);
