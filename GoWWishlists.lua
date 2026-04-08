@@ -809,8 +809,9 @@ function GoWWishlists:CreateTokenBadge(parent)
     badge:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
         GameTooltip:AddLine("Token Item", 0.96, 0.77, 0.26);
-        if self.sourceItemName then
-            GameTooltip:AddLine("Source: " .. self.sourceItemName, 1, 1, 1);
+        local name = self.sourceItemName or (self.sourceItemId and C_Item.GetItemInfo(self.sourceItemId));
+        if name then
+            GameTooltip:AddLine("Source: " .. name, 1, 1, 1);
         end
         GameTooltip:Show();
     end);
@@ -824,9 +825,9 @@ function GoWWishlists:UpdateTokenBadge(badge, sourceItemId)
     if not badge then return end
     local hasToken = sourceItemId ~= nil and sourceItemId ~= "";
     badge:SetShown(hasToken);
+    badge.sourceItemId = hasToken and sourceItemId or nil;
     if hasToken then
-        local sourceItemName = C_Item.GetItemInfo(sourceItemId);
-        badge.sourceItemName = sourceItemName;
+        badge.sourceItemName = C_Item.GetItemInfo(sourceItemId);
     else
         badge.sourceItemName = nil;
     end
