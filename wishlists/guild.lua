@@ -1271,6 +1271,7 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     local seenSlots = {};
     for _, entry in ipairs(allMemberItems) do
         local _, _, _, equipLoc = C_Item.GetItemInfoInstant(entry.itemId);
+        if equipLoc == "INVTYPE_ROBE" then equipLoc = "INVTYPE_CHEST" end
         if equipLoc and equipLoc ~= "" then
             seenSlots[equipLoc] = true;
         end

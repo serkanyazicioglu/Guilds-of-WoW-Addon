@@ -143,6 +143,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
             local passFilter = (currentFilter == "All") or (entry.difficulty == currentFilter);
             if passFilter and detailSlotFilter ~= "All" then
                 local _, _, _, equipLoc = C_Item.GetItemInfoInstant(entry.itemId);
+                if equipLoc == "INVTYPE_ROBE" then equipLoc = "INVTYPE_CHEST" end
                 if equipLoc ~= detailSlotFilter then
                     passFilter = false;
                 end
@@ -274,6 +275,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
                 for _, entry in ipairs(self.state.allItems) do
                     if not entry.isObtained then
                         local _, _, _, equipLoc = C_Item.GetItemInfoInstant(entry.itemId);
+                        if equipLoc == "INVTYPE_ROBE" then equipLoc = "INVTYPE_CHEST" end
                         if equipLoc and equipLoc ~= "" then
                             seenSlots[equipLoc] = true;
                         end
