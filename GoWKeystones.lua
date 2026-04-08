@@ -77,12 +77,31 @@ local function GetCurrentMaxPlayerLevel()
 	return MAX_PLAYER_LEVEL or 80;
 end
 
+local function RebuildOpenRaidLibKeystoneMap()
+	openRaidLibKeystoneMap = {};
+
+	if (not openRaidLibKeystoneData) then
+		return;
+	end
+
+	for unitName, keystoneInfo in pairs(openRaidLibKeystoneData) do
+		if (keystoneInfo.level and keystoneInfo.level > 0) then
+			local normalizedName = GOW.Helper:GetNormalizedCharacterName(unitName);
+			if (normalizedName) then
+				openRaidLibKeystoneMap[normalizedName] = keystoneInfo;
+			end
+		end
+	end
+end
+
 local function RebuildLatestEntries()
 	latestEntries = {};
 
 	if (not GOW.Helper:IsKeystonesEnabled()) then
 		return;
 	end
+
+	RebuildOpenRaidLibKeystoneMap();
 
 	local numTotalMembers = GetNumGuildMembers() or 0;
 	if (numTotalMembers <= 0 or not C_MythicPlus.IsMythicPlusActive()) then
@@ -195,27 +214,9 @@ function Keystones:Initialize()
 	end
 end
 
-local function RebuildOpenRaidLibKeystoneMap()
-	openRaidLibKeystoneMap = {};
-
-	if (not openRaidLibKeystoneData) then
-		return;
-	end
-
-	for unitName, keystoneInfo in pairs(openRaidLibKeystoneData) do
-		if (keystoneInfo.level and keystoneInfo.level > 0) then
-			local normalizedName = GOW.Helper:GetNormalizedCharacterName(unitName);
-			if (normalizedName) then
-				openRaidLibKeystoneMap[normalizedName] = keystoneInfo;
-			end
-		end
-	end
-end
-
 function Keystones:Refresh()
 	if (openRaidLib) then
 		openRaidLibKeystoneData = openRaidLib.GetAllKeystonesInfo();
-		RebuildOpenRaidLibKeystoneMap();
 		openRaidLib.RequestKeystoneDataFromGuild();
 	end
 
