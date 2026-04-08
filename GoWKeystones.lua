@@ -171,7 +171,7 @@ function Keystones:Initialize()
 	end
 
 	openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0");
-	libKeystone = LibStub:GetLibrary("LibKeystone", true);
+	libKeystone = nil; --LibStub:GetLibrary("LibKeystone", true);
 
 	if (openRaidLib) then
 		openRaidLib.RequestKeystoneDataFromGuild();
