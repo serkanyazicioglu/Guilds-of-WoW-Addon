@@ -110,6 +110,12 @@ function GoWWishlists:BuildWishlistIndex()
                         local key = item.itemId;
                         self.state.wishlistIndex[key] = self.state.wishlistIndex[key] or {};
                         table.insert(self.state.wishlistIndex[key], item);
+
+                        if item.sourceItemId then
+                            local sourceKey = item.sourceItemId;
+                            self.state.wishlistIndex[sourceKey] = self.state.wishlistIndex[sourceKey] or {};
+                            table.insert(self.state.wishlistIndex[sourceKey], item);
+                        end
                     end
                 end
                 if not isDebug then break end
@@ -798,17 +804,17 @@ end
 
 function GoWWishlists:CreateTokenBadge(parent)
     local badge = L:CreateTextBadge(parent, {
-        text = "|cffa335eeT|r",
-        height = 16, minWidth = 20, paddingX = 4,
-        bgR = 0.08, bgG = 0.02, bgB = 0.12, bgA = 0.85,
-        borderR = 0.64, borderG = 0.21, borderB = 0.93, borderA = 0.6,
+        text = "|cffb968f0T|r",
+        height = 16, minWidth = 16, paddingX = 0,
+        bgR = 0.10, bgG = 0.04, bgB = 0.14, bgA = 0.85,
+        borderR = 0.73, borderG = 0.41, borderB = 0.94, borderA = 0.6,
     });
-    badge:SetHeight(16);
+    badge:SetSize(16, 16);
 
     badge:EnableMouse(true);
     badge:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-        GameTooltip:AddLine("Token Item", 0.64, 0.21, 0.93);
+        GameTooltip:AddLine("Token Item", 0.73, 0.41, 0.94);
         local name = self.sourceItemName or (self.sourceItemId and C_Item.GetItemInfo(self.sourceItemId));
         if name then
             GameTooltip:AddLine("Source: " .. name, 1, 1, 1);
