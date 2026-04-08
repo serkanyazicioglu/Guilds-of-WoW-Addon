@@ -711,6 +711,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
             end
         end, bossToRaid, bossToJournalId);
 
+        frame.guildSelectedBoss = nil;
         self:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, nil, guildRealm, detailPanel, bossToRaid, bossToJournalId, guildLootSortMode, guildHideObtained, rosterMemberSet);
 
         if detailPanel._activeMember then
