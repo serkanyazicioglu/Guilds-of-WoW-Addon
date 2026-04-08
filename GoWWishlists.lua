@@ -249,12 +249,12 @@ GoWWishlists.constants.SLOT_LABELS = {
     ["INVTYPE_FEET"] = "Feet",
     ["INVTYPE_WRIST"] = "Wrist",
     ["INVTYPE_HAND"] = "Hands",
-    ["INVTYPE_FINGER"] = "Ring",
+    ["INVTYPE_FINGER"] = "Finger",
     ["INVTYPE_TRINKET"] = "Trinket",
     ["INVTYPE_CLOAK"] = "Back",
     ["INVTYPE_WEAPONMAINHAND"] = "Main Hand",
-    ["INVTYPE_WEAPONOFFHAND"] = "Off-Hand",
-    ["INVTYPE_HOLDABLE"] = "Off-Hand",
+    ["INVTYPE_WEAPONOFFHAND"] = "Off Hand",
+    ["INVTYPE_HOLDABLE"] = "Off Hand",
     ["INVTYPE_RANGED"] = "Ranged",
     ["INVTYPE_2HWEAPON"] = "Two-Hand",
     ["INVTYPE_WEAPON"] = "One-Hand",
@@ -262,7 +262,7 @@ GoWWishlists.constants.SLOT_LABELS = {
 
 GoWWishlists.constants.SLOT_ORDER = {
     "INVTYPE_HEAD", "INVTYPE_NECK", "INVTYPE_SHOULDER",
-    "INVTYPE_CHEST", "INVTYPE_ROBE", "INVTYPE_WAIST",
+    "INVTYPE_CHEST", "INVTYPE_WAIST",
     "INVTYPE_LEGS", "INVTYPE_FEET", "INVTYPE_WRIST",
     "INVTYPE_HAND", "INVTYPE_FINGER", "INVTYPE_TRINKET",
     "INVTYPE_CLOAK", "INVTYPE_WEAPONMAINHAND",
@@ -798,17 +798,17 @@ end
 
 function GoWWishlists:CreateTokenBadge(parent)
     local badge = L:CreateTextBadge(parent, {
-        text = "|cfff5c542TOKEN|r",
-        height = 16, minWidth = 38, paddingX = 4,
-        bgR = 0.12, bgG = 0.10, bgB = 0.02, bgA = 0.85,
-        borderR = 0.96, borderG = 0.77, borderB = 0.26, borderA = 0.6,
+        text = "|cffa335eeT|r",
+        height = 16, minWidth = 20, paddingX = 4,
+        bgR = 0.08, bgG = 0.02, bgB = 0.12, bgA = 0.85,
+        borderR = 0.64, borderG = 0.21, borderB = 0.93, borderA = 0.6,
     });
     badge:SetHeight(16);
 
     badge:EnableMouse(true);
     badge:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-        GameTooltip:AddLine("Token Item", 0.96, 0.77, 0.26);
+        GameTooltip:AddLine("Token Item", 0.64, 0.21, 0.93);
         local name = self.sourceItemName or (self.sourceItemId and C_Item.GetItemInfo(self.sourceItemId));
         if name then
             GameTooltip:AddLine("Source: " .. name, 1, 1, 1);
