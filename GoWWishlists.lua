@@ -110,6 +110,12 @@ function GoWWishlists:BuildWishlistIndex()
                         local key = item.itemId;
                         self.state.wishlistIndex[key] = self.state.wishlistIndex[key] or {};
                         table.insert(self.state.wishlistIndex[key], item);
+
+                        if item.sourceItemId then
+                            local sourceKey = item.sourceItemId;
+                            self.state.wishlistIndex[sourceKey] = self.state.wishlistIndex[sourceKey] or {};
+                            table.insert(self.state.wishlistIndex[sourceKey], item);
+                        end
                     end
                 end
                 if not isDebug then break end
@@ -230,7 +236,7 @@ GoWWishlists.constants.TAG_DISPLAY = {
     BIS      = { label = "BiS", color = "25f478", tip = "Best in Slot" },
     NEED     = { label = "N",   color = "ff8000", tip = "Need" },
     GREED    = { label = "G",   color = "ffd700", tip = "Greed" },
-    MINOR    = { label = "M",   color = "6495ed", tip = "Minor Upgrade" },
+    MINOR    = { label = "MU",  color = "6495ed", tip = "Minor Upgrade" },
     TRANSMOG = { label = "T",   color = "ff69b4", tip = "Transmog" },
     OFFSPEC  = { label = "OS",  color = "a9a9a9", tip = "Off-Spec" },
 };
@@ -249,12 +255,12 @@ GoWWishlists.constants.SLOT_LABELS = {
     ["INVTYPE_FEET"] = "Feet",
     ["INVTYPE_WRIST"] = "Wrist",
     ["INVTYPE_HAND"] = "Hands",
-    ["INVTYPE_FINGER"] = "Ring",
+    ["INVTYPE_FINGER"] = "Finger",
     ["INVTYPE_TRINKET"] = "Trinket",
     ["INVTYPE_CLOAK"] = "Back",
     ["INVTYPE_WEAPONMAINHAND"] = "Main Hand",
-    ["INVTYPE_WEAPONOFFHAND"] = "Off-Hand",
-    ["INVTYPE_HOLDABLE"] = "Off-Hand",
+    ["INVTYPE_WEAPONOFFHAND"] = "Off Hand",
+    ["INVTYPE_HOLDABLE"] = "Off Hand",
     ["INVTYPE_RANGED"] = "Ranged",
     ["INVTYPE_2HWEAPON"] = "Two-Hand",
     ["INVTYPE_WEAPON"] = "One-Hand",
@@ -262,7 +268,7 @@ GoWWishlists.constants.SLOT_LABELS = {
 
 GoWWishlists.constants.SLOT_ORDER = {
     "INVTYPE_HEAD", "INVTYPE_NECK", "INVTYPE_SHOULDER",
-    "INVTYPE_CHEST", "INVTYPE_ROBE", "INVTYPE_WAIST",
+    "INVTYPE_CHEST", "INVTYPE_WAIST",
     "INVTYPE_LEGS", "INVTYPE_FEET", "INVTYPE_WRIST",
     "INVTYPE_HAND", "INVTYPE_FINGER", "INVTYPE_TRINKET",
     "INVTYPE_CLOAK", "INVTYPE_WEAPONMAINHAND",
@@ -670,7 +676,7 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
     local hasGain = false;
     if gain and gain.percent and gain.percent > 0 then
         local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
-        badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.1f", gain.percent) .. "%|r");
+        badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.2f", gain.percent) .. "%|r");
         hasGain = true;
     elseif gain and gain.stat and gain.stat > 0 then
         badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.1f", gain.stat) .. "|r");
@@ -689,7 +695,7 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
             if gain.stat and gain.stat > 0 then
                 statLine = string.format("+%.1f %s", gain.stat, metric);
             else
-                statLine = string.format("%.1f%% %s", gain.percent, metric);
+                statLine = string.format("%.2f%% %s", gain.percent, metric);
             end
             if isCatalystItem then
                 statLine = statLine .. " (Catalyst)";
@@ -728,7 +734,7 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
             local tipParts = {};
             if gain.percent and gain.percent > 0 then
                 local catalystSuffix = isCatalystItem and " (Catalyst)" or "";
-                table.insert(tipParts, string.format("%.1f%% %s%s", gain.percent, metric, catalystSuffix));
+                table.insert(tipParts, string.format("%.2f%% %s%s", gain.percent, metric, catalystSuffix));
             end
             if gain.stat and gain.stat > 0 then
                 table.insert(tipParts, "+" .. string.format("%.1f", gain.stat) .. " " .. metric);
@@ -794,6 +800,43 @@ end
 function GoWWishlists:UpdateCatalystBadge(badge, isCatalystItem)
     if not badge then return end
     badge:SetShown(isCatalystItem == true);
+end
+
+function GoWWishlists:CreateTokenBadge(parent)
+    local badge = L:CreateTextBadge(parent, {
+        text = "|cffb968f0T|r",
+        height = 16, minWidth = 16, paddingX = 0,
+        bgR = 0.10, bgG = 0.04, bgB = 0.14, bgA = 0.85,
+        borderR = 0.73, borderG = 0.41, borderB = 0.94, borderA = 0.6,
+    });
+    badge:SetSize(16, 16);
+
+    badge:EnableMouse(true);
+    badge:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+        GameTooltip:AddLine("Token Item", 0.73, 0.41, 0.94);
+        local name = self.sourceItemName or (self.sourceItemId and C_Item.GetItemInfo(self.sourceItemId));
+        if name then
+            GameTooltip:AddLine("Source: " .. name, 1, 1, 1);
+        end
+        GameTooltip:Show();
+    end);
+    badge:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+    badge:Hide();
+    return badge;
+end
+
+function GoWWishlists:UpdateTokenBadge(badge, sourceItemId)
+    if not badge then return end
+    local hasToken = sourceItemId ~= nil and sourceItemId ~= "";
+    badge:SetShown(hasToken);
+    badge.sourceItemId = hasToken and sourceItemId or nil;
+    if hasToken then
+        badge.sourceItemName = C_Item.GetItemInfo(sourceItemId);
+    else
+        badge.sourceItemName = nil;
+    end
 end
 
 function GoWWishlists:FormatTag(tag)

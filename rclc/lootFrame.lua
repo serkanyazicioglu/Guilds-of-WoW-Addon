@@ -50,7 +50,7 @@ local function OnEntryRefreshed(entry)
     local tagInfo = wish.tag and GoWWishlists.constants.TAG_DISPLAY[wish.tag];
     local label = tagInfo and string.format("|cff%s%s|r", tagInfo.color, tagInfo.tip) or "Wish";
     if wish.gain and wish.gain.percent and wish.gain.percent > 0 then
-        label = label .. string.format(" |cff00ff00%.1f%%|r", wish.gain.percent);
+        label = label .. string.format(" |cff00ff00%.2f%%|r", wish.gain.percent);
         if wish.gain.stat then
             label = label .. string.format(" |cff00ff00(%.1f %s)|r", wish.gain.stat, wish.gain.metric or "");
         end
@@ -87,7 +87,7 @@ local function OnEntryRefreshed(entry)
     if wish.gain then
         local metric = (wish.gain.metric and wish.gain.metric ~= "") and wish.gain.metric or "DPS";
         if wish.gain.percent and wish.gain.percent > 0 then
-            table.insert(tipLines, string.format("%.1f%% %s", wish.gain.percent, metric));
+            table.insert(tipLines, string.format("%.2f%% %s", wish.gain.percent, metric));
         end
         if wish.gain.stat and wish.gain.stat > 0 then
             table.insert(tipLines, string.format("%.1f %s (raw)", wish.gain.stat, metric));

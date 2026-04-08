@@ -126,6 +126,22 @@ function GoWWishlists:MarkWishlistObtained(itemId, difficulty)
                 end
             end
 
+            local crossKey = (entry.itemId == itemId) and entry.sourceItemId or entry.itemId;
+            if crossKey then
+                local crossList = self.state.wishlistIndex[crossKey];
+                if crossList then
+                    for j = #crossList, 1, -1 do
+                        if crossList[j] == entry then
+                            table.remove(crossList, j);
+                            break;
+                        end
+                    end
+                    if #crossList == 0 then
+                        self.state.wishlistIndex[crossKey] = nil;
+                    end
+                end
+            end
+
             return true;
         end
     end
