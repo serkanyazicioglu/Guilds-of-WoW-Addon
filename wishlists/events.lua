@@ -106,26 +106,18 @@ function GoWWishlists:IsAllLootAlreadyRecorded(itemId, encounterName, winnerName
 end
 
 function GoWWishlists:MarkWishlistObtained(itemId, difficulty)
-    for _, entry in ipairs(self.state.allItems) do
-        if entry.itemId == itemId
-            and (not difficulty or entry.difficulty == difficulty)
-            and not entry.isObtained then
+    local indexed = self.state.wishlistIndex[itemId];
+    if not indexed then return false end
+
+    for i = #indexed, 1, -1 do
+        local entry = indexed[i];
+        if (not difficulty or entry.difficulty == difficulty) and not entry.isObtained then
             entry.isObtained = true;
             GOW.Logger:Debug("Wishlist item marked obtained: " .. tostring(itemId) .. " (" .. tostring(entry.difficulty) .. ")");
-
-            local indexed = self.state.wishlistIndex[itemId];
-            if indexed then
-                for i = #indexed, 1, -1 do
-                    if indexed[i] == entry then
-                        table.remove(indexed, i);
-                        break;
-                    end
-                end
-                if #indexed == 0 then
-                    self.state.wishlistIndex[itemId] = nil;
-                end
+            table.remove(indexed, i);
+            if #indexed == 0 then
+                self.state.wishlistIndex[itemId] = nil;
             end
-
             return true;
         end
     end

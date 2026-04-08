@@ -414,7 +414,7 @@ function GoWEventDetails:IsMemberInCurrentGroup(memberKey)
     return false;
 end
 
-function GoWEventDetails:GetGuildOnlineMemberMap()
+local getEventOnlineMemberMapCached = GOW.Helper:CreateCachedFunction(function(self)
     if (C_GuildInfo and C_GuildInfo.GuildRoster) then
         C_GuildInfo.GuildRoster();
     end
@@ -431,6 +431,10 @@ function GoWEventDetails:GetGuildOnlineMemberMap()
     end
 
     return onlineMap;
+end, 2);
+
+function GoWEventDetails:GetGuildOnlineMemberMap()
+    return getEventOnlineMemberMapCached(self);
 end
 
 function GoWEventDetails:ShouldInviteRole(roleName, roleFilter)
@@ -517,7 +521,7 @@ function GoWEventDetails:DestroyEventInviteRoot()
     end
 end
 
-function GoWEventDetails:BuildEventInviteFilters(event)
+function GoWEventDetails:BuildEventInviteFilters(event, allRows)
     local counts = {
         All = 0,
         Tank = 0,
@@ -525,7 +529,8 @@ function GoWEventDetails:BuildEventInviteFilters(event)
         DPS = 0,
     };
 
-    for _, row in ipairs(self:BuildEventInviteRows(event, "All")) do
+    local rows = allRows or self:BuildEventInviteRows(event, "All");
+    for _, row in ipairs(rows) do
         counts.All = counts.All + 1;
         if (counts[row.roleName] ~= nil) then
             counts[row.roleName] = counts[row.roleName] + 1;
@@ -652,9 +657,15 @@ function GoWEventDetails:RenderEventInviteRows()
     local L = GOW.Layout;
     local windowFrame = self.eventInviteDialog.frame;
     local currentEvent = self.eventInviteActiveEvent;
-    local currentRows = self:BuildEventInviteRows(currentEvent, self.eventInviteCurrentRoleFilter);
+    local allRows = self:BuildEventInviteRows(currentEvent, "All");
+    local currentRows;
+    if (self.eventInviteCurrentRoleFilter == nil or self.eventInviteCurrentRoleFilter == "All") then
+        currentRows = allRows;
+    else
+        currentRows = self:BuildEventInviteRows(currentEvent, self.eventInviteCurrentRoleFilter);
+    end
     local inviteAllMembers = self:GetInvitableMemberNames(currentRows);
-    local filters = self:BuildEventInviteFilters(currentEvent);
+    local filters = self:BuildEventInviteFilters(currentEvent, allRows);
 
     self:DestroyEventInviteRoot();
 

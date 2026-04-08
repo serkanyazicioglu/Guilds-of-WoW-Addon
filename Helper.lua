@@ -119,4 +119,20 @@ function Helper:InviteToParty(inviteName)
     C_PartyInfo.InviteUnit(inviteName);
 end
 
+function Helper:CreateCachedFunction(fn, ttl)
+    local cached = nil;
+    local cachedTime = 0;
+
+    return function(...)
+        local now = GetServerTime();
+        if (cached and (now - cachedTime) < ttl) then
+            return cached;
+        end
+
+        cached = fn(...);
+        cachedTime = now;
+        return cached;
+    end
+end
+
 GOW.Helper = Helper;

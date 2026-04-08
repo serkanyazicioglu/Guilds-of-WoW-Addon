@@ -159,11 +159,17 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         end
 
         local SLOT_LABELS = self.constants.SLOT_LABELS;
+
+        local nameCache = {};
+        for _, item in ipairs(sortedItems) do
+            if not nameCache[item.itemId] then
+                nameCache[item.itemId] = C_Item.GetItemInfo(item.itemId) or "";
+            end
+        end
+
         if detailSortMode == "name" then
             table.sort(sortedItems, function(a, b)
-                local aName = C_Item.GetItemInfo(a.itemId) or "";
-                local bName = C_Item.GetItemInfo(b.itemId) or "";
-                return aName < bName;
+                return nameCache[a.itemId] < nameCache[b.itemId];
             end);
         elseif detailSortMode == "boss" then
             local bossIdx = {};
@@ -172,9 +178,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
                 local ai = bossIdx[a.sourceBossName] or 999;
                 local bi = bossIdx[b.sourceBossName] or 999;
                 if ai ~= bi then return ai < bi end
-                local aName = C_Item.GetItemInfo(a.itemId) or "";
-                local bName = C_Item.GetItemInfo(b.itemId) or "";
-                return aName < bName;
+                return nameCache[a.itemId] < nameCache[b.itemId];
             end);
         elseif detailSortMode == "slot" then
             table.sort(sortedItems, function(a, b)
@@ -183,9 +187,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
                 local aSlot = SLOT_LABELS[aLoc] or "zzz";
                 local bSlot = SLOT_LABELS[bLoc] or "zzz";
                 if aSlot ~= bSlot then return aSlot < bSlot end
-                local aName = C_Item.GetItemInfo(a.itemId) or "";
-                local bName = C_Item.GetItemInfo(b.itemId) or "";
-                return aName < bName;
+                return nameCache[a.itemId] < nameCache[b.itemId];
             end);
         else -- "upgrade"
             table.sort(sortedItems, function(a, b)

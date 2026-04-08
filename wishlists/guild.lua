@@ -737,29 +737,31 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
     local SLOT_LABELS = self.constants.SLOT_LABELS;
 
     local function sortItemDataList(itemList, sortKey)
+
+        local nameCache = {};
+        for _, item in ipairs(itemList) do
+            if not nameCache[item.itemId] then
+                nameCache[item.itemId] = C_Item.GetItemInfo(item.itemId) or "";
+            end
+        end
+
         if sortKey == "mostwanted" then
             table.sort(itemList, function(a, b)
                 local aCount = #a.members;
                 local bCount = #b.members;
                 if aCount ~= bCount then return aCount > bCount end
-                local aName = C_Item.GetItemInfo(a.itemId) or "";
-                local bName = C_Item.GetItemInfo(b.itemId) or "";
-                return aName < bName;
+                return nameCache[a.itemId] < nameCache[b.itemId];
             end);
         elseif sortKey == "avggain" then
             table.sort(itemList, function(a, b)
                 local aAvg = GetAverageGainFromMembers(a.members);
                 local bAvg = GetAverageGainFromMembers(b.members);
                 if aAvg ~= bAvg then return aAvg > bAvg end
-                local aName = C_Item.GetItemInfo(a.itemId) or "";
-                local bName = C_Item.GetItemInfo(b.itemId) or "";
-                return aName < bName;
+                return nameCache[a.itemId] < nameCache[b.itemId];
             end);
         elseif sortKey == "name" then
             table.sort(itemList, function(a, b)
-                local aName = C_Item.GetItemInfo(a.itemId) or "";
-                local bName = C_Item.GetItemInfo(b.itemId) or "";
-                return aName < bName;
+                return nameCache[a.itemId] < nameCache[b.itemId];
             end);
         elseif sortKey == "slot" then
             table.sort(itemList, function(a, b)
@@ -768,9 +770,7 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
                 local aSlot = SLOT_LABELS[aLoc] or "zzz";
                 local bSlot = SLOT_LABELS[bLoc] or "zzz";
                 if aSlot ~= bSlot then return aSlot < bSlot end
-                local aName = C_Item.GetItemInfo(a.itemId) or "";
-                local bName = C_Item.GetItemInfo(b.itemId) or "";
-                return aName < bName;
+                return nameCache[a.itemId] < nameCache[b.itemId];
             end);
         end
         return itemList;

@@ -178,7 +178,7 @@ function GoWTeams:BuildTeamFilters(teamData)
     return filters;
 end
 
-function GoWTeams:BuildPresenceMap()
+local buildPresenceMapCached = GOW.Helper:CreateCachedFunction(function(self)
     local presenceMap = {};
     local numGuildMembers = GetNumGuildMembers();
 
@@ -215,6 +215,10 @@ function GoWTeams:BuildPresenceMap()
     end
 
     return presenceMap;
+end, 2);
+
+function GoWTeams:BuildPresenceMap()
+    return buildPresenceMapCached(self);
 end
 
 function GoWTeams:GetMemberPresence(member, presenceMap)
@@ -743,6 +747,14 @@ function GoWTeams:SyncOfficerNotes(teamData)
     local numGuildMembers = GetNumGuildMembers();
     local officerNoteLength = 31; -- Maximum length for officer notes
 
+    local rosterIndexMap = {};
+    for i = 1, numGuildMembers do
+        local liveName = GetGuildRosterInfo(i);
+        if (liveName) then
+            rosterIndexMap[GoWTeams:GetNormalizedFullName(liveName)] = i;
+        end
+    end
+
     for name, data in pairs(cachedRoster) do
         local fullName = GoWTeams:GetNormalizedFullName(name);
         local currentNote = data.officerNote or "";
@@ -771,15 +783,25 @@ function GoWTeams:SyncOfficerNotes(teamData)
         newNote = newNote:gsub("^%s*(.-)%s*$", "%1");
 
         if newNote ~= currentNote then
-            -- Find the actual live index to apply the change
-            for i = 1, numGuildMembers do
-                local liveName = GetGuildRosterInfo(i);
-                if GoWTeams:GetNormalizedFullName(liveName) == fullName then
-                    GuildRosterSetOfficerNote(i, newNote);
-                    if (not GOW.DB.profile.reduceEventNotifications) then
-                        GOW.Logger:PrintMessage("Updated " .. fullName .. ": " .. newNote);
+            local rosterIndex = rosterIndexMap[fullName];
+            if rosterIndex then
+                local verifyName = GetGuildRosterInfo(rosterIndex);
+                if not verifyName or GoWTeams:GetNormalizedFullName(verifyName) ~= fullName then
+                    rosterIndex = nil;
+                    for i = 1, numGuildMembers do
+                        local liveName = GetGuildRosterInfo(i);
+                        if liveName and GoWTeams:GetNormalizedFullName(liveName) == fullName then
+                            rosterIndex = i;
+                            break;
+                        end
                     end
-                    break;
+                end
+            end
+
+            if rosterIndex then
+                GuildRosterSetOfficerNote(rosterIndex, newNote);
+                if (not GOW.DB.profile.reduceEventNotifications) then
+                    GOW.Logger:PrintMessage("Updated " .. fullName .. ": " .. newNote);
                 end
             end
         end

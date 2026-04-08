@@ -84,7 +84,7 @@ function GoWKeystoneDetails:IsMemberInCurrentGroup(memberKey)
     return false;
 end
 
-function GoWKeystoneDetails:GetGuildOnlineMemberMap()
+local getGuildOnlineMemberMapCached = GOW.Helper:CreateCachedFunction(function(self)
     if (C_GuildInfo and C_GuildInfo.GuildRoster) then
         C_GuildInfo.GuildRoster();
     end
@@ -101,6 +101,10 @@ function GoWKeystoneDetails:GetGuildOnlineMemberMap()
     end
 
     return onlineMap;
+end, 2);
+
+function GoWKeystoneDetails:GetGuildOnlineMemberMap()
+    return getGuildOnlineMemberMapCached(self);
 end
 
 function GoWKeystoneDetails:BuildRows()
