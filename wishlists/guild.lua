@@ -120,7 +120,8 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
                         end
 
                         local boss = bossGroups[bossName];
-                        local itemKey = item.itemId .. "-" .. (item.difficulty or "");
+                        local sourceToken = item.sourceItemId and (":source:" .. item.sourceItemId) or "";
+                        local itemKey = item.itemId .. "-" .. (item.difficulty or "") .. sourceToken;
                         if not boss.items[itemKey] then
                             boss.items[itemKey] = {
                                 itemId = item.itemId,
@@ -128,6 +129,7 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
                                 isTierSetPiece = item.isTierSetPiece,
                                 isCatalystItem = item.isCatalystItem,
                                 catalystItemId = item.catalystItemId,
+                                sourceItemId = item.sourceItemId,
                                 members = {},
                             };
                             table.insert(boss.itemOrder, itemKey);
@@ -190,6 +192,9 @@ function GoWWishlists:CreateGuildItemRow(parent)
     row.tierBadge = self:CreateTierBadge(row);
     row.tierBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
 
+    row.tokenBadge = self:CreateTokenBadge(row);
+    row.tokenBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
+
     local gainBadge = self:CreateGainBadge(row);
     gainBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
     row.gainBadge = gainBadge;
@@ -234,14 +239,22 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
     end
 
     self:UpdateTierBadge(row.tierBadge, itemData.isTierSetPiece);
+    self:UpdateTokenBadge(row.tokenBadge, itemData.sourceItemId);
 
     row.gainBadge:ClearAllPoints();
     local rightAnchor = row;
     local rightOffset = -6;
     local anchorPoint = "RIGHT";
+    if row.tokenBadge:IsShown() then
+        row.tokenBadge:ClearAllPoints();
+        row.tokenBadge:SetPoint("RIGHT", rightAnchor, "RIGHT", rightOffset, 0);
+        rightAnchor = row.tokenBadge;
+        anchorPoint = "LEFT";
+        rightOffset = -4;
+    end
     if row.tierBadge:IsShown() then
         row.tierBadge:ClearAllPoints();
-        row.tierBadge:SetPoint("RIGHT", rightAnchor, "RIGHT", rightOffset, 0);
+        row.tierBadge:SetPoint("RIGHT", rightAnchor, anchorPoint, rightOffset, 0);
         rightAnchor = row.tierBadge;
         anchorPoint = "LEFT";
         rightOffset = -4;

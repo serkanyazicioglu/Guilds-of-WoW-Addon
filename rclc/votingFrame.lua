@@ -58,7 +58,7 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
     local mode = GetDisplayMode();
     if mode == "percent" then
         if wish.gain and wish.gain.percent and wish.gain.percent > 0 then
-            display = string.format("|cff00ff00%.1f%%|r", wish.gain.percent);
+            display = string.format("|cff00ff00%.2f%%|r", wish.gain.percent);
         end
     elseif mode == "value" then
         if wish.gain and wish.gain.stat and wish.gain.stat > 0 then
@@ -83,7 +83,7 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
     if wish.gain then
         local metric = (wish.gain.metric and wish.gain.metric ~= "") and wish.gain.metric or "DPS";
         if wish.gain.percent and wish.gain.percent > 0 then
-            tinsert(tipLines, string.format("%.1f%% %s", wish.gain.percent, metric));
+            tinsert(tipLines, string.format("%.2f%% %s", wish.gain.percent, metric));
         end
         if wish.gain.stat and wish.gain.stat > 0 then
             tinsert(tipLines, string.format("%.1f %s (raw)", wish.gain.stat, metric));

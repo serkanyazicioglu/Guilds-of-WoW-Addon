@@ -230,7 +230,7 @@ GoWWishlists.constants.TAG_DISPLAY = {
     BIS      = { label = "BiS", color = "25f478", tip = "Best in Slot" },
     NEED     = { label = "N",   color = "ff8000", tip = "Need" },
     GREED    = { label = "G",   color = "ffd700", tip = "Greed" },
-    MINOR    = { label = "M",   color = "6495ed", tip = "Minor Upgrade" },
+    MINOR    = { label = "MU",  color = "6495ed", tip = "Minor Upgrade" },
     TRANSMOG = { label = "T",   color = "ff69b4", tip = "Transmog" },
     OFFSPEC  = { label = "OS",  color = "a9a9a9", tip = "Off-Spec" },
 };
@@ -670,7 +670,7 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
     local hasGain = false;
     if gain and gain.percent and gain.percent > 0 then
         local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
-        badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.1f", gain.percent) .. "%|r");
+        badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.2f", gain.percent) .. "%|r");
         hasGain = true;
     elseif gain and gain.stat and gain.stat > 0 then
         badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.1f", gain.stat) .. "|r");
@@ -689,7 +689,7 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
             if gain.stat and gain.stat > 0 then
                 statLine = string.format("+%.1f %s", gain.stat, metric);
             else
-                statLine = string.format("%.1f%% %s", gain.percent, metric);
+                statLine = string.format("%.2f%% %s", gain.percent, metric);
             end
             if isCatalystItem then
                 statLine = statLine .. " (Catalyst)";
@@ -728,7 +728,7 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
             local tipParts = {};
             if gain.percent and gain.percent > 0 then
                 local catalystSuffix = isCatalystItem and " (Catalyst)" or "";
-                table.insert(tipParts, string.format("%.1f%% %s%s", gain.percent, metric, catalystSuffix));
+                table.insert(tipParts, string.format("%.2f%% %s%s", gain.percent, metric, catalystSuffix));
             end
             if gain.stat and gain.stat > 0 then
                 table.insert(tipParts, "+" .. string.format("%.1f", gain.stat) .. " " .. metric);
@@ -794,6 +794,42 @@ end
 function GoWWishlists:UpdateCatalystBadge(badge, isCatalystItem)
     if not badge then return end
     badge:SetShown(isCatalystItem == true);
+end
+
+function GoWWishlists:CreateTokenBadge(parent)
+    local badge = L:CreateTextBadge(parent, {
+        text = "|cfff5c542TOKEN|r",
+        height = 16, minWidth = 38, paddingX = 4,
+        bgR = 0.12, bgG = 0.10, bgB = 0.02, bgA = 0.85,
+        borderR = 0.96, borderG = 0.77, borderB = 0.26, borderA = 0.6,
+    });
+    badge:SetHeight(16);
+
+    badge:EnableMouse(true);
+    badge:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+        GameTooltip:AddLine("Token Item", 0.96, 0.77, 0.26);
+        if self.sourceItemName then
+            GameTooltip:AddLine("Source: " .. self.sourceItemName, 1, 1, 1);
+        end
+        GameTooltip:Show();
+    end);
+    badge:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+    badge:Hide();
+    return badge;
+end
+
+function GoWWishlists:UpdateTokenBadge(badge, sourceItemId)
+    if not badge then return end
+    local hasToken = sourceItemId ~= nil and sourceItemId ~= "";
+    badge:SetShown(hasToken);
+    if hasToken then
+        local sourceItemName = C_Item.GetItemInfo(sourceItemId);
+        badge.sourceItemName = sourceItemName;
+    else
+        badge.sourceItemName = nil;
+    end
 end
 
 function GoWWishlists:FormatTag(tag)
