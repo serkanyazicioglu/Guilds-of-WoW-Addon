@@ -69,6 +69,7 @@ local isNewEventBeingCreated = false;
 local isProcessedEventsPrinted = false;
 local isCalendarOpened = false;
 local isCalendarOpenEventBound = false;
+local rosterUpdateTimer = nil;
 
 local selectedTab = "events";
 local tabs = {
@@ -467,7 +468,13 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 			GOW.Wishlists:Initialize();
 		end
 	elseif event == "GUILD_ROSTER_UPDATE" then
-		Core:SetRosterInfo();
+		if (rosterUpdateTimer) then
+			rosterUpdateTimer:Cancel();
+		end
+		rosterUpdateTimer = C_Timer.NewTimer(0.2, function()
+			rosterUpdateTimer = nil;
+			Core:SetRosterInfo();
+		end);
 	elseif event == "CALENDAR_ACTION_PENDING" then
 		if (tostring(arg1) == "false") then
 			GOW.Logger:Debug("CALENDAR_ACTION_PENDING: " .. tostring(arg1));

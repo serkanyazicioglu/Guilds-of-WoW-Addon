@@ -7,8 +7,10 @@ local openRaidLib = nil;
 local libKeystone = nil;
 local libKeystoneData = {};
 local openRaidLibKeystoneData = nil;
+local openRaidLibKeystoneMap = {};
 local latestEntries = {};
 local debugKeystoneMapIds = nil;
+local rebuildPending = false;
 
 local function GetDisplayRealmName(normalizedRealmName, guid)
 	if (guid and GetPlayerInfoByGUID) then
@@ -143,6 +145,16 @@ local function RebuildLatestEntries()
 	end);
 end
 
+local function ScheduleRebuild()
+	if (rebuildPending) then return end
+
+	rebuildPending = true;
+	C_Timer.After(0.5, function()
+		rebuildPending = false;
+		RebuildLatestEntries();
+	end);
+end
+
 local function UpdateLibKeystoneEntry(keyLevel, keyChallengeMapID, playerRating, playerName, channel)
 	if (channel ~= "GUILD") then
 		return;
@@ -162,7 +174,7 @@ local function UpdateLibKeystoneEntry(keyLevel, keyChallengeMapID, playerRating,
 		challengeMapID = keyChallengeMapID
 	};
 
-	RebuildLatestEntries();
+	ScheduleRebuild();
 end
 
 function Keystones:Initialize()
@@ -183,9 +195,27 @@ function Keystones:Initialize()
 	end
 end
 
+local function RebuildOpenRaidLibKeystoneMap()
+	openRaidLibKeystoneMap = {};
+
+	if (not openRaidLibKeystoneData) then
+		return;
+	end
+
+	for unitName, keystoneInfo in pairs(openRaidLibKeystoneData) do
+		if (keystoneInfo.level and keystoneInfo.level > 0) then
+			local normalizedName = GOW.Helper:GetNormalizedCharacterName(unitName);
+			if (normalizedName) then
+				openRaidLibKeystoneMap[normalizedName] = keystoneInfo;
+			end
+		end
+	end
+end
+
 function Keystones:Refresh()
 	if (openRaidLib) then
 		openRaidLibKeystoneData = openRaidLib.GetAllKeystonesInfo();
+		RebuildOpenRaidLibKeystoneMap();
 		openRaidLib.RequestKeystoneDataFromGuild();
 	end
 
@@ -226,12 +256,11 @@ function Keystones:GetGuildMemberKeystone(name, level, isSelf)
 		end
 	end
 
-	if (openRaidLib and openRaidLibKeystoneData) then
-		for unitName, keystoneInfo in pairs(openRaidLibKeystoneData) do
-			if (keystoneInfo.level > 0 and GOW.Helper:GetNormalizedCharacterName(unitName) == normalizedName) then
-				GOW.Logger:Debug("Keystone exported frome openRaidLib for " .. normalizedName .. ". Level: " .. keystoneInfo.level);
-				return keystoneInfo.level, keystoneInfo.challengeMapID;
-			end
+	if (openRaidLib and openRaidLibKeystoneMap) then
+		local keystoneInfo = openRaidLibKeystoneMap[normalizedName];
+		if (keystoneInfo and keystoneInfo.level and keystoneInfo.level > 0) then
+			GOW.Logger:Debug("Keystone exported frome openRaidLib for " .. normalizedName .. ". Level: " .. keystoneInfo.level);
+			return keystoneInfo.level, keystoneInfo.challengeMapID;
 		end
 	end
 end
