@@ -81,6 +81,7 @@ function GoWWishlists:CreateWishlistCardRow(parent, options)
     row.noteIcon = self:CreateNoteIconButton(row, row, "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", "Note", 0, 1, 0);
     row.catalystBadge = self:CreateCatalystBadge(inner);
     row.tierBadge = self:CreateTierBadge(inner);
+    row.tokenBadge = self:CreateTokenBadge(inner);
 
     L:CreateRowSeparator(row);
     row.highlight = L:CreateRowHighlight(row);
@@ -127,6 +128,7 @@ function GoWWishlists:PopulateItemRow(row, entry, itemLink)
     self:UpdateGainBadge(row.gainBadge, entry.gain, nil, entry.report, entry.isCatalystItem);
     self:UpdateTierBadge(row.tierBadge, entry.isTierSetPiece);
     self:UpdateCatalystBadge(row.catalystBadge, entry.isCatalystItem);
+    self:UpdateTokenBadge(row.tokenBadge, entry.sourceItemId);
 
     local rightAnchor = row;
     local rightOffset = -8;
@@ -150,6 +152,14 @@ function GoWWishlists:PopulateItemRow(row, entry, itemLink)
         row.tierBadge:ClearAllPoints();
         row.tierBadge:SetPoint("RIGHT", rightAnchor, anchorPoint, rightOffset, 0);
         row.tierBadge:SetPoint("BOTTOM", row.inner, "BOTTOM", 0, 2);
+        rightAnchor = row.tierBadge;
+        anchorPoint = "LEFT";
+        rightOffset = -2;
+    end
+    if row.tokenBadge:IsShown() then
+        row.tokenBadge:ClearAllPoints();
+        row.tokenBadge:SetPoint("RIGHT", rightAnchor, anchorPoint, rightOffset, 0);
+        row.tokenBadge:SetPoint("BOTTOM", row.inner, "BOTTOM", 0, 2);
     end
 end
 
