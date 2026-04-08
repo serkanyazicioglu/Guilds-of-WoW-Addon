@@ -568,6 +568,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
     lootPanel.headerText:SetText("LOOT");
     detailPanel.headerText:SetText("WISHLIST");
     lootPanel.ownerFrame = frame;
+    detailPanel.ownerFrame = frame;
 
     local guildLootSortMode = NormalizeGuildLootSort(frame.guildLootSortMode);
     frame.guildLootSortMode = guildLootSortMode;
@@ -703,7 +704,11 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
         frame.subtitleText:SetText(displayName .. "  |  " .. memberCount .. " members  |  " .. totalItems .. " items");
 
         self:PopulateSourcePanel(sourcePanel, bossOrder, bossCounts, function(selectedBoss)
+            frame.guildSelectedBoss = selectedBoss;
             self:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, selectedBoss, guildRealm, detailPanel, bossToRaid, bossToJournalId, guildLootSortMode, guildHideObtained, rosterMemberSet);
+            if detailPanel._guildPlayerSourceFilter and detailPanel._activeMember then
+                self:PopulateGuildPlayerDetail(detailPanel, detailPanel._activeMember, detailPanel._activeGuildRealm);
+            end
         end, bossToRaid, bossToJournalId);
 
         self:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, nil, guildRealm, detailPanel, bossToRaid, bossToJournalId, guildLootSortMode, guildHideObtained, rosterMemberSet);
@@ -1269,13 +1274,30 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
 
     local memberItems = {};
     local seenSlots = {};
+    local guildPlayerSourceFilter = detailPanel._guildPlayerSourceFilter;
+    if guildPlayerSourceFilter == nil then guildPlayerSourceFilter = (GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistGuildPlayerSourceFilter) or false end
+    detailPanel._guildPlayerSourceFilter = guildPlayerSourceFilter;
+    local ownerFrame = detailPanel.ownerFrame;
+    local sourceFilterDiff = ownerFrame and ownerFrame.guildDifficultyFilter or "All";
+    local sourceFilterBoss = ownerFrame and ownerFrame.guildSelectedBoss or nil;
     for _, entry in ipairs(allMemberItems) do
         local _, _, _, equipLoc = C_Item.GetItemInfoInstant(entry.itemId);
         if equipLoc == "INVTYPE_ROBE" then equipLoc = "INVTYPE_CHEST" end
         if equipLoc and equipLoc ~= "" then
             seenSlots[equipLoc] = true;
         end
-        if guildPlayerSlotFilter == "All" or equipLoc == guildPlayerSlotFilter then
+        local passFilter = (guildPlayerSlotFilter == "All" or equipLoc == guildPlayerSlotFilter);
+        if passFilter and guildPlayerSourceFilter then
+            if sourceFilterDiff ~= "All" and entry.difficulty ~= sourceFilterDiff then
+                passFilter = false;
+            end
+            if passFilter and sourceFilterBoss then
+                if entry.sourceBossName ~= sourceFilterBoss then
+                    passFilter = false;
+                end
+            end
+        end
+        if passFilter then
             table.insert(memberItems, entry);
         end
     end
@@ -1344,6 +1366,28 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
             rebuild();
         end);
     slotBtn:SetPoint("LEFT", sortBtn, "RIGHT", 4, 0);
+
+    local sourceFilterBtn = L:CreateSubFilterBtn(scrollChild, "Source", 48);
+    sourceFilterBtn:SetHeight(14);
+    sourceFilterBtn:SetPoint("LEFT", slotBtn, "RIGHT", 4, 0);
+    L:SetButtonActive(sourceFilterBtn, guildPlayerSourceFilter);
+
+    sourceFilterBtn:SetScript("OnEnter", function(btn)
+        GameTooltip:SetOwner(btn, "ANCHOR_TOP");
+        if guildPlayerSourceFilter then
+            GameTooltip:AddLine("Show All Sources", 1, 1, 1);
+        else
+            GameTooltip:AddLine("Show Current Source Only", 1, 1, 1);
+        end
+        GameTooltip:Show();
+    end);
+    sourceFilterBtn:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+    sourceFilterBtn:SetScript("OnClick", function()
+        detailPanel._guildPlayerSourceFilter = not detailPanel._guildPlayerSourceFilter;
+        if GOW.DB and GOW.DB.profile then GOW.DB.profile.wishlistGuildPlayerSourceFilter = detailPanel._guildPlayerSourceFilter end
+        rebuild();
+    end);
 
     yOffset = yOffset + 20;
 

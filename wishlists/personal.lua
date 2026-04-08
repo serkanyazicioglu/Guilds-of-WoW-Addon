@@ -20,6 +20,9 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
     detailPanel.headerText:SetText("WISHLIST");
 
     local currentBoss = nil; -- nil = All Bosses
+    local detailSourceFilter = frame.detailSourceFilter;
+    if detailSourceFilter == nil then detailSourceFilter = (GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistPersonalSourceFilter) or false end
+    frame.detailSourceFilter = detailSourceFilter;
 
     local bossGroups, bossOrder, unknownItems, bossToRaid, bossToJournalId; 
     local populateLootPanel;
@@ -52,6 +55,9 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
             currentBoss = selectedBoss;
             if GOW.DB and GOW.DB.profile then GOW.DB.profile.wishlistSelectedBoss = selectedBoss end
             populateLootPanel(currentBoss);
+            if detailSourceFilter then
+                populateDetailPanel();
+            end
         end, bossToRaid, bossToJournalId);
 
         local savedBoss = GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistSelectedBoss or nil;
@@ -130,7 +136,6 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
     local detailSlotFilter = frame.detailSlotFilter or "All";
     local detailHideObtained = frame.detailHideObtained;
     if detailHideObtained == nil then detailHideObtained = true end
-
     populateDetailPanel = function()
         local scrollChild = detailPanel.scrollChild;
         self:ClearChildren(scrollChild);
@@ -141,6 +146,11 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         local obtainedItems = {};
         for _, entry in ipairs(self.state.allItems) do
             local passFilter = (currentFilter == "All") or (entry.difficulty == currentFilter);
+            if passFilter and detailSourceFilter and currentBoss then
+                if entry.sourceBossName ~= currentBoss then
+                    passFilter = false;
+                end
+            end
             if passFilter and detailSlotFilter ~= "All" then
                 local _, _, _, equipLoc = C_Item.GetItemInfoInstant(entry.itemId);
                 if equipLoc == "INVTYPE_ROBE" then equipLoc = "INVTYPE_CHEST" end
@@ -346,12 +356,43 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
 
         detailPanel.updateObtainedBtn = updateObtainedBtn;
 
+        local sourceFilterBtn = L:CreateSubFilterBtn(detailPanel, "Source", 48);
+        sourceFilterBtn:SetHeight(14);
+        sourceFilterBtn:SetPoint("LEFT", obtainedBtn, "RIGHT", 4, 0);
+        detailPanel.sourceFilterBtn = sourceFilterBtn;
+
+        sourceFilterBtn:SetScript("OnEnter", function(btn)
+            GameTooltip:SetOwner(btn, "ANCHOR_TOP");
+            if detailSourceFilter then
+                GameTooltip:AddLine("Show All Sources", 1, 1, 1);
+            else
+                GameTooltip:AddLine("Show Current Source Only", 1, 1, 1);
+            end
+            GameTooltip:Show();
+        end);
+        sourceFilterBtn:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+        local function updateSourceFilterBtn()
+            L:SetButtonActive(sourceFilterBtn, detailSourceFilter);
+        end
+
+        sourceFilterBtn:SetScript("OnClick", function()
+            detailSourceFilter = not detailSourceFilter;
+            frame.detailSourceFilter = detailSourceFilter;
+            if GOW.DB and GOW.DB.profile then GOW.DB.profile.wishlistPersonalSourceFilter = detailSourceFilter end
+            updateSourceFilterBtn();
+            populateDetailPanel();
+        end);
+
+        detailPanel.updateSourceFilterBtn = updateSourceFilterBtn;
+
         detailPanel.scrollFrame:SetPoint("TOPLEFT", sortBtn, "BOTTOMLEFT", -4, -4);
     end
 
     detailPanel.updateSortLabel();
     detailPanel.updateSlotLabel();
     detailPanel.updateObtainedBtn();
+    detailPanel.updateSourceFilterBtn();
 
     self:SetupDifficultyDropdown(sourcePanel, function(diff)
         frame.personalDifficultyFilter = diff;
