@@ -80,6 +80,11 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
     -- Wishlist metadata
     Types:PopulateWishlistMatch(entry, wishlistMatch);
 
+    -- Season
+    if C_MythicPlus and C_MythicPlus.GetCurrentSeason then
+        entry.season = C_MythicPlus.GetCurrentSeason();
+    end
+
     -- Lifecycle
     entry.status = "confirmed";
     entry.lastChangedAt = now;

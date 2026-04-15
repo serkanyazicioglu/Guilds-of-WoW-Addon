@@ -130,6 +130,9 @@ function LootHistoryTypes:NewCanonicalEntry()
             wishlistSource = "",
         },
 
+        -- season
+        season = nil,
+
         -- lifecycle
         status = "confirmed",
         lastChangedAt = 0,
