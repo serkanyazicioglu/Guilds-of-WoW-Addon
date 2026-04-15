@@ -89,6 +89,7 @@ function LootHistoryTypes:NewCanonicalEntry()
         encounter = {
             instance = "",
             boss = "",
+            difficulty = "",
             difficultyID = nil,
             mapID = nil,
             groupSize = nil,

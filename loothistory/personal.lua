@@ -63,6 +63,7 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
 
     -- Encounter
     entry.encounter.boss = encounterName or "";
+    entry.encounter.difficulty = difficulty or "";
     entry.encounter.difficultyID = difficultyID;
 
     local instanceName, _, _, _, _, _, _, instanceID, instanceGroupSize = GetInstanceInfo();

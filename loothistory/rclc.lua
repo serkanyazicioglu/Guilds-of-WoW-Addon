@@ -95,6 +95,9 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
     entry.encounter.boss = rclcEntry.boss or "";
     entry.encounter.instance = rclcEntry.instance or "";
     entry.encounter.difficultyID = rclcEntry.difficultyID;
+    if rclcEntry.difficultyID and GetDifficultyInfo then
+        entry.encounter.difficulty = GetDifficultyInfo(rclcEntry.difficultyID) or "";
+    end
     entry.encounter.mapID = rclcEntry.mapID;
     entry.encounter.groupSize = rclcEntry.groupSize;
 

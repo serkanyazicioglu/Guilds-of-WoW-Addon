@@ -30,8 +30,8 @@ function LootHistory:Init()
         end, RCLC_POLL_INTERVAL_SECONDS);
     end
 
-    -- On startup, scan RCLC history if stale and no active session
-    if Store:ShouldRefreshOnStartup(GetServerTime()) then
+    -- On startup, scan RCLC history if stale (or debug mode) and no active session
+    if GOW.consts.ENABLE_DEBUGGING or Store:ShouldRefreshOnStartup(GetServerTime()) then
         if RCLC:IsRCLCAvailable() and not RCLC:IsSessionActive() then
             RCLC:ProcessRCLCLootHistory();
         end
@@ -230,6 +230,7 @@ function LootHistory:DebugSeed()
 
         entry.encounter.boss = boss;
         entry.encounter.instance = instance;
+        entry.encounter.difficulty = diff;
         entry.encounter.difficultyID = diffID;
         entry.encounter.mapID = 2296;
         entry.encounter.groupSize = 20;
@@ -280,6 +281,7 @@ function LootHistory:DebugSeed()
 
         entry.encounter.boss = boss;
         entry.encounter.instance = instance;
+        entry.encounter.difficulty = diff;
         entry.encounter.difficultyID = diffID;
         entry.encounter.mapID = 2296;
         entry.encounter.groupSize = 20;
