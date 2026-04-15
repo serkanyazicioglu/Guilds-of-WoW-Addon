@@ -108,17 +108,6 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
         entry.awardedAt.unix = tonumber((rclcEntry.id):match("^(%d+)"));
     end
 
-    -- Wishlist matching: personal index for self, guild data for others
-    if entry.item.itemID and GoWWishlists then
-        local wishlistMatch;
-        if entry.winner.isSelf and GoWWishlists.FindWishlistMatch then
-            wishlistMatch = GoWWishlists:FindWishlistMatch(entry.item.itemID);
-        elseif GoWWishlists.FindGuildWishlistMatch and GoWWishlists:HasGuildWishlistData() then
-            wishlistMatch = GoWWishlists:FindGuildWishlistMatch(entry.item.itemID, entry.winner.name, entry.winner.realm);
-        end
-        Types:PopulateWishlistMatch(entry, wishlistMatch);
-    end
-
     -- Season
     if C_MythicPlus and C_MythicPlus.GetCurrentSeason then
         entry.season = C_MythicPlus.GetCurrentSeason();

@@ -164,7 +164,7 @@ function LootHistoryTypes:NewStoreDefaults()
             lastUploadTriggerAt = 0,
             triggerReason = "",
             revision = 0,
-            uploaderHasGuildData = false,
+            lastExportedAt = 0,
         },
     };
 end
