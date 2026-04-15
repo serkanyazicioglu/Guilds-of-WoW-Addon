@@ -7,19 +7,8 @@ GOW.LootHistoryTypes = LootHistoryTypes;
 LootHistoryTypes.SOURCE_PERSONAL = "personal";
 LootHistoryTypes.SOURCE_RCLC = "rclc";
 
--- Upload states
-LootHistoryTypes.UPLOAD_IDLE = "idle";
-LootHistoryTypes.UPLOAD_PENDING = "pending";
-LootHistoryTypes.UPLOAD_READY = "ready";
-
--- Trigger reasons
-LootHistoryTypes.TRIGGER_STARTUP = "startup";
-LootHistoryTypes.TRIGGER_LOGOUT = "logout";
-LootHistoryTypes.TRIGGER_RCLC_SESSION_END = "rclc_session_end";
-LootHistoryTypes.TRIGGER_MANUAL = "manual";
-
 -- Store version
-LootHistoryTypes.STORE_VERSION = 1;
+LootHistoryTypes.STORE_VERSION = 3;
 
 -- Config
 LootHistoryTypes.STARTUP_REFRESH_THRESHOLD_SECONDS = 3600;
@@ -63,7 +52,6 @@ function LootHistoryTypes:NewCanonicalEntry()
         -- source
         source = "",
         sourceEntryId = "",
-        observedAt = 0,
 
         -- player
         winner = {
@@ -109,12 +97,8 @@ function LootHistoryTypes:NewCanonicalEntry()
         -- time
         awardedAt = 0,
 
-        -- season
+        -- season (set at drop time for personal; nil for RCLC)
         season = nil,
-
-        -- lifecycle
-        status = "confirmed",
-        lastChangedAt = 0,
     };
 end
 
@@ -123,24 +107,12 @@ end
 function LootHistoryTypes:NewStoreDefaults()
     return {
         version = LootHistoryTypes.STORE_VERSION,
-        updatedAt = 0,
         entries = {},
 
         ingestion = {
             rclc = {
-                lastScanAt = 0,
-                sessionEndedAt = 0,
+                lastScannedAt = 0,
             },
-        },
-
-        sync = {
-            uploadState = LootHistoryTypes.UPLOAD_IDLE,
-            safeToUpload = false,
-            lastProcessedAt = 0,
-            lastUploadTriggerAt = 0,
-            triggerReason = "",
-            revision = 0,
-            lastExportedAt = 0,
         },
     };
 end

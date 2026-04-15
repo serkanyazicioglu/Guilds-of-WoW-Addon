@@ -25,19 +25,7 @@ function LootHistoryStore:GetStore()
     if not store.ingestion then store.ingestion = {} end
     if not store.ingestion.rclc then
         store.ingestion.rclc = {
-            lastScanAt = 0,
-            sessionEndedAt = 0,
-        };
-    end
-    if not store.sync then
-        store.sync = {
-            uploadState = Types.UPLOAD_IDLE,
-            safeToUpload = false,
-            lastProcessedAt = 0,
-            lastUploadTriggerAt = 0,
-            triggerReason = "",
-            revision = 0,
-            lastExportedAt = 0,
+            lastScannedAt = 0,
         };
     end
 
@@ -150,10 +138,8 @@ function LootHistoryStore:PersistEntry(entry)
 
     local canonicalId = self:MakeCanonicalId(entry);
     entry.canonicalId = canonicalId;
-    entry.lastChangedAt = GetServerTime();
 
     store.entries[canonicalId] = entry;
-    store.updatedAt = GetServerTime();
 
     GOW.Logger:Debug("LootHistoryStore: Persisted entry " .. canonicalId);
     return true;
@@ -168,72 +154,24 @@ function LootHistoryStore:RemoveEntry(canonicalId)
     if not store.entries[canonicalId] then return false end
 
     store.entries[canonicalId] = nil;
-    store.updatedAt = GetServerTime();
 
     GOW.Logger:Debug("LootHistoryStore: Removed entry " .. canonicalId);
     return true;
 end
 
 -- ============================================================
--- Sync state management
+-- Startup check
 -- ============================================================
 
---- Mark the upload state as pending (data changed, not yet ready).
-function LootHistoryStore:MarkUploadPending()
-    local store = self:GetStore();
-    if not store then return end
-
-    store.sync.uploadState = Types.UPLOAD_PENDING;
-    store.sync.safeToUpload = false;
-end
-
---- Mark the store as ready for upload.
---- @param reason string One of Types.TRIGGER_* constants
-function LootHistoryStore:MarkReadyForUpload(reason)
-    local store = self:GetStore();
-    if not store then return end
-
-    local now = GetServerTime();
-    store.sync.uploadState = Types.UPLOAD_READY;
-    store.sync.safeToUpload = true;
-    store.sync.lastProcessedAt = now;
-    store.sync.lastUploadTriggerAt = now;
-    store.sync.triggerReason = reason or "";
-    store.sync.revision = (store.sync.revision or 0) + 1;
-
-    GOW.Logger:Debug("LootHistoryStore: Marked ready for upload (reason=" .. tostring(reason) .. ", rev=" .. tostring(store.sync.revision) .. ")");
-end
-
---- Finalize the store for upload, unless an RCLC session is active.
---- @param reason string One of Types.TRIGGER_* constants
-function LootHistoryStore:FinalizeForUpload(reason)
-    -- Check RCLC session state — do not finalize during active session
-    if GOW.LootHistoryRCLC and GOW.LootHistoryRCLC:IsSessionActive() then
-        GOW.Logger:Debug("LootHistoryStore: Skipping finalization, RCLC session is active.");
-        return;
-    end
-
-    self:MarkReadyForUpload(reason);
-end
-
---- Check whether the store should be re-finalized on startup.
+--- Check whether the store should re-scan RCLC on startup.
 --- @param now number Current server time
 --- @return boolean
 function LootHistoryStore:ShouldRefreshOnStartup(now)
     local store = self:GetStore();
     if not store then return false end
 
-    local lastProcessed = store.sync.lastProcessedAt or 0;
-    if lastProcessed == 0 then return true end
-    return (now - lastProcessed) >= Types.STARTUP_REFRESH_THRESHOLD_SECONDS;
+    local lastScanned = store.ingestion.rclc.lastScannedAt or 0;
+    if lastScanned == 0 then return true end
+    return (now - lastScanned) >= Types.STARTUP_REFRESH_THRESHOLD_SECONDS;
 end
 
---- Run store migrations if the schema version has changed.
-function LootHistoryStore:MigrateIfNeeded()
-    local store = self:GetStore();
-    if not store then return end
-
-    -- Currently at version 1 — no migrations needed yet.
-    -- Future migrations go here:
-    -- if store.version < 2 then ... store.version = 2 end
-end

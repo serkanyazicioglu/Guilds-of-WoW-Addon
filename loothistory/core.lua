@@ -19,19 +19,8 @@ local RCLC_POLL_INTERVAL_SECONDS = 30;
 function LootHistory:Init()
     if not GOW.Helper:IsWishlistsEnabled() then return end
 
-    -- Initialize store and run migrations
+    -- Initialize store
     Store:GetStore();
-    Store:MigrateIfNeeded();
-
-    -- Register PLAYER_LOGOUT for upload finalization
-    -- (C_LootHistory events are handled by wishlists/events.lua)
-    local eventFrame = CreateFrame("Frame");
-    eventFrame:RegisterEvent("PLAYER_LOGOUT");
-    eventFrame:SetScript("OnEvent", function(_, event)
-        if event == "PLAYER_LOGOUT" then
-            LootHistory:OnLogout();
-        end
-    end);
 
     -- Start RCLC session poll timer
     if RCLC:IsRCLCAvailable() then
@@ -41,27 +30,15 @@ function LootHistory:Init()
         end, RCLC_POLL_INTERVAL_SECONDS);
     end
 
-    -- Check if we should refresh on startup
+    -- On startup, scan RCLC history if stale and no active session
     if Store:ShouldRefreshOnStartup(GetServerTime()) then
-        -- On startup, scan RCLC history if available and no active session
         if RCLC:IsRCLCAvailable() and not RCLC:IsSessionActive() then
             RCLC:ProcessRCLCLootHistory();
         end
-        Store:FinalizeForUpload(Types.TRIGGER_STARTUP);
     end
 
     self.state.isInitialized = true;
     GOW.Logger:Debug("LootHistory: Initialized");
-end
-
---- Handle PLAYER_LOGOUT — finalize upload state.
---- Skips if already finalized (e.g. manual sync) to preserve original trigger reason.
-function LootHistory:OnLogout()
-    local store = Store:GetStore();
-    if store and store.sync.uploadState == Types.UPLOAD_READY and store.sync.safeToUpload then
-        return;
-    end
-    Store:FinalizeForUpload(Types.TRIGGER_LOGOUT);
 end
 
 --- Poll RCLC session state to detect session end transitions.
@@ -72,7 +49,6 @@ function LootHistory:PollRCLCSession()
     if wasActive and not isActive then
         -- Session just ended, process RCLC history
         RCLC:ProcessRCLCLootHistory();
-        Store:FinalizeForUpload(Types.TRIGGER_RCLC_SESSION_END);
         GOW.Logger:Debug("LootHistory: RCLC session ended — processed history");
     end
 
@@ -98,12 +74,6 @@ end
 --- @return boolean
 function LootHistory:HasEntryBySource(source, sourceEntryId)
     return Store:HasEntryBySource(source, sourceEntryId);
-end
-
---- Public API: Finalize store for desktop upload.
---- @param reason string One of Types.TRIGGER_* constants
-function LootHistory:FinalizeForUpload(reason)
-    Store:FinalizeForUpload(reason);
 end
 
 --- Public API: Trigger RCLC history processing manually.
@@ -139,9 +109,8 @@ function LootHistory:DebugStatus()
 
     GOW.Logger:PrintMessage("--- Loot History Status ---");
     GOW.Logger:PrintMessage("Entries: " .. entryCount .. " (personal=" .. personalCount .. ", rclc=" .. rclcCount .. ")");
-    GOW.Logger:PrintMessage("Upload: state=" .. tostring(store.sync.uploadState) .. ", safe=" .. tostring(store.sync.safeToUpload) .. ", rev=" .. tostring(store.sync.revision));
     GOW.Logger:PrintMessage("RCLC: available=" .. tostring(RCLC:IsRCLCAvailable()) .. ", session=" .. tostring(RCLC:IsSessionActive()));
-    GOW.Logger:PrintMessage("Last processed: " .. tostring(store.sync.lastProcessedAt) .. ", reason=" .. tostring(store.sync.triggerReason));
+    GOW.Logger:PrintMessage("Last scanned: " .. tostring(store.ingestion.rclc.lastScannedAt));
 end
 
 --- Simulate a personal loot drop using a random item from the active wishlist.
@@ -190,7 +159,6 @@ function LootHistory:DebugTestDrop()
         return;
     end
 
-    Store:MarkUploadPending();
     local persisted = Store:PersistEntry(entry);
 
     if persisted then
@@ -245,8 +213,7 @@ function LootHistory:DebugSeed()
         local entryTime = now - (DAY * (4 - i)) - (HOUR * 2);
 
         entry.source = Types.SOURCE_PERSONAL;
-        entry.sourceEntryId = "personal-" .. itemId .. "-" .. entryTime .. "-" .. i;
-        entry.observedAt = entryTime;
+        entry.sourceEntryId = itemId .. "-" .. entryTime .. "-" .. i;
 
         entry.winner.name = selfName;
         entry.winner.realm = selfRealm;
@@ -269,9 +236,6 @@ function LootHistory:DebugSeed()
         entry.encounter.groupSize = 20;
 
         entry.awardedAt = entryTime;
-
-        entry.status = "confirmed";
-        entry.lastChangedAt = entryTime;
         entry.canonicalId = Store:MakeCanonicalId(entry);
 
         if Store:PersistEntry(entry) then
@@ -290,7 +254,6 @@ function LootHistory:DebugSeed()
 
         entry.source = Types.SOURCE_RCLC;
         entry.sourceEntryId = rclcId;
-        entry.observedAt = entryTime;
 
         local name, realm = winnerFull:match("^(.-)%-(.+)$");
         entry.winner.name = name or winnerFull;
@@ -323,19 +286,12 @@ function LootHistory:DebugSeed()
         entry.encounter.groupSize = 20;
 
         entry.awardedAt = entryTime;
-
-        entry.status = "confirmed";
-        entry.lastChangedAt = entryTime;
         entry.canonicalId = Store:MakeCanonicalId(entry);
 
         if Store:PersistEntry(entry) then
             importCount = importCount + 1;
         end
     end
-
-    -- Finalize for upload
-    Store:MarkUploadPending();
-    Store:FinalizeForUpload(Types.TRIGGER_MANUAL);
 
     GOW.Logger:PrintSuccessMessage("Seeded " .. importCount .. " loot history entries (" .. #PERSONAL_SEEDS .. " personal, " .. #RCLC_SEEDS .. " RCLC).");
     self:DebugStatus();
@@ -377,7 +333,6 @@ function LootHistory:DebugDump(canonicalId)
     GOW.Logger:PrintMessage("encounter: " .. tostring(entry.encounter.boss) .. " @ " .. tostring(entry.encounter.instance) .. " diffID=" .. tostring(entry.encounter.difficultyID));
     GOW.Logger:PrintMessage("time: " .. tostring(entry.awardedAt) .. " (unix)");
     GOW.Logger:PrintMessage("award: resp=" .. tostring(entry.award.response) .. " votes=" .. tostring(entry.award.votes) .. " note=" .. tostring(entry.award.note));
-    GOW.Logger:PrintMessage("status=" .. tostring(entry.status) .. " lastChanged=" .. tostring(entry.lastChangedAt));
 end
 
 --- Clear all entries from the loot history store.
@@ -391,9 +346,6 @@ function LootHistory:DebugClear()
     end
 
     store.entries = {};
-    store.updatedAt = GetServerTime();
-    store.sync.uploadState = Types.UPLOAD_IDLE;
-    store.sync.safeToUpload = false;
 
     GOW.Logger:PrintSuccessMessage("Cleared " .. count .. " loot history entries.");
 end
@@ -419,9 +371,6 @@ function LootHistory:HandleSlashCommand(subcommand)
         GOW.Logger:PrintMessage("Scanning RCLC history...");
         self:ProcessRCLCLootHistory();
         self:DebugStatus();
-    elseif subcommand == "sync" then
-        self:FinalizeForUpload(Types.TRIGGER_MANUAL);
-        GOW.Logger:PrintSuccessMessage("Upload finalized (manual).");
     elseif subcommand == "seed" then
         self:DebugSeed();
     elseif subcommand == "dump" then
@@ -429,6 +378,6 @@ function LootHistory:HandleSlashCommand(subcommand)
     elseif subcommand == "clear" then
         self:DebugClear();
     else
-        GOW.Logger:PrintMessage("Usage: /gow lh <status |test |rclc |seed |dump |sync | clear>");
+        GOW.Logger:PrintMessage("Usage: /gow lh <status|test|rclc|seed|dump|clear>");
     end
 end

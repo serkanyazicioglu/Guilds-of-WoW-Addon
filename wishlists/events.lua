@@ -126,7 +126,6 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, diff
                 local _, _, difficultyID = GetInstanceInfo();
                 local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID);
                 if entry then
-                    Store:MarkUploadPending();
                     Store:PersistEntry(entry);
                 end
             end

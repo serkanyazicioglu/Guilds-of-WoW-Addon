@@ -24,7 +24,7 @@ end
 --- @return string
 function LootHistoryPersonal:GenerateSourceEntryId(itemId, timestamp)
     personalEntryCounter = personalEntryCounter + 1;
-    return "personal-" .. tostring(itemId or 0) .. "-" .. tostring(timestamp or 0) .. "-" .. tostring(personalEntryCounter);
+    return tostring(itemId or 0) .. "-" .. tostring(timestamp or 0) .. "-" .. tostring(personalEntryCounter);
 end
 
 --- Map a personal loot event into the canonical entry shape.
@@ -43,7 +43,6 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
     -- Source
     entry.source = Types.SOURCE_PERSONAL;
     entry.sourceEntryId = self:GenerateSourceEntryId(itemId, now);
-    entry.observedAt = now;
 
     -- Winner (always self for personal tracking)
     local charInfo = GoWWishlists.state and GoWWishlists.state.currentCharInfo;
@@ -74,14 +73,10 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
     -- Time
     entry.awardedAt = now;
 
-    -- Season
+    -- Season (accurate at personal drop time)
     if C_MythicPlus and C_MythicPlus.GetCurrentSeason then
         entry.season = C_MythicPlus.GetCurrentSeason();
     end
-
-    -- Lifecycle
-    entry.status = "confirmed";
-    entry.lastChangedAt = now;
 
     -- Generate and assign canonical ID
     entry.canonicalId = Store:MakeCanonicalId(entry);

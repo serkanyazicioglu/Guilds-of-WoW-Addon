@@ -52,12 +52,10 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
     if not rclcEntry then return nil end
 
     local entry = Types:NewCanonicalEntry();
-    local now = GetServerTime();
 
     -- Source
     entry.source = Types.SOURCE_RCLC;
     entry.sourceEntryId = rclcEntry.id or "";
-    entry.observedAt = now;
 
     -- Winner — parse "Name-Realm" key
     entry.winner.fullName = playerKey or "";
@@ -106,14 +104,13 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
         entry.awardedAt = tonumber((rclcEntry.id):match("^(%d+)")) or 0;
     end
 
-    -- Season
-    if C_MythicPlus and C_MythicPlus.GetCurrentSeason then
-        entry.season = C_MythicPlus.GetCurrentSeason();
+    -- Season (only reliable for recent entries — older imports may span past seasons)
+    if entry.awardedAt > 0 and C_MythicPlus and C_MythicPlus.GetCurrentSeason then
+        local age = GetServerTime() - entry.awardedAt;
+        if age <= 43200 then -- 12 hrs
+            entry.season = C_MythicPlus.GetCurrentSeason();
+        end
     end
-
-    -- Lifecycle
-    entry.status = "confirmed";
-    entry.lastChangedAt = now;
 
     -- Generate canonical ID
     if entry.sourceEntryId == "" then
@@ -160,13 +157,9 @@ function LootHistoryRCLC:ProcessRCLCLootHistory()
     end
 
     -- Update ingestion metadata
-    local now = GetServerTime();
-    store.ingestion.rclc.lastScanAt = now;
-    store.ingestion.rclc.sessionEndedAt = now;
-    store.updatedAt = now;
+    store.ingestion.rclc.lastScannedAt = GetServerTime();
 
     if importCount > 0 then
-        Store:MarkUploadPending();
         GOW.Logger:Debug("LootHistoryRCLC: Imported " .. importCount .. " new entries from RCLC");
     end
 end

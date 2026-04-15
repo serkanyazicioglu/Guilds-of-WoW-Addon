@@ -268,23 +268,6 @@ function GoWWishlists:CreateWishlistBrowserFrame()
     reloadBtn:Hide();
     frame.reloadBtn = reloadBtn;
 
-    local syncBtn = L:CreateActionButton(frame, {
-        text = "Sync",
-        width = 60,
-        tooltip = "Sync Loot History",
-        tooltipSubtext = "Finalize loot history for desktop upload",
-        onClick = function()
-            if GOW.LootHistory and GOW.LootHistory.state.isInitialized then
-                GOW.LootHistory:FinalizeForUpload("manual");
-                GOW.Logger:PrintSuccessMessage("Loot history synced.");
-            end
-        end,
-    });
-    syncBtn:SetPoint("RIGHT", reloadBtn, "LEFT", -4, 0);
-    syncBtn:SetPoint("TOP", reloadBtn, "TOP", 0, 0);
-    if not (GOW.LootHistory and GOW.LootHistory.state.isInitialized) then syncBtn:Hide() end
-    frame.syncBtn = syncBtn;
-
     table.insert(UISpecialFrames, "GoWWishlistBrowserFrame");
 
     frame:Hide();
@@ -298,12 +281,6 @@ function GoWWishlists:ShowWishlistBrowserFrame()
     local isStale = self:IsWishlistDataStale();
     if frame.reloadBtn then
         if isStale then frame.reloadBtn:Show() else frame.reloadBtn:Hide() end
-    end
-    if frame.syncBtn then
-        local anchor = (isStale and frame.reloadBtn) or frame.compactBtn;
-        frame.syncBtn:ClearAllPoints();
-        frame.syncBtn:SetPoint("RIGHT", anchor, "LEFT", -4, 0);
-        frame.syncBtn:SetPoint("TOP", anchor, "TOP", 0, 0);
     end
 
     UpdateRosterTabVisibility(self, frame);
@@ -348,23 +325,6 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
     reloadBtn:Hide();
     container.reloadBtn = reloadBtn;
 
-    local syncBtn = L:CreateActionButton(container, {
-        text = "Sync",
-        width = 60,
-        tooltip = "Sync Loot History",
-        tooltipSubtext = "Finalize loot history for desktop upload",
-        onClick = function()
-            if GOW.LootHistory and GOW.LootHistory.state.isInitialized then
-                GOW.LootHistory:FinalizeForUpload("manual");
-                GOW.Logger:PrintSuccessMessage("Loot history synced.");
-            end
-        end,
-    });
-    syncBtn:SetPoint("RIGHT", reloadBtn, "LEFT", -4, 0);
-    syncBtn:SetPoint("TOP", reloadBtn, "TOP", 0, 0);
-    if not (GOW.LootHistory and GOW.LootHistory.state.isInitialized) then syncBtn:Hide() end
-    container.syncBtn = syncBtn;
-
     container:Hide();
     self.frames.coreWishlists = container;
     return container;
@@ -376,12 +336,6 @@ function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
     local isStale = self:IsWishlistDataStale();
     if container.reloadBtn then
         if isStale then container.reloadBtn:Show() else container.reloadBtn:Hide() end
-    end
-    if container.syncBtn then
-        local anchor = (isStale and container.reloadBtn) or container.compactBtn;
-        container.syncBtn:ClearAllPoints();
-        container.syncBtn:SetPoint("RIGHT", anchor, "LEFT", -4, 0);
-        container.syncBtn:SetPoint("TOP", anchor, "TOP", 0, 0);
     end
 
     local subtitleProxy = { SetText = function(_, text) if setStatusFn then setStatusFn(text) end end };
