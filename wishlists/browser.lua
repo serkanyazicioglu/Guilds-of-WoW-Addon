@@ -295,8 +295,15 @@ end
 function GoWWishlists:ShowWishlistBrowserFrame()
     local frame = self:CreateWishlistBrowserFrame();
 
+    local isStale = self:IsWishlistDataStale();
     if frame.reloadBtn then
-        if self:IsWishlistDataStale() then frame.reloadBtn:Show() else frame.reloadBtn:Hide() end
+        if isStale then frame.reloadBtn:Show() else frame.reloadBtn:Hide() end
+    end
+    if frame.syncBtn then
+        local anchor = (isStale and frame.reloadBtn) or frame.compactBtn;
+        frame.syncBtn:ClearAllPoints();
+        frame.syncBtn:SetPoint("RIGHT", anchor, "LEFT", -4, 0);
+        frame.syncBtn:SetPoint("TOP", anchor, "TOP", 0, 0);
     end
 
     UpdateRosterTabVisibility(self, frame);
@@ -366,8 +373,15 @@ end
 function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
     local container = self:CreateCoreWishlistsFrame(parent);
 
+    local isStale = self:IsWishlistDataStale();
     if container.reloadBtn then
-        if self:IsWishlistDataStale() then container.reloadBtn:Show() else container.reloadBtn:Hide() end
+        if isStale then container.reloadBtn:Show() else container.reloadBtn:Hide() end
+    end
+    if container.syncBtn then
+        local anchor = (isStale and container.reloadBtn) or container.compactBtn;
+        container.syncBtn:ClearAllPoints();
+        container.syncBtn:SetPoint("RIGHT", anchor, "LEFT", -4, 0);
+        container.syncBtn:SetPoint("TOP", anchor, "TOP", 0, 0);
     end
 
     local subtitleProxy = { SetText = function(_, text) if setStatusFn then setStatusFn(text) end end };
