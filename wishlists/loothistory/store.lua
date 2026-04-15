@@ -39,6 +39,7 @@ function LootHistoryStore:GetStore()
             lastUploadTriggerAt = 0,
             triggerReason = "",
             revision = 0,
+            uploaderHasGuildData = false,
         };
     end
 
@@ -202,6 +203,7 @@ function LootHistoryStore:MarkReadyForUpload(reason)
     store.sync.lastUploadTriggerAt = now;
     store.sync.triggerReason = reason or "";
     store.sync.revision = (store.sync.revision or 0) + 1;
+    store.sync.uploaderHasGuildData = GOW.Wishlists and GOW.Wishlists:HasGuildWishlistData() or false;
 
     GOW.Logger:Debug("LootHistoryStore: Marked ready for upload (reason=" .. tostring(reason) .. ", rev=" .. tostring(store.sync.revision) .. ")");
 end

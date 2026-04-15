@@ -55,7 +55,12 @@ function LootHistory:Init()
 end
 
 --- Handle PLAYER_LOGOUT — finalize upload state.
+--- Skips if already finalized (e.g. manual sync) to preserve original trigger reason.
 function LootHistory:OnLogout()
+    local store = Store:GetStore();
+    if store and store.sync.uploadState == Types.UPLOAD_READY and store.sync.safeToUpload then
+        return;
+    end
     Store:FinalizeForUpload(Types.TRIGGER_LOGOUT);
 end
 
@@ -196,6 +201,201 @@ function LootHistory:DebugTestDrop()
     end
 end
 
+--- Seed the loot history store with realistic test entries for both personal and RCLC sources.
+--- Produces a representative SavedVariables structure for desktop Lua parser validation.
+function LootHistory:DebugSeed()
+    local store = Store:GetStore();
+    if not store then
+        GOW.Logger:PrintErrorMessage("LootHistory store not initialized.");
+        return;
+    end
+
+    local now = GetServerTime();
+    local HOUR = 3600;
+    local DAY = 86400;
+
+    -- Player info
+    local charInfo = GOW.Wishlists and GOW.Wishlists.state and GOW.Wishlists.state.currentCharInfo;
+    local selfName = charInfo and charInfo.name or "TestPlayer";
+    local selfRealm = charInfo and charInfo.realmNormalized or "TestRealm";
+    local selfFull = selfName .. "-" .. selfRealm;
+    local _, selfClass = UnitClass("player");
+    selfClass = selfClass or "WARRIOR";
+
+    -- Seed data: {itemId, itemName, ilvl, boss, instance, difficulty, difficultyID, equipLoc, subType}
+    local PERSONAL_SEEDS = {
+        { 212438, "Signet of the Priory",    639, "Stormwall Blockade",  "Liberation of Undermine", "Heroic",  16, "INVTYPE_FINGER", "Miscellaneous" },
+        { 212442, "Seal of the Poisoned Pact", 626, "Mug'Zee",           "Liberation of Undermine", "Normal",  14, "INVTYPE_FINGER", "Miscellaneous" },
+        { 212396, "Everforged Greathelm",    639, "Vexie and the Geargrinders", "Liberation of Undermine", "Heroic",  16, "INVTYPE_HEAD",   "Plate" },
+    };
+
+    local RCLC_SEEDS = {
+        { 212407, "Demolition Breastplate",   639, "Cauldron of Carnage", "Liberation of Undermine", "Heroic",  16, "INVTYPE_CHEST",  "Plate",   selfFull,   selfClass, true,  "Mainspec", 1, 3,  false, "BIS item" },
+        { 212416, "Band of the Molten Forge",  639, "Stormwall Blockade", "Liberation of Undermine", "Heroic",  16, "INVTYPE_FINGER", "Miscellaneous", selfFull, selfClass, true, "Need",     2, 1,  false, "" },
+        { 212454, "Gallagio Commendation",     639, "Gallywix",           "Liberation of Undermine", "Heroic",  16, "INVTYPE_TRINKET","Miscellaneous", "Tankbot-" .. selfRealm, "PALADIN",  false, "Mainspec", 1, 5,  false, "upgrade" },
+        { 212399, "Riveted Waistguard",        626, "The One-Armed Bandit", "Liberation of Undermine", "Normal", 14, "INVTYPE_WAIST", "Plate",  "Healguy-" .. selfRealm, "PRIEST", false, "Offspec", 3, 0,  true,  "Disenchant" },
+        { 212446, "Tempered Plating",          639, "Mug'Zee",            "Liberation of Undermine", "Heroic",  16, "INVTYPE_TRINKET","Miscellaneous", "Dpslord-" .. selfRealm, "MAGE", false, "Greed", 4, 2,  false, "" },
+    };
+
+    local importCount = 0;
+
+    -- Personal entries
+    for i, seed in ipairs(PERSONAL_SEEDS) do
+        local itemId, itemName, ilvl, boss, instance, diff, diffID, equipLoc, subType = unpack(seed);
+        local entry = Types:NewCanonicalEntry();
+        local entryTime = now - (DAY * (4 - i)) - (HOUR * 2);
+
+        entry.source = Types.SOURCE_PERSONAL;
+        entry.sourceEntryId = "personal-" .. itemId .. "-" .. entryTime .. "-" .. i;
+        entry.observedAt = entryTime;
+
+        entry.winner.name = selfName;
+        entry.winner.realm = selfRealm;
+        entry.winner.fullName = selfFull;
+        entry.winner.class = selfClass;
+        entry.winner.isSelf = true;
+
+        entry.item.link = "|cff0070dd|Hitem:" .. itemId .. "::::::::80:::::|h[" .. itemName .. "]|h|r";
+        entry.item.itemID = itemId;
+        entry.item.itemString = "item:" .. itemId .. "::::::::80:::::";
+        entry.item.name = itemName;
+        entry.item.ilvl = ilvl;
+        entry.item.equipLoc = equipLoc;
+        entry.item.subType = subType;
+
+        entry.encounter.boss = boss;
+        entry.encounter.instance = instance;
+        entry.encounter.difficultyID = diffID;
+        entry.encounter.mapID = 2296;
+        entry.encounter.groupSize = 20;
+
+        entry.awardedAt.date = date("%d/%m/%y", entryTime);
+        entry.awardedAt.time = date("%H:%M:%S", entryTime);
+        entry.awardedAt.unix = entryTime;
+
+        entry.wishlist.matched = (i <= 2);
+        entry.wishlist.wishlistItemId = (i <= 2) and itemId or nil;
+        entry.wishlist.wishlistSource = (i <= 2) and "personal" or "";
+
+        entry.status = "confirmed";
+        entry.lastChangedAt = entryTime;
+        entry.canonicalId = Store:MakeCanonicalId(entry);
+
+        if Store:PersistEntry(entry) then
+            importCount = importCount + 1;
+        end
+    end
+
+    -- RCLC entries
+    for i, seed in ipairs(RCLC_SEEDS) do
+        local itemId, itemName, ilvl, boss, instance, diff, diffID, equipLoc, subType,
+              winnerFull, winnerClass, isSelf, response, responseID, votes, isAwardReason, note = unpack(seed);
+
+        local entry = Types:NewCanonicalEntry();
+        local entryTime = now - (DAY * (6 - i)) - (HOUR * 3);
+        local rclcId = tostring(entryTime) .. "-" .. i;
+
+        entry.source = Types.SOURCE_RCLC;
+        entry.sourceEntryId = rclcId;
+        entry.observedAt = entryTime;
+
+        local name, realm = winnerFull:match("^(.-)%-(.+)$");
+        entry.winner.name = name or winnerFull;
+        entry.winner.realm = realm or selfRealm;
+        entry.winner.fullName = winnerFull;
+        entry.winner.class = winnerClass;
+        entry.winner.isSelf = isSelf;
+
+        entry.item.link = "|cff0070dd|Hitem:" .. itemId .. "::::::::80:::::|h[" .. itemName .. "]|h|r";
+        entry.item.itemID = itemId;
+        entry.item.itemString = "item:" .. itemId .. "::::::::80:::::";
+        entry.item.name = itemName;
+        entry.item.ilvl = ilvl;
+        entry.item.equipLoc = equipLoc;
+        entry.item.subType = subType;
+
+        entry.award.response = response;
+        entry.award.responseID = responseID;
+        entry.award.votes = votes;
+        entry.award.isAwardReason = isAwardReason;
+        entry.award.note = note;
+        entry.award.owner = "";
+        entry.award.gear1 = "|cff0070dd|Hitem:190503::::::::80:::::|h[Old Ring]|h|r";
+        entry.award.gear2 = (i <= 2) and "|cff0070dd|Hitem:190504::::::::80:::::|h[Other Ring]|h|r" or "";
+
+        entry.encounter.boss = boss;
+        entry.encounter.instance = instance;
+        entry.encounter.difficultyID = diffID;
+        entry.encounter.mapID = 2296;
+        entry.encounter.groupSize = 20;
+
+        entry.awardedAt.date = date("%d/%m/%y", entryTime);
+        entry.awardedAt.time = date("%H:%M:%S", entryTime);
+        entry.awardedAt.unix = entryTime;
+
+        if isSelf then
+            entry.wishlist.matched = true;
+            entry.wishlist.wishlistItemId = itemId;
+            entry.wishlist.wishlistSource = "rclc";
+        end
+
+        entry.status = "confirmed";
+        entry.lastChangedAt = entryTime;
+        entry.canonicalId = Store:MakeCanonicalId(entry);
+
+        if Store:PersistEntry(entry) then
+            importCount = importCount + 1;
+        end
+    end
+
+    -- Finalize for upload
+    Store:MarkUploadPending();
+    Store:FinalizeForUpload(Types.TRIGGER_MANUAL);
+
+    GOW.Logger:PrintSuccessMessage("Seeded " .. importCount .. " loot history entries (" .. #PERSONAL_SEEDS .. " personal, " .. #RCLC_SEEDS .. " RCLC).");
+    self:DebugStatus();
+end
+
+--- Dump a single entry's full structure to chat for debugging.
+--- @param canonicalId string|nil If nil, dumps the first entry found.
+function LootHistory:DebugDump(canonicalId)
+    local store = Store:GetStore();
+    if not store then
+        GOW.Logger:PrintErrorMessage("LootHistory store not initialized.");
+        return;
+    end
+
+    local entry;
+    if canonicalId and canonicalId ~= "" then
+        entry = store.entries[canonicalId];
+        if not entry then
+            GOW.Logger:PrintErrorMessage("Entry not found: " .. canonicalId);
+            return;
+        end
+    else
+        for id, e in pairs(store.entries) do
+            entry = e;
+            canonicalId = id;
+            break;
+        end
+    end
+
+    if not entry then
+        GOW.Logger:PrintErrorMessage("No entries in store.");
+        return;
+    end
+
+    GOW.Logger:PrintMessage("--- Entry: " .. canonicalId .. " ---");
+    GOW.Logger:PrintMessage("source=" .. tostring(entry.source) .. "  sourceEntryId=" .. tostring(entry.sourceEntryId));
+    GOW.Logger:PrintMessage("winner: " .. tostring(entry.winner.fullName) .. " (" .. tostring(entry.winner.class) .. ") isSelf=" .. tostring(entry.winner.isSelf));
+    GOW.Logger:PrintMessage("item: " .. tostring(entry.item.name) .. " id=" .. tostring(entry.item.itemID) .. " ilvl=" .. tostring(entry.item.ilvl) .. " slot=" .. tostring(entry.item.equipLoc));
+    GOW.Logger:PrintMessage("encounter: " .. tostring(entry.encounter.boss) .. " @ " .. tostring(entry.encounter.instance) .. " diffID=" .. tostring(entry.encounter.difficultyID));
+    GOW.Logger:PrintMessage("time: " .. tostring(entry.awardedAt.date) .. " " .. tostring(entry.awardedAt.time) .. " unix=" .. tostring(entry.awardedAt.unix));
+    GOW.Logger:PrintMessage("award: resp=" .. tostring(entry.award.response) .. " votes=" .. tostring(entry.award.votes) .. " note=" .. tostring(entry.award.note));
+    GOW.Logger:PrintMessage("wishlist: matched=" .. tostring(entry.wishlist.matched) .. " itemId=" .. tostring(entry.wishlist.wishlistItemId));
+    GOW.Logger:PrintMessage("status=" .. tostring(entry.status) .. " lastChanged=" .. tostring(entry.lastChangedAt));
+end
+
 --- Clear all entries from the loot history store.
 function LootHistory:DebugClear()
     local store = Store:GetStore();
@@ -238,9 +438,13 @@ function LootHistory:HandleSlashCommand(subcommand)
     elseif subcommand == "sync" then
         self:FinalizeForUpload(Types.TRIGGER_MANUAL);
         GOW.Logger:PrintSuccessMessage("Upload finalized (manual).");
+    elseif subcommand == "seed" then
+        self:DebugSeed();
+    elseif subcommand == "dump" then
+        self:DebugDump();
     elseif subcommand == "clear" then
         self:DebugClear();
     else
-        GOW.Logger:PrintMessage("Usage: /gow lh <status|test|rclc|sync|clear>");
+        GOW.Logger:PrintMessage("Usage: /gow lh <status |test |rclc |seed |dump |sync | clear>");
     end
 end
