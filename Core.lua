@@ -2010,7 +2010,12 @@ function Core:GetGuildKey()
 	local guildName, _, _, realmName = GetGuildInfo("player");
 
 	if (guildName == nil) then
-		return nil;
+		if (GOW.consts.ENABLE_DEBUGGING) then
+			guildName = "Bank of Nhea Test";
+			realmName = realmName or GetNormalizedRealmName() or "DebugRealm";
+		else
+			return nil;
+		end
 	end
 
 	if (realmName == nil) then
