@@ -107,3 +107,140 @@ function LootHistory:ProcessRCLCLootHistory()
         RCLC:ProcessRCLCLootHistory();
     end
 end
+
+-- ============================================================
+-- Debug helpers (gated behind GOW.consts.ENABLE_DEBUGGING)
+-- ============================================================
+
+--- Print a summary of the current loot history store state.
+function LootHistory:DebugStatus()
+    local store = Store:GetStore();
+    if not store then
+        GOW.Logger:PrintErrorMessage("LootHistory store not initialized.");
+        return;
+    end
+
+    local entryCount = 0;
+    local personalCount = 0;
+    local rclcCount = 0;
+    for _, entry in pairs(store.entries) do
+        entryCount = entryCount + 1;
+        if entry.source == Types.SOURCE_PERSONAL then
+            personalCount = personalCount + 1;
+        elseif entry.source == Types.SOURCE_RCLC then
+            rclcCount = rclcCount + 1;
+        end
+    end
+
+    GOW.Logger:PrintMessage("--- Loot History Status ---");
+    GOW.Logger:PrintMessage("Entries: " .. entryCount .. " (personal=" .. personalCount .. ", rclc=" .. rclcCount .. ")");
+    GOW.Logger:PrintMessage("Upload: state=" .. tostring(store.sync.uploadState) .. ", safe=" .. tostring(store.sync.safeToUpload) .. ", rev=" .. tostring(store.sync.revision));
+    GOW.Logger:PrintMessage("RCLC: available=" .. tostring(RCLC:IsRCLCAvailable()) .. ", session=" .. tostring(RCLC:IsSessionActive()));
+    GOW.Logger:PrintMessage("Last processed: " .. tostring(store.sync.lastProcessedAt) .. ", reason=" .. tostring(store.sync.triggerReason));
+end
+
+--- Simulate a personal loot drop using a random item from the active wishlist.
+function LootHistory:DebugTestDrop()
+    local GoWWishlists = GOW.Wishlists;
+    if not GoWWishlists or not GoWWishlists.state or not GoWWishlists.state.allItems then
+        GOW.Logger:PrintErrorMessage("Wishlist data not loaded.");
+        return;
+    end
+
+    -- Find a non-obtained wishlist item
+    local pool = {};
+    for _, item in ipairs(GoWWishlists.state.allItems) do
+        if not item.isObtained and item.itemId then
+            table.insert(pool, item);
+        end
+    end
+
+    if #pool == 0 then
+        GOW.Logger:PrintErrorMessage("No wishlist items available to simulate.");
+        return;
+    end
+
+    local pick = pool[math.random(#pool)];
+    local itemId = pick.itemId;
+    local difficulty = pick.difficulty or "Heroic";
+    local now = GetServerTime();
+
+    -- Build a fake item link (for testing — may not resolve full item info)
+    local itemLink = "|cff0070dd|Hitem:" .. itemId .. "::::::::70:::::|h[Test Item " .. itemId .. "]|h|r";
+
+    -- Try to get a real link if the item is cached
+    if C_Item and C_Item.GetItemInfo then
+        local name, link = C_Item.GetItemInfo(itemId);
+        if link then itemLink = link end
+    elseif GetItemInfo then
+        local name, link = GetItemInfo(itemId);
+        if link then itemLink = link end
+    end
+
+    local Personal = GOW.LootHistoryPersonal;
+    local wishlistMatch = Personal:IsRelevantForHistory(itemId);
+
+    local entry = Personal:MapToCanonical(itemId, itemLink, "Debug Boss", difficulty, 16, wishlistMatch);
+    if not entry then
+        GOW.Logger:PrintErrorMessage("Failed to map test entry.");
+        return;
+    end
+
+    Store:MarkUploadPending();
+    local persisted = Store:PersistEntry(entry);
+
+    if persisted then
+        GOW.Logger:PrintSuccessMessage("Test drop recorded: " .. itemLink .. " (id=" .. entry.canonicalId .. ")");
+    else
+        GOW.Logger:PrintErrorMessage("Test drop was a duplicate, not recorded.");
+    end
+end
+
+--- Clear all entries from the loot history store.
+function LootHistory:DebugClear()
+    local store = Store:GetStore();
+    if not store then return end
+
+    local count = 0;
+    for id in pairs(store.entries) do
+        count = count + 1;
+    end
+
+    store.entries = {};
+    store.updatedAt = GetServerTime();
+    store.sync.uploadState = Types.UPLOAD_IDLE;
+    store.sync.safeToUpload = false;
+
+    GOW.Logger:PrintSuccessMessage("Cleared " .. count .. " loot history entries.");
+end
+
+--- Handle /gow lh subcommands.
+--- @param subcommand string The subcommand after "lh"
+function LootHistory:HandleSlashCommand(subcommand)
+    if not GOW.consts.ENABLE_DEBUGGING then
+        GOW.Logger:PrintErrorMessage("Debug mode is not enabled.");
+        return;
+    end
+
+    if not self.state.isInitialized then
+        GOW.Logger:PrintErrorMessage("LootHistory not initialized.");
+        return;
+    end
+
+    if subcommand == "status" then
+        self:DebugStatus();
+    elseif subcommand == "test" then
+        self:DebugTestDrop();
+    elseif subcommand == "rclc" then
+        GOW.Logger:PrintMessage("Scanning RCLC history...");
+        self:ProcessRCLCLootHistory();
+        self:DebugStatus();
+    elseif subcommand == "sync" then
+        self:FinalizeForUpload(Types.TRIGGER_MANUAL);
+        GOW.Logger:PrintSuccessMessage("Upload finalized (manual).");
+    elseif subcommand == "clear" then
+        self:DebugClear();
+    else
+        GOW.Logger:PrintMessage("Usage: /gow lh <status|test|rclc|sync|clear>");
+    end
+end
