@@ -26,9 +26,6 @@ function LootHistoryStore:GetStore()
     if not store.ingestion.rclc then
         store.ingestion.rclc = {
             lastScanAt = 0,
-            lastImportedEntryId = "",
-            lastSessionSeen = "",
-            sessionActive = false,
             sessionEndedAt = 0,
         };
     end
@@ -104,8 +101,7 @@ function LootHistoryStore:MakeFallbackHash(entry)
     local parts = {
         entry.winner and entry.winner.fullName or "",
         entry.item and tostring(entry.item.itemID or "") or "",
-        entry.awardedAt and entry.awardedAt.date or "",
-        entry.awardedAt and entry.awardedAt.time or "",
+        entry.awardedAt or 0,
         entry.encounter and entry.encounter.boss or "",
         entry.encounter and entry.encounter.instance or "",
     };

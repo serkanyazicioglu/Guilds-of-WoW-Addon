@@ -124,7 +124,7 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, diff
             local wishlistMatch = Personal:IsRelevantForHistory(itemId);
             if wishlistMatch and not (RCLC and RCLC:IsSessionActive()) then
                 local _, _, difficultyID = GetInstanceInfo();
-                local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID, wishlistMatch);
+                local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID);
                 if entry then
                     Store:MarkUploadPending();
                     Store:PersistEntry(entry);

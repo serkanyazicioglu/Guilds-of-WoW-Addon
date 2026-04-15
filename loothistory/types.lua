@@ -54,16 +54,6 @@ function LootHistoryTypes:PopulateItemFromLink(entry, itemLink)
     end
 end
 
---- Populate wishlist match metadata on an entry.
---- @param entry table The canonical entry to populate
---- @param wishlistMatch table|nil The wishlist match result
-function LootHistoryTypes:PopulateWishlistMatch(entry, wishlistMatch)
-    if not wishlistMatch then return end
-    entry.wishlist.matched = true;
-    entry.wishlist.wishlistItemId = wishlistMatch.itemId;
-    entry.wishlist.wishlistSource = (wishlistMatch.report and wishlistMatch.report.source) or "";
-end
-
 --- Create a new canonical loot history entry with safe defaults.
 --- @return table
 function LootHistoryTypes:NewCanonicalEntry()
@@ -117,18 +107,7 @@ function LootHistoryTypes:NewCanonicalEntry()
         },
 
         -- time
-        awardedAt = {
-            date = "",
-            time = "",
-            unix = nil,
-        },
-
-        -- personal tracking metadata
-        wishlist = {
-            matched = false,
-            wishlistItemId = nil,
-            wishlistSource = "",
-        },
+        awardedAt = 0,
 
         -- season
         season = nil,
@@ -150,9 +129,6 @@ function LootHistoryTypes:NewStoreDefaults()
         ingestion = {
             rclc = {
                 lastScanAt = 0,
-                lastImportedEntryId = "",
-                lastSessionSeen = "",
-                sessionActive = false,
                 sessionEndedAt = 0,
             },
         },

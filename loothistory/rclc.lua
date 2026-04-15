@@ -101,11 +101,9 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
     entry.encounter.groupSize = rclcEntry.groupSize;
 
     -- Time
-    entry.awardedAt.date = rclcEntry.date or "";
-    entry.awardedAt.time = rclcEntry.time or "";
     -- Parse unix timestamp from RCLC id format "unix_timestamp-counter"
     if rclcEntry.id then
-        entry.awardedAt.unix = tonumber((rclcEntry.id):match("^(%d+)"));
+        entry.awardedAt = tonumber((rclcEntry.id):match("^(%d+)")) or 0;
     end
 
     -- Season
@@ -187,8 +185,8 @@ function LootHistoryRCLC:ReconcilePersonalOverlaps(rclcEntry)
     for canonicalId, existingEntry in pairs(allEntries) do
         if existingEntry.source == Types.SOURCE_PERSONAL
             and existingEntry.item.itemID == rclcEntry.item.itemID
-            and existingEntry.awardedAt.unix and rclcEntry.awardedAt.unix
-            and math.abs(existingEntry.awardedAt.unix - rclcEntry.awardedAt.unix) <= reconcileWindow then
+            and existingEntry.awardedAt and rclcEntry.awardedAt
+            and math.abs(existingEntry.awardedAt - rclcEntry.awardedAt) <= reconcileWindow then
             table.insert(toRemove, canonicalId);
         end
     end

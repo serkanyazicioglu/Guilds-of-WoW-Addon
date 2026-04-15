@@ -183,9 +183,8 @@ function LootHistory:DebugTestDrop()
     end
 
     local Personal = GOW.LootHistoryPersonal;
-    local wishlistMatch = Personal:IsRelevantForHistory(itemId);
 
-    local entry = Personal:MapToCanonical(itemId, itemLink, "Debug Boss", difficulty, 16, wishlistMatch);
+    local entry = Personal:MapToCanonical(itemId, itemLink, "Debug Boss", difficulty, 16);
     if not entry then
         GOW.Logger:PrintErrorMessage("Failed to map test entry.");
         return;
@@ -269,13 +268,7 @@ function LootHistory:DebugSeed()
         entry.encounter.mapID = 2296;
         entry.encounter.groupSize = 20;
 
-        entry.awardedAt.date = date("%d/%m/%y", entryTime);
-        entry.awardedAt.time = date("%H:%M:%S", entryTime);
-        entry.awardedAt.unix = entryTime;
-
-        entry.wishlist.matched = (i <= 2);
-        entry.wishlist.wishlistItemId = (i <= 2) and itemId or nil;
-        entry.wishlist.wishlistSource = (i <= 2) and "personal" or "";
+        entry.awardedAt = entryTime;
 
         entry.status = "confirmed";
         entry.lastChangedAt = entryTime;
@@ -329,26 +322,7 @@ function LootHistory:DebugSeed()
         entry.encounter.mapID = 2296;
         entry.encounter.groupSize = 20;
 
-        entry.awardedAt.date = date("%d/%m/%y", entryTime);
-        entry.awardedAt.time = date("%H:%M:%S", entryTime);
-        entry.awardedAt.unix = entryTime;
-
-        if isSelf then
-            entry.wishlist.matched = true;
-            entry.wishlist.wishlistItemId = itemId;
-            entry.wishlist.wishlistSource = "rclc";
-        else
-            -- Mirror real RCLC ingestion: match against guild wishlist data when available
-            local GoWWishlists = GOW.Wishlists;
-            if GoWWishlists and GoWWishlists.FindGuildWishlistMatch and GoWWishlists:HasGuildWishlistData() then
-                local guildMatch = GoWWishlists:FindGuildWishlistMatch(itemId, entry.winner.name, entry.winner.realm);
-                if guildMatch then
-                    entry.wishlist.matched = true;
-                    entry.wishlist.wishlistItemId = guildMatch.itemId;
-                    entry.wishlist.wishlistSource = "guild";
-                end
-            end
-        end
+        entry.awardedAt = entryTime;
 
         entry.status = "confirmed";
         entry.lastChangedAt = entryTime;
@@ -401,9 +375,8 @@ function LootHistory:DebugDump(canonicalId)
     GOW.Logger:PrintMessage("winner: " .. tostring(entry.winner.fullName) .. " (" .. tostring(entry.winner.class) .. ") isSelf=" .. tostring(entry.winner.isSelf));
     GOW.Logger:PrintMessage("item: " .. tostring(entry.item.name) .. " id=" .. tostring(entry.item.itemID) .. " ilvl=" .. tostring(entry.item.ilvl) .. " slot=" .. tostring(entry.item.equipLoc));
     GOW.Logger:PrintMessage("encounter: " .. tostring(entry.encounter.boss) .. " @ " .. tostring(entry.encounter.instance) .. " diffID=" .. tostring(entry.encounter.difficultyID));
-    GOW.Logger:PrintMessage("time: " .. tostring(entry.awardedAt.date) .. " " .. tostring(entry.awardedAt.time) .. " unix=" .. tostring(entry.awardedAt.unix));
+    GOW.Logger:PrintMessage("time: " .. tostring(entry.awardedAt) .. " (unix)");
     GOW.Logger:PrintMessage("award: resp=" .. tostring(entry.award.response) .. " votes=" .. tostring(entry.award.votes) .. " note=" .. tostring(entry.award.note));
-    GOW.Logger:PrintMessage("wishlist: matched=" .. tostring(entry.wishlist.matched) .. " itemId=" .. tostring(entry.wishlist.wishlistItemId) .. " source=" .. tostring(entry.wishlist.wishlistSource));
     GOW.Logger:PrintMessage("status=" .. tostring(entry.status) .. " lastChanged=" .. tostring(entry.lastChangedAt));
 end
 

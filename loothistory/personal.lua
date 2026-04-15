@@ -33,9 +33,8 @@ end
 --- @param encounterName string
 --- @param difficulty string Difficulty name (e.g. "Heroic")
 --- @param difficultyID number
---- @param wishlistMatch table The matching wishlist entry
 --- @return table|nil canonicalEntry
-function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID, wishlistMatch)
+function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID)
     if not itemId or not itemLink then return nil end
 
     local entry = Types:NewCanonicalEntry();
@@ -73,12 +72,7 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
     entry.encounter.groupSize = instanceGroupSize;
 
     -- Time
-    entry.awardedAt.date = date("%d/%m/%y");
-    entry.awardedAt.time = date("%H:%M:%S");
-    entry.awardedAt.unix = now;
-
-    -- Wishlist metadata
-    Types:PopulateWishlistMatch(entry, wishlistMatch);
+    entry.awardedAt = now;
 
     -- Season
     if C_MythicPlus and C_MythicPlus.GetCurrentSeason then
