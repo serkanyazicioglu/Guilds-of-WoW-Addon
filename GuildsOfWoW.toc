@@ -22,6 +22,7 @@ GoWKeystoneDetails.lua
 GoWRecruitmentDetails.lua
 GoWWishlists.lua
 wishlists\load.xml
+loothistory\load.xml
 rclc\load.xml
 GoWTeams.lua
 GoWEventDetails.lua

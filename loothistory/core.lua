@@ -337,6 +337,17 @@ function LootHistory:DebugSeed()
             entry.wishlist.matched = true;
             entry.wishlist.wishlistItemId = itemId;
             entry.wishlist.wishlistSource = "rclc";
+        else
+            -- Mirror real RCLC ingestion: match against guild wishlist data when available
+            local GoWWishlists = GOW.Wishlists;
+            if GoWWishlists and GoWWishlists.FindGuildWishlistMatch and GoWWishlists:HasGuildWishlistData() then
+                local guildMatch = GoWWishlists:FindGuildWishlistMatch(itemId, entry.winner.name, entry.winner.realm);
+                if guildMatch then
+                    entry.wishlist.matched = true;
+                    entry.wishlist.wishlistItemId = guildMatch.itemId;
+                    entry.wishlist.wishlistSource = "guild";
+                end
+            end
         end
 
         entry.status = "confirmed";
@@ -392,7 +403,7 @@ function LootHistory:DebugDump(canonicalId)
     GOW.Logger:PrintMessage("encounter: " .. tostring(entry.encounter.boss) .. " @ " .. tostring(entry.encounter.instance) .. " diffID=" .. tostring(entry.encounter.difficultyID));
     GOW.Logger:PrintMessage("time: " .. tostring(entry.awardedAt.date) .. " " .. tostring(entry.awardedAt.time) .. " unix=" .. tostring(entry.awardedAt.unix));
     GOW.Logger:PrintMessage("award: resp=" .. tostring(entry.award.response) .. " votes=" .. tostring(entry.award.votes) .. " note=" .. tostring(entry.award.note));
-    GOW.Logger:PrintMessage("wishlist: matched=" .. tostring(entry.wishlist.matched) .. " itemId=" .. tostring(entry.wishlist.wishlistItemId));
+    GOW.Logger:PrintMessage("wishlist: matched=" .. tostring(entry.wishlist.matched) .. " itemId=" .. tostring(entry.wishlist.wishlistItemId) .. " source=" .. tostring(entry.wishlist.wishlistSource));
     GOW.Logger:PrintMessage("status=" .. tostring(entry.status) .. " lastChanged=" .. tostring(entry.lastChangedAt));
 end
 

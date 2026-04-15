@@ -5,5 +5,4 @@
     <Script file="browser.lua" />
     <Script file="personal.lua" />
     <Script file="guild.lua" />
-    <Include file="loothistory\load.xml"/>
 </Ui>
