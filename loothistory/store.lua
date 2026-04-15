@@ -5,19 +5,20 @@ local LootHistoryStore = {};
 GOW.LootHistoryStore = LootHistoryStore;
 
 --- Get or lazily initialize the loot history store from SavedVariables.
---- @return table The loot history store
+--- Stored under GOW.DB.profile.guilds[guildKey].lootHistory.
+--- @return table|nil The loot history store, or nil if no guild key available
 function LootHistoryStore:GetStore()
     if not GOW.DB then return nil end
 
-    if not GOW.DB.global then
-        GOW.DB.global = {};
+    local guildKey = GOW.Core:GetGuildKey();
+    if not guildKey then return nil end
+
+    local guildData = GOW.DB.profile.guilds[guildKey];
+    if not guildData.lootHistory then
+        guildData.lootHistory = Types:NewStoreDefaults();
     end
 
-    if not GOW.DB.global.lootHistory then
-        GOW.DB.global.lootHistory = Types:NewStoreDefaults();
-    end
-
-    local store = GOW.DB.global.lootHistory;
+    local store = guildData.lootHistory;
 
     -- Ensure sub-tables exist (defensive against partial saves)
     if not store.entries then store.entries = {} end
