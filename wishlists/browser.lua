@@ -268,6 +268,23 @@ function GoWWishlists:CreateWishlistBrowserFrame()
     reloadBtn:Hide();
     frame.reloadBtn = reloadBtn;
 
+    local syncBtn = L:CreateActionButton(frame, {
+        text = "Sync",
+        width = 60,
+        tooltip = "Sync Loot History",
+        tooltipSubtext = "Finalize loot history for desktop upload",
+        onClick = function()
+            if GOW.LootHistory and GOW.LootHistory.state.isInitialized then
+                GOW.LootHistory:FinalizeForUpload("manual");
+                GOW.Logger:PrintSuccessMessage("Loot history synced.");
+            end
+        end,
+    });
+    syncBtn:SetPoint("RIGHT", reloadBtn, "LEFT", -4, 0);
+    syncBtn:SetPoint("TOP", reloadBtn, "TOP", 0, 0);
+    if not (GOW.LootHistory and GOW.LootHistory.state.isInitialized) then syncBtn:Hide() end
+    frame.syncBtn = syncBtn;
+
     table.insert(UISpecialFrames, "GoWWishlistBrowserFrame");
 
     frame:Hide();
@@ -323,6 +340,23 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
     reloadBtn:SetPoint("TOP", container.gainDisplayBtn, "TOP", 0, 0);
     reloadBtn:Hide();
     container.reloadBtn = reloadBtn;
+
+    local syncBtn = L:CreateActionButton(container, {
+        text = "Sync",
+        width = 60,
+        tooltip = "Sync Loot History",
+        tooltipSubtext = "Finalize loot history for desktop upload",
+        onClick = function()
+            if GOW.LootHistory and GOW.LootHistory.state.isInitialized then
+                GOW.LootHistory:FinalizeForUpload("manual");
+                GOW.Logger:PrintSuccessMessage("Loot history synced.");
+            end
+        end,
+    });
+    syncBtn:SetPoint("RIGHT", reloadBtn, "LEFT", -4, 0);
+    syncBtn:SetPoint("TOP", reloadBtn, "TOP", 0, 0);
+    if not (GOW.LootHistory and GOW.LootHistory.state.isInitialized) then syncBtn:Hide() end
+    container.syncBtn = syncBtn;
 
     container:Hide();
     self.frames.coreWishlists = container;

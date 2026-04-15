@@ -9,7 +9,7 @@ function GoWWishlists:Initialize()
     self.state.gainDisplayMode = GOW.DB and GOW.DB.profile and GOW.DB.profile.gainDisplayMode or "percent";
     self:BuildWishlistIndex();
     self:HandleLootDropEvents();
-    -- self:HandleLootHistoryEvents();
+    self:HandleLootHistoryEvents();
     self:HandleLootInfoEvents();
 
     GOW.Logger:Debug("Wishlist module initialized.");
@@ -51,66 +51,9 @@ function GoWWishlists:HandleLootHistoryEvents()
     end);
 end
 
-function GoWWishlists:RecordLootHistory(itemId, itemLink, encounterName, difficulty, timestamp)
-    if not GOW.DB or not GOW.DB.profile then return end
-
-    local history = GOW.DB.profile.lootHistory;
-    if not history then
-        GOW.DB.profile.lootHistory = {};
-        history = GOW.DB.profile.lootHistory;
-    end
-
-    table.insert(history, {
-        itemId = itemId,
-        itemLink = itemLink,
-        encounterName = encounterName,
-        difficulty = difficulty,
-        timestamp = timestamp or GetServerTime(),
-    });
-
-end
-
-function GoWWishlists:RecordAllLootDrop(itemId, itemLink, encounterName, difficulty, winnerName, timestamp)
-    if not GOW.DB or not GOW.DB.profile then return end
-
-    local allHistory = GOW.DB.profile.allLootHistory;
-    if not allHistory then
-        GOW.DB.profile.allLootHistory = {};
-        allHistory = GOW.DB.profile.allLootHistory;
-    end
-
-    table.insert(allHistory, {
-        itemId = itemId,
-        itemLink = itemLink,
-        encounterName = encounterName,
-        difficulty = difficulty,
-        winner = winnerName or "Unknown",
-        timestamp = timestamp or GetServerTime(),
-    });
-
-end
-
-function GoWWishlists:IsLootRecorded(history, itemId, encounterName, matchKey, matchValue)
-    for _, record in ipairs(history) do
-        if record.itemId == itemId and record.encounterName == encounterName
-            and (not matchKey or record[matchKey] == matchValue)
-            and record.timestamp and (GetServerTime() - record.timestamp) < 300 then
-            return true;
-        end
-    end
-    return false;
-end
-
-function GoWWishlists:IsAllLootAlreadyRecorded(itemId, encounterName, winnerName)
-    local allHistory = GOW.DB and GOW.DB.profile and GOW.DB.profile.allLootHistory or {};
-    return self:IsLootRecorded(allHistory, itemId, encounterName, "winner", winnerName);
-end
-
 function GoWWishlists:MarkWishlistObtained(itemId, difficulty)
     for _, entry in ipairs(self.state.allItems) do
-        if entry.itemId == itemId
-            and (not difficulty or entry.difficulty == difficulty)
-            and not entry.isObtained then
+        if entry.itemId == itemId and (not difficulty or entry.difficulty == difficulty) and not entry.isObtained then
             entry.isObtained = true;
             GOW.Logger:Debug("Wishlist item marked obtained: " .. tostring(itemId) .. " (" .. tostring(entry.difficulty) .. ")");
 
@@ -159,37 +102,43 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, diff
     local itemId = tonumber(itemLink:match("item:(%d+)"));
     if not itemId then return end
 
-    if not encounterName then
-        local encounterInfo = C_LootHistory.GetInfoForEncounter(encounterID);
-        encounterName = encounterInfo and encounterInfo.encounterName or "Unknown";
-    end
-    if not difficulty then
-        difficulty = self:GetCurrentDifficultyName();
-    end
-
     local winner = dropInfo.winner;
     local winnerName = winner and (winner.name or winner.playerName) or nil;
 
-    if winnerName and not self:IsAllLootAlreadyRecorded(itemId, encounterName, winnerName) then
-        self:RecordAllLootDrop(itemId, itemLink, encounterName, difficulty, winnerName);
-    end
-
     if winner and winner.isSelf then
+        if not encounterName then
+            local encounterInfo = C_LootHistory.GetInfoForEncounter(encounterID);
+            encounterName = encounterInfo and encounterInfo.encounterName or "Unknown";
+        end
+        if not difficulty then
+            difficulty = self:GetCurrentDifficultyName();
+        end
+
         GOW.Logger:Debug(string.format("Player won item %s (%d) from %s", itemLink, itemId, encounterName));
 
-        local history = GOW.DB and GOW.DB.profile and GOW.DB.profile.lootHistory or {};
-        local alreadyRecorded = self:IsLootRecorded(history, itemId, encounterName);
-
-        if not alreadyRecorded then
-            self:RecordLootHistory(itemId, itemLink, encounterName, difficulty);
-            local wasOnWishlist = self:MarkWishlistObtained(itemId, difficulty);
-            if wasOnWishlist then
-                GOW.Logger:PrintSuccessMessage(itemLink .. " obtained! Removed from your wishlist.");
+        -- Record to canonical loot history store
+        local Personal = GOW.LootHistoryPersonal;
+        local Store = GOW.LootHistoryStore;
+        local RCLC = GOW.LootHistoryRCLC;
+        if Personal and Store then
+            local wishlistMatch = Personal:IsRelevantForHistory(itemId);
+            if wishlistMatch and not (RCLC and RCLC:IsSessionActive()) then
+                local _, _, difficultyID = GetInstanceInfo();
+                local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID, wishlistMatch);
+                if entry then
+                    Store:MarkUploadPending();
+                    Store:PersistEntry(entry);
+                end
             end
+        end
+
+        local wasOnWishlist = self:MarkWishlistObtained(itemId, difficulty);
+        if wasOnWishlist then
+            GOW.Logger:PrintSuccessMessage(itemLink .. " obtained! Removed from your wishlist.");
         end
     end
 
-    return winnerName ~= nil; -- true if winner was resolved
+    return winnerName ~= nil;
 end
 
 function GoWWishlists:ProcessLootHistoryDrop(encounterID, lootListID)
