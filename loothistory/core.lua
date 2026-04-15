@@ -137,7 +137,6 @@ function LootHistory:DebugTestDrop()
     local pick = pool[math.random(#pool)];
     local itemId = pick.itemId;
     local difficulty = pick.difficulty or "Heroic";
-    local now = GetServerTime();
 
     -- Build a fake item link (for testing — may not resolve full item info)
     local itemLink = "|cff0070dd|Hitem:" .. itemId .. "::::::::70:::::|h[Test Item " .. itemId .. "]|h|r";

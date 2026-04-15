@@ -98,6 +98,14 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
     entry.encounter.mapID = rclcEntry.mapID;
     entry.encounter.groupSize = rclcEntry.groupSize;
 
+    -- RCLC-specific metadata
+    entry.rclc = {
+        color = rclcEntry.color,
+        tierToken = rclcEntry.tierToken or false,
+        iClass = rclcEntry.iClass,
+        iSubClass = rclcEntry.iSubClass,
+    };
+
     -- Time
     -- Parse unix timestamp from RCLC id format "unix_timestamp-counter"
     if rclcEntry.id then

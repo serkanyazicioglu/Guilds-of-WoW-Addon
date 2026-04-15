@@ -88,6 +88,27 @@ local LibQTip = LibStub('LibQTip-1.0');
 function GOW:OnInitialize()
 	self.GUI = LibStub("AceGUI-3.0");
 	self.DB = LibStub("AceDB-3.0"):New("GoWDB", GOW.defaults, "Default");
+
+	-- One-time cleanup: strip stale lootHistory fields from all guild entries
+	if self.DB.profile.guilds then
+		for guildKey, guild in pairs(self.DB.profile.guilds) do
+			local lh = guild.lootHistory;
+			if lh then
+				lh.sync = nil;
+				lh.updatedAt = nil;
+				-- Migrate old numeric version to semver string
+				if type(lh.version) == "number" then
+					lh.version = "1.0.0";
+				end
+				-- Strip stale ingestion sub-keys
+				if lh.ingestion and lh.ingestion.rclc then
+					local lastScannedAt = lh.ingestion.rclc.lastScannedAt or lh.ingestion.rclc.lastScanAt or 0;
+					lh.ingestion.rclc = { lastScannedAt = lastScannedAt };
+				end
+			end
+		end
+	end
+
 	self.LDB = LibStub("LibDataBroker-1.1");
 	self.LDBIcon = LibStub("LibDBIcon-1.0");
 	self.CONSOLE = LibStub("AceConsole-3.0");
@@ -2010,7 +2031,7 @@ function Core:GetGuildKey()
 	local guildName, _, _, realmName = GetGuildInfo("player");
 
 	if (guildName == nil) then
-		if (GOW.consts.ENABLE_DEBUGGING) then
+		if (GOW.consts.ENABLE_DEBUGGING and not IsInGuild()) then
 			guildName = "Bank of Nhea Test";
 			realmName = realmName or GetNormalizedRealmName() or "DebugRealm";
 		else

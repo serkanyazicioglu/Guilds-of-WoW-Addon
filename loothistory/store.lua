@@ -24,8 +24,11 @@ function LootHistoryStore:GetStore()
     if not store.entries then store.entries = {} end
     if not store.ingestion then store.ingestion = {} end
     if not store.ingestion.rclc then
+        store.ingestion.rclc = { lastScannedAt = 0 };
+    else
+        -- Normalize to expected shape, stripping stale keys
         store.ingestion.rclc = {
-            lastScannedAt = 0,
+            lastScannedAt = store.ingestion.rclc.lastScannedAt or store.ingestion.rclc.lastScanAt or 0,
         };
     end
 

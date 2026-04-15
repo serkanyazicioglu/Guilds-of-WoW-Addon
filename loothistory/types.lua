@@ -8,7 +8,7 @@ LootHistoryTypes.SOURCE_PERSONAL = "personal";
 LootHistoryTypes.SOURCE_RCLC = "rclc";
 
 -- Store version
-LootHistoryTypes.STORE_VERSION = 3;
+LootHistoryTypes.STORE_VERSION = "1.0.0";
 
 -- Config
 LootHistoryTypes.STARTUP_REFRESH_THRESHOLD_SECONDS = 3600;
