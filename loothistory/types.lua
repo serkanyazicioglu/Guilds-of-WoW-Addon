@@ -81,8 +81,8 @@ function LootHistoryTypes:NewCanonicalEntry()
             isAwardReason = false,
             note = "",
             owner = "",
-            gear1 = "",
-            gear2 = "",
+            itemReplaced1 = "",
+            itemReplaced2 = "",
         },
 
         -- encounter

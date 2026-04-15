@@ -275,8 +275,8 @@ function LootHistory:DebugSeed()
         entry.award.isAwardReason = isAwardReason;
         entry.award.note = note;
         entry.award.owner = "";
-        entry.award.gear1 = "|cff0070dd|Hitem:190503::::::::80:::::|h[Old Ring]|h|r";
-        entry.award.gear2 = (i <= 2) and "|cff0070dd|Hitem:190504::::::::80:::::|h[Other Ring]|h|r" or "";
+        entry.award.itemReplaced1 = "|cff0070dd|Hitem:190503::::::::80:::::|h[Old Ring]|h|r";
+        entry.award.itemReplaced2 = (i <= 2) and "|cff0070dd|Hitem:190504::::::::80:::::|h[Other Ring]|h|r" or "";
 
         entry.encounter.boss = boss;
         entry.encounter.instance = instance;

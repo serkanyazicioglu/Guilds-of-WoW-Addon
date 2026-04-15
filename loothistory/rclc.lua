@@ -88,8 +88,8 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
     entry.award.isAwardReason = rclcEntry.isAwardReason or false;
     entry.award.note = rclcEntry.note or "";
     entry.award.owner = rclcEntry.owner or "";
-    entry.award.gear1 = rclcEntry.itemReplaced1 or "";
-    entry.award.gear2 = rclcEntry.itemReplaced2 or "";
+    entry.award.itemReplaced1 = rclcEntry.itemReplaced1 or "";
+    entry.award.itemReplaced2 = rclcEntry.itemReplaced2 or "";
 
     -- Encounter
     entry.encounter.boss = rclcEntry.boss or "";
