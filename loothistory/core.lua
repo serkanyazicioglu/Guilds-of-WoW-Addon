@@ -346,6 +346,7 @@ function LootHistory:DebugClear()
     end
 
     store.entries = {};
+    store.ingestion.rclc.lastScannedAt = 0;
 
     GOW.Logger:PrintSuccessMessage("Cleared " .. count .. " loot history entries.");
 end
