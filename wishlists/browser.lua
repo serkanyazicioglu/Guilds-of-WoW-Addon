@@ -262,8 +262,8 @@ function GoWWishlists:CreateWishlistBrowserFrame()
         tooltipSubtext = "Wishlist data is more than 20 minutes old",
         onClick = function() ReloadUI() end,
     });
-    reloadBtn:SetPoint("RIGHT", frame.compactBtn, "LEFT", -4, 0);
-    reloadBtn:SetPoint("TOP", frame.compactBtn, "TOP", 0, 0);
+    reloadBtn:SetPoint("RIGHT", frame.gainDisplayBtn, "LEFT", -4, 0);
+    reloadBtn:SetPoint("TOP", frame.gainDisplayBtn, "TOP", 0, 0);
     reloadBtn:Hide();
     frame.reloadBtn = reloadBtn;
 
