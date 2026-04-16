@@ -22,9 +22,8 @@ function GoWWishlists:CreateCompactToggleButton(parent)
 end
 
 function GoWWishlists:CreateGainDisplayToggleButton(parent)
-    local isRaw = self.state.gainDisplayMode == "raw";
     local gainBtn = L:CreateActionButton(parent, {
-        text = isRaw and "#" or "%",
+        text = "#",
         width = 28,
         tooltip = "Toggle gain display",
         tooltipSubtext = "Switch between percentage and raw stat value on gain badges",
@@ -34,7 +33,7 @@ function GoWWishlists:CreateGainDisplayToggleButton(parent)
     local function updateGainBtn()
         local raw = self.state.gainDisplayMode == "raw";
         L:SetButtonActive(gainBtn, raw);
-        gainBtn.btnText:SetText(raw and "|cff00ff00#|r" or "%");
+        gainBtn.btnText:SetText(raw and "|cff00ff00#|r" or "#");
     end
 
     gainBtn.UpdateState = updateGainBtn;

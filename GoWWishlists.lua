@@ -764,14 +764,13 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
             -- Fallback: simple tooltip — always show both values
             badge.tooltipLines = nil;
             local tipParts = {};
+            local catalystSuffix = isCatalystItem and " (Catalyst)" or "";
             if gain.stat and gain.stat > 0 and gain.percent and gain.percent > 0 then
-                local catalystSuffix = isCatalystItem and " (Catalyst)" or "";
                 table.insert(tipParts, string.format("+%s %s (%.2f%%)%s", self:FormatStatGain(gain.stat), metric, gain.percent, catalystSuffix));
             elseif gain.percent and gain.percent > 0 then
-                local catalystSuffix = isCatalystItem and " (Catalyst)" or "";
                 table.insert(tipParts, string.format("%.2f%% %s%s", gain.percent, metric, catalystSuffix));
             elseif gain.stat and gain.stat > 0 then
-                table.insert(tipParts, "+" .. self:FormatStatGain(gain.stat) .. " " .. metric);
+                table.insert(tipParts, string.format("+%s %s%s", self:FormatStatGain(gain.stat), metric, catalystSuffix));
             end
             badge.tooltipText = #tipParts > 0 and table.concat(tipParts, "\n") or nil;
         end
