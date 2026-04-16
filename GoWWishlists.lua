@@ -518,7 +518,7 @@ function GoWWishlists:GetGainValue(gain)
 end
 
 function GoWWishlists:FormatStatGain(n)
-    return tostring(math.floor(n + 0.5));
+    return string.format("%.1f", n);
 end
 
 function GoWWishlists:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId)
