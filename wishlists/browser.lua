@@ -21,6 +21,26 @@ function GoWWishlists:CreateCompactToggleButton(parent)
     return compactBtn;
 end
 
+function GoWWishlists:CreateGainDisplayToggleButton(parent)
+    local gainBtn = L:CreateActionButton(parent, {
+        text = "#",
+        width = 28,
+        tooltip = "Toggle gain display",
+        tooltipSubtext = "Switch between percentage and raw stat value on gain badges",
+        onClick = function() self:ToggleGainDisplayMode() end,
+    });
+
+    local function updateGainBtn()
+        local raw = self.state.gainDisplayMode == "raw";
+        L:SetButtonActive(gainBtn, raw);
+        gainBtn.btnText:SetText(raw and "|cff00ff00#|r" or "#");
+    end
+
+    gainBtn.UpdateState = updateGainBtn;
+    updateGainBtn();
+    return gainBtn;
+end
+
 local function UpdateRosterTabVisibility(self, host)
     local rosterTab = host.rosterTab or host.guildWishlistTab;
     if not rosterTab then return end
@@ -68,6 +88,10 @@ local function InitializeWishlistTabHost(self, host, options)
         options.compactRightOffsetY or 0
     );
 
+    local gainDisplayBtn = self:CreateGainDisplayToggleButton(host);
+    gainDisplayBtn:SetPoint("RIGHT", compactBtn, "LEFT", -4, 0);
+    gainDisplayBtn:SetPoint("TOP", compactBtn, "TOP", 0, 0);
+
     local rosterTab = self:CreateTabButton(host, "|cff00ff00ROSTER|r", 2);
     rosterTab:SetPoint("LEFT", personalTab, "RIGHT", 4, 0);
     rosterTab:SetWidth(options.rosterTabWidth or 90);
@@ -91,6 +115,7 @@ local function InitializeWishlistTabHost(self, host, options)
     local guildPanel = self:Create3PanelLayout(guildContainer);
 
     host.compactBtn = compactBtn;
+    host.gainDisplayBtn = gainDisplayBtn;
     host.wishlistTab = personalTab;
     host.rosterTab = rosterTab;
     host.guildWishlistTab = rosterTab;
@@ -237,8 +262,8 @@ function GoWWishlists:CreateWishlistBrowserFrame()
         tooltipSubtext = "Wishlist data is more than 20 minutes old",
         onClick = function() ReloadUI() end,
     });
-    reloadBtn:SetPoint("RIGHT", frame.compactBtn, "LEFT", -4, 0);
-    reloadBtn:SetPoint("TOP", frame.compactBtn, "TOP", 0, 0);
+    reloadBtn:SetPoint("RIGHT", frame.gainDisplayBtn, "LEFT", -4, 0);
+    reloadBtn:SetPoint("TOP", frame.gainDisplayBtn, "TOP", 0, 0);
     reloadBtn:Hide();
     frame.reloadBtn = reloadBtn;
 
@@ -293,8 +318,8 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
         tooltipSubtext = "Wishlist data is more than 20 minutes old",
         onClick = function() ReloadUI() end,
     });
-    reloadBtn:SetPoint("RIGHT", container.compactBtn, "LEFT", -4, 0);
-    reloadBtn:SetPoint("TOP", container.compactBtn, "TOP", 0, 0);
+    reloadBtn:SetPoint("RIGHT", container.gainDisplayBtn, "LEFT", -4, 0);
+    reloadBtn:SetPoint("TOP", container.gainDisplayBtn, "TOP", 0, 0);
     reloadBtn:Hide();
     container.reloadBtn = reloadBtn;
 

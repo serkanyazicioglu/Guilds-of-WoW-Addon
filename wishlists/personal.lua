@@ -200,8 +200,8 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
             end);
         else -- "upgrade"
             table.sort(sortedItems, function(a, b)
-                local aGain = (a.gain and a.gain.percent) or 0;
-                local bGain = (b.gain and b.gain.percent) or 0;
+                local aGain = self:GetGainValue(a.gain);
+                local bGain = self:GetGainValue(b.gain);
                 return aGain > bGain;
             end);
         end

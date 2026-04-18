@@ -9,8 +9,8 @@ GoWWishlists.constants.GUILD_FILTER_HEIGHT = 26;
 local function GetAverageGainFromMembers(members)
     local sum, count = 0, 0;
     for _, member in ipairs(members or {}) do
-        local gain = member.gain and member.gain.percent;
-        if gain and gain > 0 then
+        local gain = GoWWishlists:GetGainValue(member.gain);
+        if gain > 0 then
             sum = sum + gain;
             count = count + 1;
         end
@@ -222,10 +222,11 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
 
     row.infoHover.tipText = itemData.difficulty and ("Difficulty: " .. itemData.difficulty) or nil;
 
-    local totalPercent, gainCount, avgMetric = 0, 0, nil;
+    local totalPercent, totalStat, gainCount, avgMetric = 0, 0, 0, nil;
     for _, m in ipairs(itemData.members) do
         if m.gain and m.gain.percent and m.gain.percent > 0 then
             totalPercent = totalPercent + m.gain.percent;
+            totalStat = totalStat + ((m.gain.stat and m.gain.stat > 0) and m.gain.stat or 0);
             gainCount = gainCount + 1;
             if not avgMetric and m.gain.metric and m.gain.metric ~= "" then
                 avgMetric = m.gain.metric;
@@ -233,7 +234,7 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
         end
     end
     if gainCount > 0 then
-        self:UpdateGainBadge(row.gainBadge, { percent = totalPercent / gainCount, metric = avgMetric or "DPS" }, "avg ");
+        self:UpdateGainBadge(row.gainBadge, { percent = totalPercent / gainCount, stat = totalStat / gainCount, metric = avgMetric or "DPS" }, "avg ");
     else
         row.gainBadge:Hide();
     end
@@ -797,8 +798,8 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
 
     local function buildItemWithMembers(itemData)
         table.sort(itemData.members, function(a, b)
-            local aGain = (a.gain and a.gain.percent) or 0;
-            local bGain = (b.gain and b.gain.percent) or 0;
+            local aGain = self:GetGainValue(a.gain);
+            local bGain = self:GetGainValue(b.gain);
             return aGain > bGain;
         end);
 
@@ -899,8 +900,8 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
                 local bossGainSum, bossGainCount = 0, 0;
                 for _, itemKey in ipairs(boss.itemOrder) do
                     for _, member in ipairs(boss.items[itemKey].members) do
-                        local gain = member.gain and member.gain.percent;
-                        if gain and gain > 0 then
+                        local gain = self:GetGainValue(member.gain);
+                        if gain > 0 then
                             bossGainSum = bossGainSum + gain;
                             bossGainCount = bossGainCount + 1;
                         end
@@ -1332,8 +1333,8 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
         end);
     else
         table.sort(memberItems, function(a, b)
-            local aGain = (a.gain and a.gain.percent) or 0;
-            local bGain = (b.gain and b.gain.percent) or 0;
+            local aGain = self:GetGainValue(a.gain);
+            local bGain = self:GetGainValue(b.gain);
             return aGain > bGain;
         end);
     end

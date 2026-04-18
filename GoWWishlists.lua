@@ -445,6 +445,9 @@ function GoWWishlists:RefreshWishlistViews()
     if browserFrame and browserFrame.compactBtn and browserFrame.compactBtn.UpdateState then
         browserFrame.compactBtn:UpdateState();
     end
+    if browserFrame and browserFrame.gainDisplayBtn and browserFrame.gainDisplayBtn.UpdateState then
+        browserFrame.gainDisplayBtn:UpdateState();
+    end
     if browserFrame and browserFrame:IsShown() and browserFrame.SetActiveTab then
         browserFrame.SetActiveTab(browserFrame.activeTab or 1);
     end
@@ -452,6 +455,9 @@ function GoWWishlists:RefreshWishlistViews()
     local coreWishlists = self.frames.coreWishlists;
     if coreWishlists and coreWishlists.compactBtn and coreWishlists.compactBtn.UpdateState then
         coreWishlists.compactBtn:UpdateState();
+    end
+    if coreWishlists and coreWishlists.gainDisplayBtn and coreWishlists.gainDisplayBtn.UpdateState then
+        coreWishlists.gainDisplayBtn:UpdateState();
     end
     if coreWishlists and coreWishlists:IsShown() then
         if coreWishlists.RefreshContent then
@@ -493,6 +499,26 @@ function GoWWishlists:ToggleCompactMode()
         GOW.DB.profile.wishlistCompactMode = self.state.compactMode;
     end
     self:RefreshWishlistViews();
+end
+
+function GoWWishlists:ToggleGainDisplayMode()
+    self.state.gainDisplayMode = self.state.gainDisplayMode == "percent" and "raw" or "percent";
+    if GOW.DB and GOW.DB.profile then
+        GOW.DB.profile.gainDisplayMode = self.state.gainDisplayMode;
+    end
+    self:RefreshWishlistViews();
+end
+
+function GoWWishlists:GetGainValue(gain)
+    if not gain then return 0 end
+    if self.state.gainDisplayMode == "raw" then
+        return (gain.stat and gain.stat > 0) and gain.stat or (gain.percent or 0);
+    end
+    return (gain.percent and gain.percent > 0) and gain.percent or 0;
+end
+
+function GoWWishlists:FormatStatGain(n)
+    return string.format("%.1f", n);
 end
 
 function GoWWishlists:GroupAndSortBosses(bossOrder, bossToRaid, bossToJournalId)
@@ -675,11 +701,15 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
 
     local hasGain = false;
     if gain and gain.percent and gain.percent > 0 then
-        local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
-        badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.2f", gain.percent) .. "%|r");
+        local isRawMode = self.state.gainDisplayMode == "raw";
+        if isRawMode and gain.stat and gain.stat > 0 then
+            badge.text:SetText("|cff00ff00" .. prefix .. "+" .. self:FormatStatGain(gain.stat) .. "|r");
+        else
+            badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.2f", gain.percent) .. "%|r");
+        end
         hasGain = true;
     elseif gain and gain.stat and gain.stat > 0 then
-        badge.text:SetText("|cff00ff00" .. prefix .. string.format("%.1f", gain.stat) .. "|r");
+        badge.text:SetText("|cff00ff00" .. prefix .. "+" .. self:FormatStatGain(gain.stat) .. "|r");
         hasGain = true;
     end
 
@@ -690,10 +720,12 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
         local metric = (gain.metric and gain.metric ~= "") and gain.metric or "DPS";
         if report and report.source then
             local lines = {};
-            -- Line 1: stat + metric + catalyst suffix
+            -- Line 1: always show both stat and percent when available
             local statLine = "";
-            if gain.stat and gain.stat > 0 then
-                statLine = string.format("+%.1f %s", gain.stat, metric);
+            if gain.stat and gain.stat > 0 and gain.percent and gain.percent > 0 then
+                statLine = string.format("+%s %s (%.2f%%)", self:FormatStatGain(gain.stat), metric, gain.percent);
+            elseif gain.stat and gain.stat > 0 then
+                statLine = string.format("+%s %s", self:FormatStatGain(gain.stat), metric);
             else
                 statLine = string.format("%.2f%% %s", gain.percent, metric);
             end
@@ -729,15 +761,16 @@ function GoWWishlists:UpdateGainBadge(badge, gain, prefix, report, isCatalystIte
             badge.tooltipLines = lines;
             badge.tooltipText = nil;
         else
-            -- Fallback: simple tooltip
+            -- Fallback: simple tooltip — always show both values
             badge.tooltipLines = nil;
             local tipParts = {};
-            if gain.percent and gain.percent > 0 then
-                local catalystSuffix = isCatalystItem and " (Catalyst)" or "";
+            local catalystSuffix = isCatalystItem and " (Catalyst)" or "";
+            if gain.stat and gain.stat > 0 and gain.percent and gain.percent > 0 then
+                table.insert(tipParts, string.format("+%s %s (%.2f%%)%s", self:FormatStatGain(gain.stat), metric, gain.percent, catalystSuffix));
+            elseif gain.percent and gain.percent > 0 then
                 table.insert(tipParts, string.format("%.2f%% %s%s", gain.percent, metric, catalystSuffix));
-            end
-            if gain.stat and gain.stat > 0 then
-                table.insert(tipParts, "+" .. string.format("%.1f", gain.stat) .. " " .. metric);
+            elseif gain.stat and gain.stat > 0 then
+                table.insert(tipParts, string.format("+%s %s%s", self:FormatStatGain(gain.stat), metric, catalystSuffix));
             end
             badge.tooltipText = #tipParts > 0 and table.concat(tipParts, "\n") or nil;
         end

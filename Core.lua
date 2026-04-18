@@ -27,6 +27,7 @@ GOW.defaults = {
 		wishlistInfoFramePos = nil,
 		wishlistBrowserFramePos = nil,
 		wishlistCompactMode = false,
+		gainDisplayMode = "percent",
 		guildRosterFilter = "all",
 	}
 }
@@ -96,6 +97,7 @@ function GOW:OnInitialize()
 	isEventProcessCompleted = GOW.Helper:IsInGameCalendarAccessible() == false; -- if calendar is not accessible, consider event process completed to avoid blocking the app
 
 	local consoleCommandFunc = function(msg, editbox)
+		msg = strlower(msg);
 		if (msg == "minimap") then
 			Core:ToggleMinimap();
 		elseif (msg == "loot" and GOW.Helper:IsWishlistsEnabled()) then
