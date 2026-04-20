@@ -53,7 +53,7 @@ function GoWWishlists:HandleLootHistoryEvents()
     end);
 end
 
-function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, difficulty)
+function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encounterName, difficulty)
     if not dropInfo then return end
 
     local itemLink = dropInfo.itemHyperlink;
@@ -61,6 +61,13 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, diff
 
     local itemId = tonumber(itemLink:match("item:(%d+)"));
     if not itemId then return end
+
+    -- Deduplicate: key on encounterID-lootListID to uniquely identify a specific drop.
+    local dropKey = encounterID .. "-" .. (lootListID or itemId);
+    if processedDrops[dropKey] then
+        GOW.Logger:Debug("Loot history: skipping duplicate drop " .. dropKey);
+        return true;
+    end
 
     local winner = dropInfo.winner;
     local winnerName = winner and (winner.name or winner.playerName) or nil;
@@ -76,24 +83,18 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, diff
 
         GOW.Logger:Debug(string.format("Player won item %s (%d) from %s", itemLink, itemId, encounterName));
 
-        -- Deduplicate: LOOT_HISTORY_UPDATE_DROP and _ENCOUNTER can both fire for the same drop
-        local dropKey = encounterID .. "-" .. itemId;
-        if processedDrops[dropKey] then
-            GOW.Logger:Debug("Loot history: skipping duplicate drop " .. dropKey);
-        else
-            -- Record to canonical loot history store
-            local Personal = GOW.LootHistoryPersonal;
-            local Store = GOW.LootHistoryStore;
-            local RCLC = GOW.LootHistoryRCLC;
-            if Personal and Store then
-                local wishlistMatch = Personal:IsRelevantForHistory(itemId);
-                if wishlistMatch and not (RCLC and RCLC:IsSessionActive()) then
-                    local _, _, difficultyID = GetInstanceInfo();
-                    local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID);
-                    if entry then
-                        Store:SaveDropEntry(entry);
-                        processedDrops[dropKey] = true;
-                    end
+        -- Record to canonical loot history store
+        local Personal = GOW.LootHistoryPersonal;
+        local Store = GOW.LootHistoryStore;
+        local RCLC = GOW.LootHistoryRCLC;
+        if Personal and Store then
+            local wishlistMatch = Personal:IsRelevantForHistory(itemId);
+            if wishlistMatch and not (RCLC and RCLC:IsSessionActive()) then
+                local _, _, difficultyID = GetInstanceInfo();
+                local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID);
+                if entry then
+                    Store:SaveDropEntry(entry);
+                    processedDrops[dropKey] = true;
                 end
             end
         end
@@ -106,13 +107,13 @@ function GoWWishlists:ProcessLootHistoryDrop(encounterID, lootListID)
     if not C_LootHistory or not C_LootHistory.GetSortedInfoForDrop then return end
 
     local dropInfo = C_LootHistory.GetSortedInfoForDrop(encounterID, lootListID);
-    local resolved = self:ProcessDropInfo(dropInfo, encounterID);
+    local resolved = self:ProcessDropInfo(dropInfo, encounterID, lootListID);
 
     -- If winner isn't known yet (rolls in progress), retry after rolls end (~30s)
     if not resolved and dropInfo and dropInfo.itemHyperlink then
         C_Timer.After(32, function()
             local retryInfo = C_LootHistory.GetSortedInfoForDrop(encounterID, lootListID);
-            self:ProcessDropInfo(retryInfo, encounterID);
+            self:ProcessDropInfo(retryInfo, encounterID, lootListID);
         end);
     end
 end
@@ -132,7 +133,7 @@ function GoWWishlists:ProcessLootHistoryEncounter(encounterID)
     for _, dropEntry in ipairs(drops) do
         if dropEntry.lootListID and C_LootHistory.GetSortedInfoForDrop then
             local dropInfo = C_LootHistory.GetSortedInfoForDrop(encounterID, dropEntry.lootListID);
-            self:ProcessDropInfo(dropInfo, encounterID, encounterName, difficulty);
+            self:ProcessDropInfo(dropInfo, encounterID, dropEntry.lootListID, encounterName, difficulty);
         end
     end
 end
