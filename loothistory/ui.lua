@@ -12,8 +12,6 @@ local ROW_HEIGHT = 28;
 local HEADER_HEIGHT = 32;
 local ICON_SIZE = 22;
 
---- Build a sorted array of loot history entries (newest first).
---- @return table Array of canonical entries
 function LootHistoryUI:GetSortedEntries()
     local entries = Store:GetAllEntries();
     local sorted = {};
@@ -26,9 +24,6 @@ function LootHistoryUI:GetSortedEntries()
     return sorted;
 end
 
---- Create a single loot history row inside the scroll child.
---- @param parent frame The scroll child to parent the row to
---- @return frame The row frame
 function LootHistoryUI:CreateRow(parent)
     local row = CreateFrame("Frame", nil, parent);
     row:SetHeight(ROW_HEIGHT);
@@ -73,7 +68,6 @@ function LootHistoryUI:CreateRow(parent)
     timeText:SetWordWrap(false);
     row.timeText = timeText;
 
-    -- Item tooltip hover zone (covers icon + item name only)
     local itemHitZone = CreateFrame("Frame", nil, row);
     itemHitZone:SetPoint("LEFT", icon, "LEFT", 0, 0);
     itemHitZone:SetPoint("RIGHT", itemText, "RIGHT", 0, 0);
@@ -95,25 +89,19 @@ function LootHistoryUI:CreateRow(parent)
     return row;
 end
 
---- Populate a row with entry data.
---- @param row frame The row frame
---- @param entry table A canonical loot history entry
 function LootHistoryUI:PopulateRow(row, entry)
     row.itemLink = entry.item.link;
 
-    -- Icon
     local iconTexture = nil;
     if entry.item.itemID then
         iconTexture = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(entry.item.itemID);
     end
-    
+
     row.icon:SetTexture(iconTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
 
-    -- Item name (use link color if available)
     local displayName = entry.item.link or entry.item.name or ("Item " .. (entry.item.itemID or "?"));
     row.itemText:SetText(displayName);
 
-    -- Winner
     local winnerDisplay = entry.winner.name or entry.winner.fullName or "";
     local classColor = entry.winner.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[entry.winner.class];
     if classColor then
@@ -122,14 +110,11 @@ function LootHistoryUI:PopulateRow(row, entry)
         row.winnerText:SetText(winnerDisplay);
     end
 
-    -- Source
     local sourceLabel = entry.source == LootHistory.SOURCE_RCLC and "|cffff8000RCLC|r" or "|cff888888Personal|r";
     row.sourceText:SetText(sourceLabel);
 
-    -- Difficulty
     row.difficultyText:SetText(entry.encounter.difficulty or "");
 
-    -- Time
     if Duration then
         row.timeText:SetText(Duration:Format(entry.awardedAt));
     else
@@ -137,10 +122,7 @@ function LootHistoryUI:PopulateRow(row, entry)
     end
 end
 
---- Populate the loot history container with entries and a re-scan button.
---- @param container frame The content container for the loot history tab
 function LootHistoryUI:PopulateLootHistoryView(container)
-    -- Clear previous content
     if container.lootHistoryRows then
         for _, row in ipairs(container.lootHistoryRows) do
             row:Hide();
@@ -148,7 +130,6 @@ function LootHistoryUI:PopulateLootHistoryView(container)
     end
     container.lootHistoryRows = container.lootHistoryRows or {};
 
-    -- Header bar with re-scan button
     if not container.headerBar then
         local headerBar = CreateFrame("Frame", nil, container);
         headerBar:SetHeight(HEADER_HEIGHT);
@@ -184,7 +165,6 @@ function LootHistoryUI:PopulateLootHistoryView(container)
         container.headerBar = headerBar;
     end
 
-    -- Scroll frame for entries
     if not container.lhScrollFrame then
         local scrollFrame = CreateFrame("ScrollFrame", nil, container, "UIPanelScrollFrameTemplate");
         scrollFrame:SetPoint("TOPLEFT", container.headerBar, "BOTTOMLEFT", 0, -4);
@@ -204,10 +184,8 @@ function LootHistoryUI:PopulateLootHistoryView(container)
     local scrollChild = container.lhScrollChild;
     local entries = self:GetSortedEntries();
 
-    -- Update count
     container.headerBar.countText:SetText(#entries .. " entries");
 
-    -- Build rows
     local yOffset = 0;
     for i, entry in ipairs(entries) do
         local row = container.lootHistoryRows[i];
@@ -221,7 +199,6 @@ function LootHistoryUI:PopulateLootHistoryView(container)
         self:PopulateRow(row, entry);
         row:Show();
 
-        -- Alternating row background
         if not row.bg then
             row.bg = row:CreateTexture(nil, "BACKGROUND");
             row.bg:SetAllPoints(row);
@@ -236,7 +213,6 @@ function LootHistoryUI:PopulateLootHistoryView(container)
         yOffset = yOffset + ROW_HEIGHT;
     end
 
-    -- Hide surplus rows
     for i = #entries + 1, #container.lootHistoryRows do
         container.lootHistoryRows[i]:Hide();
     end
