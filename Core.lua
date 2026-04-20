@@ -85,7 +85,6 @@ local LibQTip = LibStub('LibQTip-1.0');
 function GOW:OnInitialize()
 	self.GUI = LibStub("AceGUI-3.0");
 	self.DB = LibStub("AceDB-3.0"):New("GoWDB", GOW.defaults, "Default");
-
 	self.LDB = LibStub("LibDataBroker-1.1");
 	self.LDBIcon = LibStub("LibDBIcon-1.0");
 	self.CONSOLE = LibStub("AceConsole-3.0");

@@ -210,31 +210,6 @@ function GoWWishlists:FindAllWishlistMatches(itemId)
     return #matches > 0 and matches or nil;
 end
 
---- Find a guild wishlist match for a specific player and item.
---- Searches guildWishlistData for a character matching playerName+playerRealm who has itemId on their wishlist.
---- @param itemId number
---- @param playerName string Character name (no realm)
---- @param playerRealm string Normalized realm name
---- @return table|nil wishlistMatch (same shape as FindWishlistMatch result)
-function GoWWishlists:FindGuildWishlistMatch(itemId, playerName, playerRealm)
-    if not self.state.guildWishlistData or not self.state.guildWishlistData.wishlists then return nil end
-    if not itemId or not playerName or playerName == "" then return nil end
-
-    for _, charEntry in ipairs(self.state.guildWishlistData.wishlists) do
-        if charEntry.name == playerName and charEntry.realmNameNormalized == playerRealm then
-            for _, item in ipairs(charEntry.wishlist or {}) do
-                if item.itemId == itemId and not item.isObtained then
-                    return item;
-                end
-            end
-            return nil;
-        end
-    end
-
-    return nil;
-end
-
-
 GoWWishlists.constants.ALERT_DISPLAY_TIME = 60;
 GoWWishlists.constants.ALERT_FADE_TIME = 1.5;
 
