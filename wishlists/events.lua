@@ -2,6 +2,8 @@ local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
 local ns = select(2, ...);
 
+local processedDrops = {};
+
 function GoWWishlists:Initialize()
     if not ns.WISHLISTS then GOW.Logger:Debug("No wishlist data found. Skipping wishlist initialization.") return end
 
@@ -74,17 +76,24 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, diff
 
         GOW.Logger:Debug(string.format("Player won item %s (%d) from %s", itemLink, itemId, encounterName));
 
-        -- Record to canonical loot history store
-        local Personal = GOW.LootHistoryPersonal;
-        local Store = GOW.LootHistoryStore;
-        local RCLC = GOW.LootHistoryRCLC;
-        if Personal and Store then
-            local wishlistMatch = Personal:IsRelevantForHistory(itemId);
-            if wishlistMatch and not (RCLC and RCLC:IsSessionActive()) then
-                local _, _, difficultyID = GetInstanceInfo();
-                local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID);
-                if entry then
-                    Store:SaveDropEntry(entry);
+        -- Deduplicate: LOOT_HISTORY_UPDATE_DROP and _ENCOUNTER can both fire for the same drop
+        local dropKey = encounterID .. "-" .. itemId;
+        if processedDrops[dropKey] then
+            GOW.Logger:Debug("Loot history: skipping duplicate drop " .. dropKey);
+        else
+            -- Record to canonical loot history store
+            local Personal = GOW.LootHistoryPersonal;
+            local Store = GOW.LootHistoryStore;
+            local RCLC = GOW.LootHistoryRCLC;
+            if Personal and Store then
+                local wishlistMatch = Personal:IsRelevantForHistory(itemId);
+                if wishlistMatch and not (RCLC and RCLC:IsSessionActive()) then
+                    local _, _, difficultyID = GetInstanceInfo();
+                    local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID);
+                    if entry then
+                        Store:SaveDropEntry(entry);
+                        processedDrops[dropKey] = true;
+                    end
                 end
             end
         end
