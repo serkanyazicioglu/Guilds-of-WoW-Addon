@@ -236,6 +236,11 @@ function LootHistory:DebugSeed()
         entry.encounter.groupSize = 20;
 
         entry.awardedAt = entryTime;
+
+        if C_MythicPlus and C_MythicPlus.GetCurrentSeason then
+            entry.season = C_MythicPlus.GetCurrentSeason();
+        end
+
         entry.canonicalId = Store:MakeCanonicalId(entry);
 
         if Store:PersistEntry(entry) then
@@ -287,6 +292,11 @@ function LootHistory:DebugSeed()
         entry.encounter.groupSize = 20;
 
         entry.awardedAt = entryTime;
+
+        if C_MythicPlus and C_MythicPlus.GetCurrentSeason then
+            entry.season = C_MythicPlus.GetCurrentSeason();
+        end
+
         entry.canonicalId = Store:MakeCanonicalId(entry);
 
         if Store:PersistEntry(entry) then
