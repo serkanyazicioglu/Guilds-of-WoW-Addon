@@ -3,7 +3,6 @@ local GOW = GuildsOfWow;
 local LootHistory = {};
 GOW.LootHistory = LootHistory;
 
--- Sources
 LootHistory.SOURCE_PERSONAL = "personal";
 LootHistory.SOURCE_RCLC = "rclc";
 
@@ -15,9 +14,6 @@ LootHistory.state = {
 
 local RCLC_POLL_INTERVAL_SECONDS = 30;
 
---- Populate entry.item fields from an item link using C_Item APIs.
---- @param entry table The canonical entry to populate
---- @param itemLink string The item link to parse
 function LootHistory:PopulateItemFromLink(entry, itemLink)
     if not itemLink then return end
 
@@ -25,30 +21,24 @@ function LootHistory:PopulateItemFromLink(entry, itemLink)
     entry.item.itemID = tonumber(string.match(itemLink, "item:(%d+)"));
     entry.item.itemString = string.match(itemLink, "(item:[^|]+)") or "";
 
-    if C_Item and C_Item.GetItemInfoInstant then
+    if C_Item and C_Item.GetItemInfo then
+        local itemName, _, _, itemLevel, _, _, itemSubType, _, itemEquipLoc = C_Item.GetItemInfo(itemLink);
+        entry.item.name = itemName or "";
+        entry.item.ilvl = itemLevel;
+        entry.item.subType = itemSubType or "";
+        entry.item.equipLoc = itemEquipLoc or "";
+    elseif C_Item and C_Item.GetItemInfoInstant then
         local _, _, itemSubType, itemEquipLoc = C_Item.GetItemInfoInstant(itemLink);
         entry.item.subType = itemSubType or "";
         entry.item.equipLoc = itemEquipLoc or "";
     end
-
-    if C_Item and C_Item.GetItemInfo then
-        local itemName, _, _, itemLevel = C_Item.GetItemInfo(itemLink);
-        entry.item.name = itemName or "";
-        entry.item.ilvl = itemLevel;
-    end
 end
 
---- Create a new canonical loot history entry with safe defaults.
---- @return table
 function LootHistory:NewCanonicalEntry()
     return {
         canonicalId = "",
-
-        -- source
         source = "",
         sourceEntryId = "",
-
-        -- player
         winner = {
             name = "",
             realm = "",
@@ -56,8 +46,6 @@ function LootHistory:NewCanonicalEntry()
             class = "",
             isSelf = false,
         },
-
-        -- item
         item = {
             link = "",
             itemID = nil,
@@ -67,8 +55,6 @@ function LootHistory:NewCanonicalEntry()
             equipLoc = "",
             subType = "",
         },
-
-        -- award/response
         award = {
             response = "",
             responseID = nil,
@@ -79,8 +65,6 @@ function LootHistory:NewCanonicalEntry()
             itemReplaced1 = "",
             itemReplaced2 = "",
         },
-
-        -- encounter
         encounter = {
             instance = "",
             boss = "",
@@ -89,24 +73,17 @@ function LootHistory:NewCanonicalEntry()
             mapID = nil,
             groupSize = nil,
         },
-
-        -- time
         awardedAt = 0,
-
-        -- season (set at drop time for personal; nil for RCLC)
         season = nil,
     };
 end
 
---- Initialize the loot history module.
---- Gated behind retail-only wishlists feature flag.
 function LootHistory:Init()
     if not GOW.Helper:IsWishlistsEnabled() then return end
 
     local Store = GOW.LootHistoryStore;
     local RCLC = GOW.LootHistoryRCLC;
 
-    -- Initialize store
     Store:GetStore();
 
     -- Start RCLC session poll timer
@@ -143,28 +120,6 @@ function LootHistory:PollRCLCSession()
     self.state.rclcSessionWasActive = isActive;
 end
 
---- Public API: Get a single entry by canonical ID.
---- @param canonicalId string
---- @return table|nil
-function LootHistory:GetEntry(canonicalId)
-    return GOW.LootHistoryStore:GetEntry(canonicalId);
-end
-
---- Public API: Get all entries.
---- @return table
-function LootHistory:GetAllEntries()
-    return GOW.LootHistoryStore:GetAllEntries();
-end
-
---- Public API: Check if entry exists by source and source entry ID.
---- @param source string
---- @param sourceEntryId string
---- @return boolean
-function LootHistory:HasEntryBySource(source, sourceEntryId)
-    return GOW.LootHistoryStore:HasEntryBySource(source, sourceEntryId);
-end
-
---- Public API: Trigger RCLC history processing manually.
 function LootHistory:ProcessRCLCLootHistory()
     local RCLC = GOW.LootHistoryRCLC;
     if RCLC:IsRCLCAvailable() and not RCLC:IsSessionActive() then
@@ -172,11 +127,6 @@ function LootHistory:ProcessRCLCLootHistory()
     end
 end
 
--- ============================================================
--- Debug helpers (gated behind GOW.consts.ENABLE_DEBUGGING)
--- ============================================================
-
---- Print a summary of the current loot history store state.
 function LootHistory:DebugStatus()
     local Store = GOW.LootHistoryStore;
     local RCLC = GOW.LootHistoryRCLC;
@@ -246,7 +196,7 @@ function LootHistory:DebugTestDrop()
         return;
     end
 
-    local persisted = GOW.LootHistoryStore:PersistEntry(entry);
+    local persisted = GOW.LootHistoryStore:SaveDropEntry(entry);
 
     if persisted then
         GOW.Logger:PrintSuccessMessage("Test drop recorded: " .. itemLink .. " (id=" .. entry.canonicalId .. ")");
@@ -256,7 +206,7 @@ function LootHistory:DebugTestDrop()
 end
 
 --- Seed the loot history store with realistic test entries for both personal and RCLC sources.
---- Produces a representative SavedVariables structure for desktop Lua parser validation.
+--- Produces a representative SavedVariables structure.
 function LootHistory:DebugSeed()
     local Store = GOW.LootHistoryStore;
     local store = Store:GetStore();
@@ -332,7 +282,7 @@ function LootHistory:DebugSeed()
 
         entry.canonicalId = Store:MakeCanonicalId(entry);
 
-        if Store:PersistEntry(entry) then
+        if Store:SaveDropEntry(entry) then
             importCount = importCount + 1;
         end
     end
@@ -388,7 +338,7 @@ function LootHistory:DebugSeed()
 
         entry.canonicalId = Store:MakeCanonicalId(entry);
 
-        if Store:PersistEntry(entry) then
+        if Store:SaveDropEntry(entry) then
             importCount = importCount + 1;
         end
     end
@@ -451,8 +401,6 @@ function LootHistory:DebugClear()
     GOW.Logger:PrintSuccessMessage("Cleared " .. count .. " loot history entries.");
 end
 
---- Handle /gow lh subcommands.
---- @param subcommand string The subcommand after "lh"
 function LootHistory:HandleSlashCommand(subcommand)
     if not GOW.consts.ENABLE_DEBUGGING then
         GOW.Logger:PrintErrorMessage("Debug mode is not enabled.");
