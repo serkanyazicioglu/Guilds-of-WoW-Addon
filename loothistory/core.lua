@@ -86,12 +86,22 @@ function LootHistory:Init()
 
     Store:GetStore();
 
-    -- Start RCLC session poll timer
+    -- Start RCLC session poll timer (paused during combat)
     if RCLC:IsRCLCAvailable() then
         self.state.rclcSessionWasActive = RCLC:IsSessionActive();
-        self.state.rclcPollTimer = GOW.timers:ScheduleRepeatingTimer(function()
-            LootHistory:PollRCLCSession();
-        end, RCLC_POLL_INTERVAL_SECONDS);
+        self:StartRCLCPollTimer();
+
+        local combatFrame = CreateFrame("Frame");
+        combatFrame:RegisterEvent("PLAYER_REGEN_DISABLED");
+        combatFrame:RegisterEvent("PLAYER_REGEN_ENABLED");
+        combatFrame:SetScript("OnEvent", function(_, event)
+            if event == "PLAYER_REGEN_DISABLED" then
+                LootHistory:StopRCLCPollTimer();
+            elseif event == "PLAYER_REGEN_ENABLED" then
+                LootHistory:StartRCLCPollTimer();
+                LootHistory:PollRCLCSession();
+            end
+        end);
     end
 
     -- On startup, scan RCLC history if stale (or debug mode) and no active session
@@ -103,6 +113,19 @@ function LootHistory:Init()
 
     self.state.isInitialized = true;
     GOW.Logger:Debug("LootHistory: Initialized");
+end
+
+function LootHistory:StartRCLCPollTimer()
+    if self.state.rclcPollTimer then return end
+    self.state.rclcPollTimer = GOW.timers:ScheduleRepeatingTimer(function()
+        LootHistory:PollRCLCSession();
+    end, RCLC_POLL_INTERVAL_SECONDS);
+end
+
+function LootHistory:StopRCLCPollTimer()
+    if not self.state.rclcPollTimer then return end
+    GOW.timers:CancelTimer(self.state.rclcPollTimer);
+    self.state.rclcPollTimer = nil;
 end
 
 --- Poll RCLC session state to detect session end transitions.
