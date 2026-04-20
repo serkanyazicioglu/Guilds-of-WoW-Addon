@@ -51,48 +51,6 @@ function GoWWishlists:HandleLootHistoryEvents()
     end);
 end
 
-function GoWWishlists:MarkWishlistObtained(itemId, difficulty)
-    for _, entry in ipairs(self.state.allItems) do
-        if entry.itemId == itemId and (not difficulty or entry.difficulty == difficulty) and not entry.isObtained then
-            entry.isObtained = true;
-            GOW.Logger:Debug("Wishlist item marked obtained: " .. tostring(itemId) .. " (" .. tostring(entry.difficulty) .. ")");
-
-            local indexed = self.state.wishlistIndex[itemId];
-            if indexed then
-                for i = #indexed, 1, -1 do
-                    if indexed[i] == entry then
-                        table.remove(indexed, i);
-                        break;
-                    end
-                end
-                if #indexed == 0 then
-                    self.state.wishlistIndex[itemId] = nil;
-                end
-            end
-
-            local crossKey = (entry.itemId == itemId) and entry.sourceItemId or entry.itemId;
-            if crossKey then
-                local crossList = self.state.wishlistIndex[crossKey];
-                if crossList then
-                    for j = #crossList, 1, -1 do
-                        if crossList[j] == entry then
-                            table.remove(crossList, j);
-                            break;
-                        end
-                    end
-                    if #crossList == 0 then
-                        self.state.wishlistIndex[crossKey] = nil;
-                    end
-                end
-            end
-
-            return true;
-        end
-    end
-
-    return false;
-end
-
 function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, difficulty)
     if not dropInfo then return end
 
@@ -129,11 +87,6 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, diff
                     Store:PersistEntry(entry);
                 end
             end
-        end
-
-        local wasOnWishlist = self:MarkWishlistObtained(itemId, difficulty);
-        if wasOnWishlist then
-            GOW.Logger:PrintSuccessMessage(itemLink .. " obtained! Removed from your wishlist.");
         end
     end
 
