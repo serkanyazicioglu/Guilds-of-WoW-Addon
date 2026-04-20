@@ -1,10 +1,12 @@
 local GOW = GuildsOfWow;
-local Types = GOW.LootHistoryTypes;
+local LootHistory = GOW.LootHistory;
 local Store = GOW.LootHistoryStore;
 local GoWWishlists = GOW.Wishlists;
 
 local LootHistoryRCLC = {};
 GOW.LootHistoryRCLC = LootHistoryRCLC;
+
+local RECONCILE_WINDOW_SECONDS = 300;
 
 --- Check whether RCLC addon is loaded.
 --- @return boolean
@@ -51,10 +53,10 @@ end
 function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
     if not rclcEntry then return nil end
 
-    local entry = Types:NewCanonicalEntry();
+    local entry = LootHistory:NewCanonicalEntry();
 
     -- Source
-    entry.source = Types.SOURCE_RCLC;
+    entry.source = LootHistory.SOURCE_RCLC;
     entry.sourceEntryId = rclcEntry.id or "";
 
     -- Winner — parse "Name-Realm" key
@@ -79,7 +81,7 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
     local itemLink = rclcEntry.lootWon;
     if not itemLink or itemLink == "" then return nil end
 
-    Types:PopulateItemFromLink(entry, itemLink);
+    LootHistory:PopulateItemFromLink(entry, itemLink);
 
     -- Award (RCLC-specific rich data)
     entry.award.response = rclcEntry.response or "";
@@ -148,7 +150,7 @@ function LootHistoryRCLC:ProcessRCLCLootHistory()
             for _, rclcEntry in ipairs(entries) do
                 -- Skip already-imported entries
                 local entryId = rclcEntry.id or "";
-                if entryId ~= "" and Store:HasEntryBySource(Types.SOURCE_RCLC, entryId) then
+                if entryId ~= "" and Store:HasEntryBySource(LootHistory.SOURCE_RCLC, entryId) then
                     -- Already imported, skip
                 else
                     local canonical = self:MapToCanonical(playerKey, rclcEntry);
@@ -182,12 +184,12 @@ function LootHistoryRCLC:ReconcilePersonalOverlaps(rclcEntry)
     if not rclcEntry.winner.isSelf then return end
 
     local allEntries = Store:GetAllEntries();
-    local reconcileWindow = Types.RECONCILE_WINDOW_SECONDS;
+    local reconcileWindow = RECONCILE_WINDOW_SECONDS;
 
     -- Collect IDs first to avoid mutating table during iteration
     local toRemove = {};
     for canonicalId, existingEntry in pairs(allEntries) do
-        if existingEntry.source == Types.SOURCE_PERSONAL
+        if existingEntry.source == LootHistory.SOURCE_PERSONAL
             and existingEntry.item.itemID == rclcEntry.item.itemID
             and existingEntry.awardedAt and rclcEntry.awardedAt
             and math.abs(existingEntry.awardedAt - rclcEntry.awardedAt) <= reconcileWindow then

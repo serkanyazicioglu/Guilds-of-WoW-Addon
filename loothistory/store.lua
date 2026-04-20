@@ -1,8 +1,10 @@
 local GOW = GuildsOfWow;
-local Types = GOW.LootHistoryTypes;
 
 local LootHistoryStore = {};
 GOW.LootHistoryStore = LootHistoryStore;
+
+local STORE_VERSION = "1.0.0";
+local STARTUP_REFRESH_THRESHOLD_SECONDS = 3600;
 
 --- Get or lazily initialize the loot history store from SavedVariables.
 --- Stored under GOW.DB.profile.guilds[guildKey].lootHistory.
@@ -15,7 +17,7 @@ function LootHistoryStore:GetStore()
 
     local guildData = GOW.DB.profile.guilds[guildKey];
     if not guildData.lootHistory then
-        guildData.lootHistory = Types:NewStoreDefaults();
+        guildData.lootHistory = LootHistoryStore:NewStoreDefaults();
     end
 
     local store = guildData.lootHistory;
@@ -175,6 +177,21 @@ function LootHistoryStore:ShouldRefreshOnStartup(now)
 
     local lastScanned = store.ingestion.rclc.lastScannedAt or 0;
     if lastScanned == 0 then return true end
-    return (now - lastScanned) >= Types.STARTUP_REFRESH_THRESHOLD_SECONDS;
+    return (now - lastScanned) >= STARTUP_REFRESH_THRESHOLD_SECONDS;
+end
+
+--- Create the default loot history store structure.
+--- @return table
+function LootHistoryStore:NewStoreDefaults()
+    return {
+        version = STORE_VERSION,
+        entries = {},
+
+        ingestion = {
+            rclc = {
+                lastScannedAt = 0,
+            },
+        },
+    };
 end
 

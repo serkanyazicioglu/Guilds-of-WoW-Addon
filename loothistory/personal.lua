@@ -1,5 +1,5 @@
 local GOW = GuildsOfWow;
-local Types = GOW.LootHistoryTypes;
+local LootHistory = GOW.LootHistory;
 local Store = GOW.LootHistoryStore;
 local GoWWishlists = GOW.Wishlists;
 
@@ -37,11 +37,11 @@ end
 function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID)
     if not itemId or not itemLink then return nil end
 
-    local entry = Types:NewCanonicalEntry();
+    local entry = LootHistory:NewCanonicalEntry();
     local now = GetServerTime();
 
     -- Source
-    entry.source = Types.SOURCE_PERSONAL;
+    entry.source = LootHistory.SOURCE_PERSONAL;
     entry.sourceEntryId = self:GenerateSourceEntryId(itemId, now);
 
     -- Winner (always self for personal tracking)
@@ -58,7 +58,7 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
     entry.winner.class = classToken or "";
 
     -- Item
-    Types:PopulateItemFromLink(entry, itemLink);
+    LootHistory:PopulateItemFromLink(entry, itemLink);
     entry.item.itemID = itemId;
 
     -- Encounter

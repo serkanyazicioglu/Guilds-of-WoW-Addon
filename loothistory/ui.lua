@@ -1,7 +1,7 @@
 local GOW = GuildsOfWow;
 local L = GOW.Layout;
 local Store = GOW.LootHistoryStore;
-local Types = GOW.LootHistoryTypes;
+local LootHistory = GOW.LootHistory;
 local RCLC = GOW.LootHistoryRCLC;
 local Duration = GOW.Duration;
 
@@ -104,9 +104,9 @@ function LootHistoryUI:PopulateRow(row, entry)
     -- Icon
     local iconTexture = nil;
     if entry.item.itemID then
-        iconTexture = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(entry.item.itemID)
-            or GetItemIcon and GetItemIcon(entry.item.itemID);
+        iconTexture = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(entry.item.itemID);
     end
+    
     row.icon:SetTexture(iconTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
 
     -- Item name (use link color if available)
@@ -123,7 +123,7 @@ function LootHistoryUI:PopulateRow(row, entry)
     end
 
     -- Source
-    local sourceLabel = entry.source == Types.SOURCE_RCLC and "|cffff8000RCLC|r" or "|cff888888Personal|r";
+    local sourceLabel = entry.source == LootHistory.SOURCE_RCLC and "|cffff8000RCLC|r" or "|cff888888Personal|r";
     row.sourceText:SetText(sourceLabel);
 
     -- Difficulty
