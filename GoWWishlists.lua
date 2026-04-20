@@ -210,6 +210,7 @@ function GoWWishlists:FindAllWishlistMatches(itemId)
     return #matches > 0 and matches or nil;
 end
 
+
 GoWWishlists.constants.ALERT_DISPLAY_TIME = 60;
 GoWWishlists.constants.ALERT_FADE_TIME = 1.5;
 
