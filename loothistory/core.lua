@@ -22,15 +22,24 @@ function LootHistory:PopulateItemFromLink(entry, itemLink)
     entry.item.itemString = string.match(itemLink, "(item:[^|]+)") or "";
 
     if C_Item and C_Item.GetItemInfo then
-        local itemName, _, _, itemLevel, _, _, itemSubType, _, itemEquipLoc = C_Item.GetItemInfo(itemLink);
+        local itemName, _, _, itemLevel, _, _, itemSubType, _, itemEquipLoc, iconTexture = C_Item.GetItemInfo(itemLink);
         entry.item.name = itemName or "";
         entry.item.ilvl = itemLevel;
         entry.item.subType = itemSubType or "";
         entry.item.equipLoc = itemEquipLoc or "";
+        if iconTexture then
+            entry.item.icon = string.lower(string.match(tostring(iconTexture), "([^\\/]+)$") or "");
+        end
     elseif C_Item and C_Item.GetItemInfoInstant then
         local _, _, itemSubType, itemEquipLoc = C_Item.GetItemInfoInstant(itemLink);
         entry.item.subType = itemSubType or "";
         entry.item.equipLoc = itemEquipLoc or "";
+        if C_Item.GetItemIconByID and entry.item.itemID then
+            local iconTexture = C_Item.GetItemIconByID(entry.item.itemID);
+            if iconTexture then
+                entry.item.icon = string.lower(string.match(tostring(iconTexture), "([^\\/]+)$") or "");
+            end
+        end
     end
 end
 
@@ -54,6 +63,7 @@ function LootHistory:NewCanonicalEntry()
             ilvl = nil,
             equipLoc = "",
             subType = "",
+            icon = "",
         },
         award = {
             response = "",
