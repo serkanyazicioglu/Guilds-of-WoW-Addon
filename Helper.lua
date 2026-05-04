@@ -27,9 +27,9 @@ function Helper:GetRole(roleId)
 end
 
 function Helper:GetFactionIcon(faction)
-    if (faction == 1 or faction == "Alliance") then
+    if (faction == 0 or faction == "Alliance") then
         return factionIcons.Alliance;
-    elseif (faction == 0 or faction == "Horde") then
+    elseif (faction == 1 or faction == "Horde") then
         return factionIcons.Horde;
     end
 
