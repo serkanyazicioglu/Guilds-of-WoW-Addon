@@ -220,6 +220,12 @@ local function RefreshScrollTable()
     end
 end
 
+local function SortScrollTable()
+    if RCVotingFrame.frame and RCVotingFrame.frame.st then
+        RCVotingFrame.frame.st:SortData();
+    end
+end
+
 function GoWVotingColumn:OnSessionChanged(_, session)
     activeSession = session or 1;
     self:ScheduleTimer(RefreshScrollTable, 0.1);
@@ -319,7 +325,7 @@ function GoWVotingColumn:AddToggleButton()
         btn:SetScript("OnClick", function()
             if GOW.DB then GOW.DB.profile.rclcDisplayMode = opt.value end
             UpdateModeButtons(buttons);
-            RefreshScrollTable();
+            SortScrollTable();
         end);
         btn:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
@@ -338,6 +344,7 @@ end
 
 if RCVotingFrame.frame then
     RCVotingFrame.frame:HookScript("OnShow", function()
+        if GOW.DB and GOW.DB.profile.showRCLCWishlist == false then return end
         InsertGoWColumn();
         GoWVotingColumn:ScheduleTimer(RefreshScrollTable, 0.1);
     end);
