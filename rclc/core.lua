@@ -62,7 +62,7 @@ function RCGoW:GetPlayerWish(itemId, playerFullName)
             or (charEntry.realmName and charEntry.realmName:gsub("%s", "") == playerRealm);
         if nameMatch and realmMatch then
             for _, item in ipairs(charEntry.wishlist) do
-                if item.itemId == itemId and not item.isObtained then
+                if (item.itemId == itemId or item.sourceItemId == itemId) and not item.isObtained then
                     table.insert(matches, item);
                 end
             end

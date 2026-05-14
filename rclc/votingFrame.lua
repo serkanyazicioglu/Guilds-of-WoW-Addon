@@ -25,7 +25,7 @@ local function GetActiveItemId()
     if not lootTable or not lootTable[activeSession] then return nil end
     local link = lootTable[activeSession].link;
     if not link then return nil end
-    return C_Item.GetItemInfoInstant(link);
+    return C_Item.GetItemInfoInstant(link) or tonumber(link:match("item:(%d+)"));
 end
 
 local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, column, fShow, st)
@@ -214,14 +214,15 @@ function GoWVotingColumn:OnInitialize()
     self:ScheduleTimer("AddToggleButton", 1);
 end
 
-function GoWVotingColumn:OnSessionChanged(_, session)
-    activeSession = session or 1;
-end
-
 local function RefreshScrollTable()
     if RCVotingFrame.frame and RCVotingFrame.frame.st then
         RCVotingFrame.frame.st:Refresh();
     end
+end
+
+function GoWVotingColumn:OnSessionChanged(_, session)
+    activeSession = session or 1;
+    self:ScheduleTimer(RefreshScrollTable, 0.1);
 end
 
 local GOW_ICON_SMALL = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:14:14|t";
@@ -289,5 +290,8 @@ function GoWVotingColumn:AddToggleButton()
 end
 
 if RCVotingFrame.frame then
-    RCVotingFrame.frame:HookScript("OnShow", InsertGoWColumn);
+    RCVotingFrame.frame:HookScript("OnShow", function()
+        InsertGoWColumn();
+        GoWVotingColumn:ScheduleTimer(RefreshScrollTable, 0.1);
+    end);
 end
