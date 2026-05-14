@@ -225,13 +225,23 @@ function GoWVotingColumn:OnSessionChanged(_, session)
     self:ScheduleTimer(RefreshScrollTable, 0.1);
 end
 
-local GOW_ICON_SMALL = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:14:14|t";
-local DISPLAY_MODES = { "percent", "value", "tag" };
-local DISPLAY_LABELS = { percent = "Show Value", value = "Show Tag", tag = "Show %" };
+local DISPLAY_MODE_BUTTONS = {
+    { value = "percent", label = "%",   tooltip = "Show % upgrade gain" },
+    { value = "value",   label = "#",   tooltip = "Show raw stat gain" },
+    { value = "tag",     label = "Tag", tooltip = "Show wishlist priority tag" },
+};
 
-local function UpdateToggleLabel(btn)
+local function UpdateModeButtons(buttons)
     local mode = GetDisplayMode();
-    btn:SetText(GOW_ICON_SMALL .. " " .. (DISPLAY_LABELS[mode] or "Show %"));
+    for _, btn in ipairs(buttons) do
+        if btn._gowMode == mode then
+            btn._gowHighlight:Show();
+            btn._gowFs:SetTextColor(1, 0.84, 0);
+        else
+            btn._gowHighlight:Hide();
+            btn._gowFs:SetTextColor(0.85, 0.85, 0.85);
+        end
+    end
 end
 
 function GoWVotingColumn:AddToggleButton()
@@ -259,34 +269,71 @@ function GoWVotingColumn:AddToggleButton()
 
     local parent = frame.content or frame.frame or frame;
 
-    local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate");
-    btn:SetSize(120, 25);
-    btn:SetPoint("RIGHT", anchor, "LEFT", -4, 0);
-    btn:SetFrameStrata("DIALOG");
+    local BTN_W, BORDER = 36, 8;
+    local INSET = BORDER / 2;
+    local BTN_H = rclcBtn:GetHeight() - BORDER;
 
-    UpdateToggleLabel(btn);
+    local groupFrame = CreateFrame("Frame", nil, parent, "BackdropTemplate");
+    groupFrame:SetSize(BTN_W * #DISPLAY_MODE_BUTTONS + BORDER, BTN_H + BORDER);
+    groupFrame:SetPoint("RIGHT", anchor, "LEFT", -4, 0);
+    groupFrame:SetFrameStrata("DIALOG");
+    groupFrame:SetBackdrop({
+        bgFile   = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = false, edgeSize = BORDER,
+        insets = { left = INSET, right = INSET, top = INSET, bottom = INSET },
+    });
+    groupFrame:SetBackdropColor(0.12, 0.12, 0.12, 0.9);
+    groupFrame:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.9);
 
-    btn:SetScript("OnClick", function()
-        local current = GetDisplayMode();
-        local nextIdx = 1;
-        for i, m in ipairs(DISPLAY_MODES) do
-            if m == current then nextIdx = (i % #DISPLAY_MODES) + 1; break end
+    local buttons = {};
+    for i, opt in ipairs(DISPLAY_MODE_BUTTONS) do
+        local btn = CreateFrame("Button", nil, groupFrame);
+        btn:SetSize(BTN_W, BTN_H);
+        btn:SetPoint("LEFT", groupFrame, "LEFT", INSET + (i - 1) * BTN_W, 0);
+        btn._gowMode = opt.value;
+
+        local hl = btn:CreateTexture(nil, "BACKGROUND");
+        hl:SetAllPoints(btn);
+        hl:SetColorTexture(1, 0.84, 0, 0.15);
+        hl:Hide();
+        btn._gowHighlight = hl;
+
+        local hover = btn:CreateTexture(nil, "HIGHLIGHT");
+        hover:SetAllPoints(btn);
+        hover:SetColorTexture(1, 1, 1, 0.08);
+
+        local fs = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+        fs:SetAllPoints(btn);
+        fs:SetJustifyH("CENTER");
+        fs:SetText(opt.label);
+        btn._gowFs = fs;
+
+        if i > 1 then
+            local div = groupFrame:CreateTexture(nil, "ARTWORK");
+            div:SetSize(1, BTN_H - 6);
+            div:SetPoint("LEFT", groupFrame, "LEFT", INSET + (i - 1) * BTN_W, 0);
+            div:SetColorTexture(0.5, 0.5, 0.5, 0.6);
         end
-        local newMode = DISPLAY_MODES[nextIdx];
-        if GOW.DB then GOW.DB.profile.rclcDisplayMode = newMode end
-        UpdateToggleLabel(btn);
-        RefreshScrollTable();
-    end);
 
-    btn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-        GameTooltip:AddLine("Guilds of WoW", 0.1, 0.8, 0.3);
-        GameTooltip:AddLine("Click to cycle between % gain, raw value, and tag.", 1, 1, 1, true);
-        GameTooltip:Show();
-    end);
-    btn:SetScript("OnLeave", function() GameTooltip:Hide() end);
+        btn:SetScript("OnClick", function()
+            if GOW.DB then GOW.DB.profile.rclcDisplayMode = opt.value end
+            UpdateModeButtons(buttons);
+            RefreshScrollTable();
+        end);
+        btn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Guilds of WoW", 0.1, 0.8, 0.3);
+            GameTooltip:AddLine(opt.tooltip, 1, 1, 1, true);
+            GameTooltip:Show();
+        end);
+        btn:SetScript("OnLeave", function() GameTooltip:Hide() end);
 
-    frame._gowToggleBtn = btn;
+        buttons[i] = btn;
+    end
+
+    UpdateModeButtons(buttons);
+    frame._gowToggleBtn = groupFrame;
 end
 
 if RCVotingFrame.frame then
