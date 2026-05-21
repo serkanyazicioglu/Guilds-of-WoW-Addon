@@ -31,7 +31,7 @@ local function OnEntryRefreshed(entry)
     for _, session in ipairs(sessions) do
         if lootTable[session] and lootTable[session].link then
             local link = lootTable[session].link;
-            itemId = C_Item.GetItemInfoInstant(link) or tonumber(link:match("item:(%d+)"));
+            itemId = (C_Item and C_Item.GetItemInfoInstant(link)) or tonumber(link:match("item:(%d+)"));
             if itemId then break end
         end
     end

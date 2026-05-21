@@ -25,7 +25,7 @@ local function GetActiveItemId()
     if not lootTable or not lootTable[activeSession] then return nil end
     local link = lootTable[activeSession].link;
     if not link then return nil end
-    return C_Item.GetItemInfoInstant(link) or tonumber(link:match("item:(%d+)"));
+    return (C_Item and C_Item.GetItemInfoInstant(link)) or tonumber(link:match("item:(%d+)"));
 end
 
 local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, column, fShow, st)
@@ -170,7 +170,7 @@ local function InsertGoWColumn()
         if col.colName == "gow" then return end
     end
 
-    tinsert(RCVotingFrame.scrollCols, 8, {
+    tinsert(RCVotingFrame.scrollCols, math.min(8, #RCVotingFrame.scrollCols + 1), {
         name = GOW_ICON,
         colName = "gow",
         width = 80,

@@ -72,7 +72,9 @@ function Helper:IsInGameCalendarAccessible()
 end
 
 function Helper:IsWishlistsEnabled()
-    return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
+    return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+        or WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC
+        or WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC;
 end
 
 function Helper:IsKeystonesEnabled()

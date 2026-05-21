@@ -5,9 +5,12 @@
 ## Author: Nhea
 ## Version: 2.1.6
 ## SavedVariables: GoWDB
+## OptionalDeps: RCLootCouncil_Classic
 ## IconTexture: Interface\Addons\GuildsOfWoW\icons\guilds-of-wow-logo-flag-plain.png
 
 embed.xml
+
+db\wishlists.lua
 
 Core.lua
 Helper.lua
@@ -15,6 +18,9 @@ Layout.lua
 Duration.lua
 GoWKeystoneDetails.lua
 GoWRecruitmentDetails.lua
+GoWWishlists.lua
+wishlists\load.xml
+rclc\load.xml
 GoWTeams.lua
 GoWEventDetails.lua
 GoWComm.lua
