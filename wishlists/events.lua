@@ -264,8 +264,8 @@ function GoWWishlists:CollectWishlistForCharacter(difficultyFilter)
                     if not bossGroups[bossName] then
                         bossGroups[bossName] = {};
                         table.insert(bossOrder, bossName);
+                        bossToRaid[bossName] = entry.sourceRaidName or (entry.sourceJournalId and self:GetRaidNameForEncounter(entry.sourceJournalId));
                         if entry.sourceJournalId then
-                            bossToRaid[bossName] = self:GetRaidNameForEncounter(entry.sourceJournalId);
                             bossToJournalId[bossName] = entry.sourceJournalId;
                         end
                     end

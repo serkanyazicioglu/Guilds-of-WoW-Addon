@@ -610,8 +610,15 @@ function GoWWishlists:SetupDifficultyDropdown(sourcePanel, onChangeCallback)
             end
         end
         local options = { { key = "All", label = "All" } };
+        local addedDiffs = {};
         for _, diff in ipairs(self.constants.DIFFICULTIES) do
             if diff ~= "All" and usedDiffs[diff] then
+                table.insert(options, { key = diff, label = diff });
+                addedDiffs[diff] = true;
+            end
+        end
+        for diff in pairs(usedDiffs) do
+            if not addedDiffs[diff] then
                 table.insert(options, { key = diff, label = diff });
             end
         end
