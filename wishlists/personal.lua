@@ -272,14 +272,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         local updateSortLabel, updateSlotLabel;
 
         local sortBtn = self:CreatePopupFilterBtn(detailPanel, "Sort: Upgrade", 90, "sort",
-            function()
-                if GOW.Helper:IsSimEnabled() then return self.constants.SORT_OPTIONS end
-                local opts = {};
-                for _, o in ipairs(self.constants.SORT_OPTIONS) do
-                    if o.key ~= "upgrade" then table.insert(opts, o) end
-                end
-                return opts;
-            end,
+            function() return self:GetCharacterSortOptions() end,
             function() return detailSortMode end,
             function(key)
                 detailSortMode = key;

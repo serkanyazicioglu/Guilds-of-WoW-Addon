@@ -299,6 +299,15 @@ GoWWishlists.constants.SORT_OPTIONS = {
 
 GoWWishlists.constants.BADGE_COLUMN_WIDTH = 40;
 
+function GoWWishlists:GetCharacterSortOptions()
+    if GOW.Helper:IsSimEnabled() then return self.constants.SORT_OPTIONS end
+    local opts = {};
+    for _, o in ipairs(self.constants.SORT_OPTIONS) do
+        if o.key ~= "upgrade" then table.insert(opts, o) end
+    end
+    return opts;
+end
+
 function GoWWishlists:GetItemRowHeight()
     return self.state.compactMode and self.constants.BROWSER_ITEM_HEIGHT_COMPACT or self.constants.BROWSER_ITEM_HEIGHT_CARD;
 end
