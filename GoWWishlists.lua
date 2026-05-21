@@ -597,9 +597,23 @@ function GoWWishlists:SetupDifficultyDropdown(sourcePanel, onChangeCallback)
             popupMenu.clearPopup();
             return;
         end
-        local options = {};
+        local usedDiffs = {};
+        for _, entry in ipairs(self.state.allItems or {}) do
+            if entry.difficulty then usedDiffs[entry.difficulty] = true end
+        end
+        local guildData = self.state.guildWishlistData;
+        if guildData and guildData.wishlists then
+            for _, charEntry in ipairs(guildData.wishlists) do
+                for _, item in ipairs(charEntry.wishlist or {}) do
+                    if item.difficulty then usedDiffs[item.difficulty] = true end
+                end
+            end
+        end
+        local options = { { key = "All", label = "All" } };
         for _, diff in ipairs(self.constants.DIFFICULTIES) do
-            table.insert(options, { key = diff, label = diff });
+            if diff ~= "All" and usedDiffs[diff] then
+                table.insert(options, { key = diff, label = diff });
+            end
         end
         popupMenu.popup.owner = "difficulty";
         showPopup(btn, options, activeDiff, function(key)

@@ -238,12 +238,13 @@ function GoWWishlists:GetRaidNameForEncounter(journalEncounterId)
         local _, _, _, _, _, journalInstanceID = EJ_GetEncounterInfo(journalEncounterId);
         if journalInstanceID and EJ_GetInstanceInfo then
             local instanceName = EJ_GetInstanceInfo(journalInstanceID);
-            self.state.raidNameCache[journalEncounterId] = instanceName or false;
-            return instanceName;
+            if instanceName then
+                self.state.raidNameCache[journalEncounterId] = instanceName;
+                return instanceName;
+            end
         end
     end
 
-    self.state.raidNameCache[journalEncounterId] = false;
     return nil;
 end
 
