@@ -49,6 +49,9 @@ local function NormalizeGuildLootSort(sortMode)
     if not sortMode or sortMode == "" or sortMode == "boss" then
         return "mostwanted";
     end
+    if not GOW.Helper:IsSimEnabled() and (sortMode == "avggain" or sortMode == "bosspriority") then
+        return "mostwanted";
+    end
     return sortMode;
 end
 
@@ -592,11 +595,13 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
             function()
                 local sortOptions = {
                     { key = "mostwanted", label = "Most Wanted" },
-                    { key = "avggain",    label = "Upgrade" },
-                    { key = "name",       label = "Name" },
-                    { key = "slot",       label = "Slot Name" },
                 };
-                if lootPanel.allowBossPrioritySort then
+                if GOW.Helper:IsSimEnabled() then
+                    table.insert(sortOptions, { key = "avggain", label = "Upgrade" });
+                end
+                table.insert(sortOptions, { key = "name", label = "Name" });
+                table.insert(sortOptions, { key = "slot", label = "Slot Name" });
+                if GOW.Helper:IsSimEnabled() and lootPanel.allowBossPrioritySort then
                     table.insert(sortOptions, { key = "bosspriority", label = "Boss Priority" });
                 end
                 return sortOptions;
@@ -1216,6 +1221,10 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     detailPanel._activeGuildRealm = guildRealm;
 
     local guildPlayerSortMode = detailPanel.guildPlayerSortMode or "upgrade";
+    if not GOW.Helper:IsSimEnabled() and guildPlayerSortMode == "upgrade" then
+        guildPlayerSortMode = "name";
+        detailPanel.guildPlayerSortMode = guildPlayerSortMode;
+    end
     local guildPlayerSlotFilter = detailPanel.guildPlayerSlotFilter or "All";
     local SLOT_LABELS = self.constants.SLOT_LABELS;
     local SLOT_ORDER = self.constants.SLOT_ORDER;
@@ -1344,7 +1353,14 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     end
 
     local sortBtn = self:CreatePopupFilterBtn(scrollChild, "Sort: " .. (SORT_LABELS[guildPlayerSortMode] or guildPlayerSortMode), 110, "playerSort",
-        self.constants.SORT_OPTIONS,
+        function()
+            if GOW.Helper:IsSimEnabled() then return self.constants.SORT_OPTIONS end
+            local opts = {};
+            for _, o in ipairs(self.constants.SORT_OPTIONS) do
+                if o.key ~= "upgrade" then table.insert(opts, o) end
+            end
+            return opts;
+        end,
         function() return guildPlayerSortMode end,
         function(key)
             detailPanel.guildPlayerSortMode = key;

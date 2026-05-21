@@ -83,6 +83,10 @@ function Helper:IsKeystonesEnabled()
     return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
 end
 
+function Helper:IsSimEnabled()
+    return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
+end
+
 function Helper:GetCurrentCharacterUniqueKey()
     local name, characterRealm = UnitName("player");
     if (characterRealm == nil) then

@@ -91,6 +91,7 @@ local function InitializeWishlistTabHost(self, host, options)
     local gainDisplayBtn = self:CreateGainDisplayToggleButton(host);
     gainDisplayBtn:SetPoint("RIGHT", compactBtn, "LEFT", -4, 0);
     gainDisplayBtn:SetPoint("TOP", compactBtn, "TOP", 0, 0);
+    if not GOW.Helper:IsSimEnabled() then gainDisplayBtn:Hide() end
 
     local rosterTab = self:CreateTabButton(host, "|cff00ff00ROSTER|r", 2);
     rosterTab:SetPoint("LEFT", personalTab, "RIGHT", 4, 0);
