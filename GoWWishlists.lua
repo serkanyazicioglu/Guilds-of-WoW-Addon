@@ -297,15 +297,25 @@ GoWWishlists.constants.SORT_OPTIONS = {
     { key = "slot",    label = "Slot" },
 };
 
+-- Pre-filtered list for non-sim versions (upgrade sort requires sim data)
+GoWWishlists.constants.SORT_OPTIONS_NO_SIM = {
+    { key = "name", label = "Name" },
+    { key = "boss", label = "Boss Order" },
+    { key = "slot", label = "Slot" },
+};
+
 GoWWishlists.constants.BADGE_COLUMN_WIDTH = 40;
 
 function GoWWishlists:GetCharacterSortOptions()
     if GOW.Helper:IsSimEnabled() then return self.constants.SORT_OPTIONS end
-    local opts = {};
-    for _, o in ipairs(self.constants.SORT_OPTIONS) do
-        if o.key ~= "upgrade" then table.insert(opts, o) end
+    return self.constants.SORT_OPTIONS_NO_SIM;
+end
+
+function GoWWishlists:ClampSortMode(mode)
+    if not GOW.Helper:IsSimEnabled() and mode == "upgrade" then
+        return "name";
     end
-    return opts;
+    return mode;
 end
 
 function GoWWishlists:GetItemRowHeight()

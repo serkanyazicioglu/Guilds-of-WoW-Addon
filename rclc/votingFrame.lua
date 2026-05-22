@@ -245,6 +245,8 @@ local function InsertGoWColumn()
         if col.colName == "gowtag"  then hasTag  = true end
         if col.colName == "gownote" then hasNote = true end
     end
+    -- Return early only when all applicable columns are already present:
+    -- gain column is only applicable when sim is enabled.
     if (not isSimEnabled or hasGain) and hasTag and hasNote then return end
 
     local insertPos = math.min(8, #RCVotingFrame.scrollCols + 1);
@@ -294,6 +296,11 @@ end
 
 function GoWVotingColumn:OnInitialize()
     if GOW.DB and GOW.DB.profile.showRCLCWishlist == false then return end
+
+    -- Migrate old "tag" display mode (removed in tbc-wishlists) to "percent"
+    if GOW.DB and GOW.DB.profile.rclcDisplayMode == "tag" then
+        GOW.DB.profile.rclcDisplayMode = "percent";
+    end
 
     if not RCVotingFrame.scrollCols then
         return self:ScheduleTimer("OnInitialize", 0.5);

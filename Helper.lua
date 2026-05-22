@@ -51,7 +51,7 @@ function Helper:GetGowGameVersionId()
     elseif (WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC) then
         return 3;
     else
-        return 3;
+        return 1; -- unknown version; default to Mainline behaviour
     end
 end
 

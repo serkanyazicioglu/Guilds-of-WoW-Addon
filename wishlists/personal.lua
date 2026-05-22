@@ -132,11 +132,8 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
     end
 
 
-    local detailSortMode = frame.detailSortMode or "upgrade";
-    if not GOW.Helper:IsSimEnabled() and detailSortMode == "upgrade" then
-        detailSortMode = "name";
-        frame.detailSortMode = detailSortMode;
-    end
+    local detailSortMode = GoWWishlists:ClampSortMode(frame.detailSortMode or "upgrade");
+    frame.detailSortMode = detailSortMode;
     local detailSlotFilter = frame.detailSlotFilter or "All";
     local detailHideObtained = frame.detailHideObtained;
     if detailHideObtained == nil then detailHideObtained = true end

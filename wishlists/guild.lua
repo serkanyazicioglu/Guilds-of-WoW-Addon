@@ -1221,11 +1221,8 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     detailPanel._activeMember = member;
     detailPanel._activeGuildRealm = guildRealm;
 
-    local guildPlayerSortMode = detailPanel.guildPlayerSortMode or "upgrade";
-    if not GOW.Helper:IsSimEnabled() and guildPlayerSortMode == "upgrade" then
-        guildPlayerSortMode = "name";
-        detailPanel.guildPlayerSortMode = guildPlayerSortMode;
-    end
+    local guildPlayerSortMode = GoWWishlists:ClampSortMode(detailPanel.guildPlayerSortMode or "upgrade");
+    detailPanel.guildPlayerSortMode = guildPlayerSortMode;
     local guildPlayerSlotFilter = detailPanel.guildPlayerSlotFilter or "All";
     local SLOT_LABELS = self.constants.SLOT_LABELS;
     local SLOT_ORDER = self.constants.SLOT_ORDER;
