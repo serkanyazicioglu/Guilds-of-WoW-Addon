@@ -116,7 +116,7 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
                         if not bossGroups[bossName] then
                             bossGroups[bossName] = { items = {}, itemOrder = {} };
                             table.insert(bossOrder, bossName);
-                            bossToRaid[bossName] = item.sourceRaidName or (item.sourceJournalId and self:GetRaidNameForEncounter(item.sourceJournalId));
+                            bossToRaid[bossName] = item.sourceInstanceName or (item.sourceJournalId and self:GetRaidNameForEncounter(item.sourceJournalId));
                             if item.sourceJournalId then
                                 bossToJournalId[bossName] = item.sourceJournalId;
                             end
@@ -1271,7 +1271,7 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
                             seenBosses[bossName] = true;
                             table.insert(memberBossNames, bossName);
                         end
-                        memberBossToRaid[bossName] = item.sourceRaidName or (item.sourceJournalId and self:GetRaidNameForEncounter(item.sourceJournalId));
+                        memberBossToRaid[bossName] = item.sourceInstanceName or (item.sourceJournalId and self:GetRaidNameForEncounter(item.sourceJournalId));
                         if item.sourceJournalId then
                             memberBossToJournalId[bossName] = item.sourceJournalId;
                         end

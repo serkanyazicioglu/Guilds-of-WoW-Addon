@@ -617,10 +617,15 @@ function GoWWishlists:SetupDifficultyDropdown(sourcePanel, onChangeCallback)
                 addedDiffs[diff] = true;
             end
         end
+        local nonCanonical = {};
         for diff in pairs(usedDiffs) do
             if not addedDiffs[diff] then
-                table.insert(options, { key = diff, label = diff });
+                table.insert(nonCanonical, diff);
             end
+        end
+        table.sort(nonCanonical);
+        for _, diff in ipairs(nonCanonical) do
+            table.insert(options, { key = diff, label = diff });
         end
         popupMenu.popup.owner = "difficulty";
         showPopup(btn, options, activeDiff, function(key)
