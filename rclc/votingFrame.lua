@@ -119,51 +119,69 @@ end
 local function RenderTagCell(rowFrame, cellFrame, data, cols, row, realRow, column, fShow, st)
     if not fShow then
         cellFrame.text:SetText("");
+        cellFrame._gowTagText = nil;
         return;
     end
 
     local rowData = data[realRow];
-    if not rowData then cellFrame.text:SetText("|cff666666—|r"); return end
+    if not rowData then cellFrame.text:SetText("|cff666666—|r"); cellFrame._gowTagText = nil; return end
 
     if not GetShowTag() then
         cellFrame.text:SetText("|cff666666—|r");
+        cellFrame._gowTagText = nil;
         return;
     end
 
     local itemId = GetActiveItemId();
-    if not itemId then cellFrame.text:SetText("|cff666666—|r"); return end
+    if not itemId then cellFrame.text:SetText("|cff666666—|r"); cellFrame._gowTagText = nil; return end
 
     local wish = RCGoW:GetPlayerWish(itemId, rowData.name);
-    if not wish or not wish.tag then cellFrame.text:SetText("|cff666666—|r"); return end
+    if not wish or not wish.tag then cellFrame.text:SetText("|cff666666—|r"); cellFrame._gowTagText = nil; return end
 
     local tagInfo = GoWWishlists.constants.TAG_DISPLAY[wish.tag];
     cellFrame.text:SetText(tagInfo and string.format("|cff%s%s|r", tagInfo.color, tagInfo.label) or wish.tag);
+    cellFrame._gowTagText = tagInfo and tagInfo.tip or wish.tag;
+
+    if not cellFrame._gowTagTooltip then
+        cellFrame:SetScript("OnEnter", function(self)
+            if not self._gowTagText then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Guilds of WoW", 0.1, 0.8, 0.3);
+            GameTooltip:AddLine(self._gowTagText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end);
+        cellFrame:SetScript("OnLeave", function() GameTooltip:Hide() end);
+        cellFrame._gowTagTooltip = true;
+    end
 end
 
 local function RenderNoteCell(rowFrame, cellFrame, data, cols, row, realRow, column, fShow, st)
     if not fShow then
         cellFrame.text:SetText("");
+        cellFrame._gowNoteText = nil;
         return;
     end
 
     local rowData = data[realRow];
-    if not rowData then cellFrame.text:SetText("|cff666666—|r"); return end
+    if not rowData then cellFrame.text:SetText("|cff666666—|r"); cellFrame._gowNoteText = nil; return end
 
     if not GetShowNote() then
         cellFrame.text:SetText("|cff666666—|r");
+        cellFrame._gowNoteText = nil;
         return;
     end
 
     local itemId = GetActiveItemId();
-    if not itemId then cellFrame.text:SetText("|cff666666—|r"); return end
+    if not itemId then cellFrame.text:SetText("|cff666666—|r"); cellFrame._gowNoteText = nil; return end
 
     local wish = RCGoW:GetPlayerWish(itemId, rowData.name);
     if not wish or not wish.notes or wish.notes == "" then
         cellFrame.text:SetText("|cff666666—|r");
+        cellFrame._gowNoteText = nil;
         return;
     end
 
-    cellFrame.text:SetText("|TInterface\\Icons\\INV_Misc_Note_01:16:16|t");
+    cellFrame.text:SetText("|TInterface\\Buttons\\UI-GuildButton-PublicNote-Up:16:16|t");
     if not cellFrame._gowNoteTooltip then
         cellFrame:SetScript("OnEnter", function(self)
             if not self._gowNoteText then return end
