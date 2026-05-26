@@ -116,7 +116,7 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
                         if not bossGroups[bossName] then
                             bossGroups[bossName] = { items = {}, itemOrder = {} };
                             table.insert(bossOrder, bossName);
-                            bossToRaid[bossName] = item.sourceInstanceName or (item.sourceJournalId and self:GetRaidNameForEncounter(item.sourceJournalId));
+                            bossToRaid[bossName] = self:GetRaidNameForItem(item);
                             if item.sourceJournalId then
                                 bossToJournalId[bossName] = item.sourceJournalId;
                             end
@@ -588,7 +588,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
             mostwanted = "Most Wanted",
             avggain = "Upgrade",
             name = "Name",
-            slot = "Slot Name",
+            slot = "Slot",
         };
 
         local sortBtn = self:CreatePopupFilterBtn(lootPanel, "Sort: Most Wanted", 130, "guildsort",
@@ -601,7 +601,7 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
                     table.insert(sortOptions, { key = "avggain", label = "Upgrade" });
                 end
                 table.insert(sortOptions, { key = "name", label = "Name" });
-                table.insert(sortOptions, { key = "slot", label = "Slot Name" });
+                table.insert(sortOptions, { key = "slot", label = "Slot" });
                 if simEnabled and lootPanel.allowBossPrioritySort then
                     table.insert(sortOptions, { key = "bosspriority", label = "Boss Priority" });
                 end
@@ -1268,7 +1268,7 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
                             seenBosses[bossName] = true;
                             table.insert(memberBossNames, bossName);
                         end
-                        memberBossToRaid[bossName] = item.sourceInstanceName or (item.sourceJournalId and self:GetRaidNameForEncounter(item.sourceJournalId));
+                        memberBossToRaid[bossName] = self:GetRaidNameForItem(item);
                         if item.sourceJournalId then
                             memberBossToJournalId[bossName] = item.sourceJournalId;
                         end

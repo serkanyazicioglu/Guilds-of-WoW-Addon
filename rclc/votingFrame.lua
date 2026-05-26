@@ -15,8 +15,7 @@ local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-fl
 local activeSession = 1;
 
 local function GetDisplayMode()
-    local mode = (GOW.DB and GOW.DB.profile.rclcDisplayMode) or "percent";
-    return (mode == "tag") and "percent" or mode;
+    return (GOW.DB and GOW.DB.profile.rclcDisplayMode) or "percent";
 end
 
 local function GetShowTag()
@@ -116,27 +115,43 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
     end
 end
 
-local function RenderTagCell(rowFrame, cellFrame, data, cols, row, realRow, column, fShow, st)
+-- Guards common to tag/note cells: handles fShow, missing row, disabled toggle, missing item/wish.
+-- Sets cellFrame.text and clears cellFrame[textField] on any early-exit; returns nil in those cases.
+local function GetWishForCell(cellFrame, data, realRow, fShow, showToggleFn, textField)
     if not fShow then
         cellFrame.text:SetText("");
-        cellFrame._gowTagText = nil;
-        return;
+        cellFrame[textField] = nil;
+        return nil;
     end
-
     local rowData = data[realRow];
-    if not rowData then cellFrame.text:SetText("|cff666666—|r"); cellFrame._gowTagText = nil; return end
+    if not rowData or not showToggleFn() then
+        cellFrame.text:SetText("|cff666666—|r");
+        cellFrame[textField] = nil;
+        return nil;
+    end
+    local itemId = GetActiveItemId();
+    if not itemId then
+        cellFrame.text:SetText("|cff666666—|r");
+        cellFrame[textField] = nil;
+        return nil;
+    end
+    local wish = RCGoW:GetPlayerWish(itemId, rowData.name);
+    if not wish then
+        cellFrame.text:SetText("|cff666666—|r");
+        cellFrame[textField] = nil;
+        return nil;
+    end
+    return wish;
+end
 
-    if not GetShowTag() then
+local function RenderTagCell(rowFrame, cellFrame, data, cols, row, realRow, column, fShow, st)
+    local wish = GetWishForCell(cellFrame, data, realRow, fShow, GetShowTag, "_gowTagText");
+    if not wish then return end
+    if not wish.tag then
         cellFrame.text:SetText("|cff666666—|r");
         cellFrame._gowTagText = nil;
         return;
     end
-
-    local itemId = GetActiveItemId();
-    if not itemId then cellFrame.text:SetText("|cff666666—|r"); cellFrame._gowTagText = nil; return end
-
-    local wish = RCGoW:GetPlayerWish(itemId, rowData.name);
-    if not wish or not wish.tag then cellFrame.text:SetText("|cff666666—|r"); cellFrame._gowTagText = nil; return end
 
     local tagInfo = GoWWishlists.constants.TAG_DISPLAY[wish.tag];
     cellFrame.text:SetText(tagInfo and string.format("|cff%s%s|r", tagInfo.color, tagInfo.label) or wish.tag);
@@ -156,26 +171,9 @@ local function RenderTagCell(rowFrame, cellFrame, data, cols, row, realRow, colu
 end
 
 local function RenderNoteCell(rowFrame, cellFrame, data, cols, row, realRow, column, fShow, st)
-    if not fShow then
-        cellFrame.text:SetText("");
-        cellFrame._gowNoteText = nil;
-        return;
-    end
-
-    local rowData = data[realRow];
-    if not rowData then cellFrame.text:SetText("|cff666666—|r"); cellFrame._gowNoteText = nil; return end
-
-    if not GetShowNote() then
-        cellFrame.text:SetText("|cff666666—|r");
-        cellFrame._gowNoteText = nil;
-        return;
-    end
-
-    local itemId = GetActiveItemId();
-    if not itemId then cellFrame.text:SetText("|cff666666—|r"); cellFrame._gowNoteText = nil; return end
-
-    local wish = RCGoW:GetPlayerWish(itemId, rowData.name);
-    if not wish or not wish.notes or wish.notes == "" then
+    local wish = GetWishForCell(cellFrame, data, realRow, fShow, GetShowNote, "_gowNoteText");
+    if not wish then return end
+    if not wish.notes or wish.notes == "" then
         cellFrame.text:SetText("|cff666666—|r");
         cellFrame._gowNoteText = nil;
         return;

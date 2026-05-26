@@ -248,6 +248,10 @@ function GoWWishlists:GetRaidNameForEncounter(journalEncounterId)
     return nil;
 end
 
+function GoWWishlists:GetRaidNameForItem(item)
+    return item.sourceInstanceName or (item.sourceJournalId and self:GetRaidNameForEncounter(item.sourceJournalId));
+end
+
 function GoWWishlists:CollectWishlistForCharacter(difficultyFilter)
     local bossGroups = {};
     local bossOrder = {};
@@ -264,7 +268,7 @@ function GoWWishlists:CollectWishlistForCharacter(difficultyFilter)
                     if not bossGroups[bossName] then
                         bossGroups[bossName] = {};
                         table.insert(bossOrder, bossName);
-                        bossToRaid[bossName] = entry.sourceInstanceName or (entry.sourceJournalId and self:GetRaidNameForEncounter(entry.sourceJournalId));
+                        bossToRaid[bossName] = self:GetRaidNameForItem(entry);
                         if entry.sourceJournalId then
                             bossToJournalId[bossName] = entry.sourceJournalId;
                         end
