@@ -269,7 +269,7 @@ local function InsertGoWColumn()
             end
         end
         tinsert(RCVotingFrame.scrollCols, tagPos, {
-            name = GOW_ICON,
+            name = "Tag",
             colName = "gowtag",
             width = 45,
             align = "CENTER",
@@ -283,7 +283,7 @@ local function InsertGoWColumn()
             if col.colName == "gowtag" then notePos = i + 1; break end
         end
         tinsert(RCVotingFrame.scrollCols, notePos, {
-            name = GOW_ICON,
+            name = "Note",
             colName = "gownote",
             width = 45,
             align = "CENTER",
