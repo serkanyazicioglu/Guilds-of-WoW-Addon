@@ -132,7 +132,8 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
     end
 
 
-    local detailSortMode = frame.detailSortMode or "upgrade";
+    local detailSortMode = GoWWishlists:ClampSortMode(frame.detailSortMode or "upgrade");
+    frame.detailSortMode = detailSortMode;
     local detailSlotFilter = frame.detailSlotFilter or "All";
     local detailHideObtained = frame.detailHideObtained;
     if detailHideObtained == nil then detailHideObtained = true end
@@ -268,7 +269,7 @@ function GoWWishlists:PopulatePersonalWishlistView(frame)
         local updateSortLabel, updateSlotLabel;
 
         local sortBtn = self:CreatePopupFilterBtn(detailPanel, "Sort: Upgrade", 90, "sort",
-            self.constants.SORT_OPTIONS,
+            function() return self:GetCharacterSortOptions() end,
             function() return detailSortMode end,
             function(key)
                 detailSortMode = key;

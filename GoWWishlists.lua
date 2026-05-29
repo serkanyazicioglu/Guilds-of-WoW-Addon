@@ -297,7 +297,26 @@ GoWWishlists.constants.SORT_OPTIONS = {
     { key = "slot",    label = "Slot" },
 };
 
+-- Pre-filtered list for non-sim versions (upgrade sort requires sim data)
+GoWWishlists.constants.SORT_OPTIONS_NO_SIM = {
+    { key = "name", label = "Name" },
+    { key = "boss", label = "Boss Order" },
+    { key = "slot", label = "Slot" },
+};
+
 GoWWishlists.constants.BADGE_COLUMN_WIDTH = 40;
+
+function GoWWishlists:GetCharacterSortOptions()
+    if GOW.Helper:IsSimEnabled() then return self.constants.SORT_OPTIONS end
+    return self.constants.SORT_OPTIONS_NO_SIM;
+end
+
+function GoWWishlists:ClampSortMode(mode)
+    if not GOW.Helper:IsSimEnabled() and mode == "upgrade" then
+        return "name";
+    end
+    return mode;
+end
 
 function GoWWishlists:GetItemRowHeight()
     return self.state.compactMode and self.constants.BROWSER_ITEM_HEIGHT_COMPACT or self.constants.BROWSER_ITEM_HEIGHT_CARD;
@@ -588,8 +607,34 @@ function GoWWishlists:SetupDifficultyDropdown(sourcePanel, onChangeCallback)
             popupMenu.clearPopup();
             return;
         end
-        local options = {};
+        local usedDiffs = {};
+        for _, entry in ipairs(self.state.allItems or {}) do
+            if entry.difficulty then usedDiffs[entry.difficulty] = true end
+        end
+        local guildData = self.state.guildWishlistData;
+        if guildData and guildData.wishlists then
+            for _, charEntry in ipairs(guildData.wishlists) do
+                for _, item in ipairs(charEntry.wishlist or {}) do
+                    if item.difficulty then usedDiffs[item.difficulty] = true end
+                end
+            end
+        end
+        local options = { { key = "All", label = "All" } };
+        local addedDiffs = {};
         for _, diff in ipairs(self.constants.DIFFICULTIES) do
+            if diff ~= "All" and usedDiffs[diff] then
+                table.insert(options, { key = diff, label = diff });
+                addedDiffs[diff] = true;
+            end
+        end
+        local nonCanonical = {};
+        for diff in pairs(usedDiffs) do
+            if not addedDiffs[diff] then
+                table.insert(nonCanonical, diff);
+            end
+        end
+        table.sort(nonCanonical);
+        for _, diff in ipairs(nonCanonical) do
             table.insert(options, { key = diff, label = diff });
         end
         popupMenu.popup.owner = "difficulty";

@@ -49,6 +49,9 @@ local function NormalizeGuildLootSort(sortMode)
     if not sortMode or sortMode == "" or sortMode == "boss" then
         return "mostwanted";
     end
+    if not GOW.Helper:IsSimEnabled() and (sortMode == "avggain" or sortMode == "bosspriority") then
+        return "mostwanted";
+    end
     return sortMode;
 end
 
@@ -113,8 +116,8 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
                         if not bossGroups[bossName] then
                             bossGroups[bossName] = { items = {}, itemOrder = {} };
                             table.insert(bossOrder, bossName);
+                            bossToRaid[bossName] = self:GetRaidNameForItem(item);
                             if item.sourceJournalId then
-                                bossToRaid[bossName] = self:GetRaidNameForEncounter(item.sourceJournalId);
                                 bossToJournalId[bossName] = item.sourceJournalId;
                             end
                         end
@@ -585,18 +588,21 @@ function GoWWishlists:PopulateGuildWishlistView(frame)
             mostwanted = "Most Wanted",
             avggain = "Upgrade",
             name = "Name",
-            slot = "Slot Name",
+            slot = "Slot",
         };
 
         local sortBtn = self:CreatePopupFilterBtn(lootPanel, "Sort: Most Wanted", 130, "guildsort",
             function()
+                local simEnabled = GOW.Helper:IsSimEnabled();
                 local sortOptions = {
                     { key = "mostwanted", label = "Most Wanted" },
-                    { key = "avggain",    label = "Upgrade" },
-                    { key = "name",       label = "Name" },
-                    { key = "slot",       label = "Slot Name" },
                 };
-                if lootPanel.allowBossPrioritySort then
+                if simEnabled then
+                    table.insert(sortOptions, { key = "avggain", label = "Upgrade" });
+                end
+                table.insert(sortOptions, { key = "name", label = "Name" });
+                table.insert(sortOptions, { key = "slot", label = "Slot" });
+                if simEnabled and lootPanel.allowBossPrioritySort then
                     table.insert(sortOptions, { key = "bosspriority", label = "Boss Priority" });
                 end
                 return sortOptions;
@@ -1215,7 +1221,8 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     detailPanel._activeMember = member;
     detailPanel._activeGuildRealm = guildRealm;
 
-    local guildPlayerSortMode = detailPanel.guildPlayerSortMode or "upgrade";
+    local guildPlayerSortMode = GoWWishlists:ClampSortMode(detailPanel.guildPlayerSortMode or "upgrade");
+    detailPanel.guildPlayerSortMode = guildPlayerSortMode;
     local guildPlayerSlotFilter = detailPanel.guildPlayerSlotFilter or "All";
     local SLOT_LABELS = self.constants.SLOT_LABELS;
     local SLOT_ORDER = self.constants.SLOT_ORDER;
@@ -1261,8 +1268,8 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
                             seenBosses[bossName] = true;
                             table.insert(memberBossNames, bossName);
                         end
+                        memberBossToRaid[bossName] = self:GetRaidNameForItem(item);
                         if item.sourceJournalId then
-                            memberBossToRaid[bossName] = self:GetRaidNameForEncounter(item.sourceJournalId);
                             memberBossToJournalId[bossName] = item.sourceJournalId;
                         end
                     end
@@ -1344,7 +1351,7 @@ function GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm)
     end
 
     local sortBtn = self:CreatePopupFilterBtn(scrollChild, "Sort: " .. (SORT_LABELS[guildPlayerSortMode] or guildPlayerSortMode), 110, "playerSort",
-        self.constants.SORT_OPTIONS,
+        function() return self:GetCharacterSortOptions() end,
         function() return guildPlayerSortMode end,
         function(key)
             detailPanel.guildPlayerSortMode = key;

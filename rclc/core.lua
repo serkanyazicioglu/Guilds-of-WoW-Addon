@@ -9,15 +9,23 @@ GOW.RCGoW = RCGoW;
 
 local DEBUG_TAGS = { "BIS", "NEED", "MINOR", "OFFSPEC", "GREED", "TRANSMOG" };
 local DEBUG_SOURCES = { "Droptimizer", "QE Live" };
+local DEBUG_NOTES = {
+    "BIS for my M+ set",
+    "Needed for tier bonus",
+    "Upgrade from LFR",
+    "Only need if no crafted drops",
+    "Saving for catalyst",
+};
 local function GetDebugWish()
     local tag = DEBUG_TAGS[math.random(#DEBUG_TAGS)];
     local pct = math.random(1, 250) / 10;
     local isCatalyst = math.random() > 0.5;
     local source = DEBUG_SOURCES[math.random(#DEBUG_SOURCES)];
+    local notes = math.random() > 0.4 and DEBUG_NOTES[math.random(#DEBUG_NOTES)] or nil;
     return {
         tag = tag,
         difficulty = "Mythic",
-        notes = "Debug: fake wishlist entry",
+        notes = notes,
         officerNotes = "Officer: debug officer note",
         gain = { percent = pct, stat = math.random(50, 800), metric = "DPS" },
         isCatalystItem = isCatalyst or nil,

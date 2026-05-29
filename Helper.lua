@@ -48,8 +48,10 @@ function Helper:GetGowGameVersionId()
         return 2;
     elseif (WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC) then
         return 4;
-    else
+    elseif (WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC) then
         return 3;
+    else
+        return 1; -- unknown version; default to Mainline behaviour
     end
 end
 
@@ -72,10 +74,14 @@ function Helper:IsInGameCalendarAccessible()
 end
 
 function Helper:IsWishlistsEnabled()
-    return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
+    return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE or WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC or WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC;
 end
 
 function Helper:IsKeystonesEnabled()
+    return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
+end
+
+function Helper:IsSimEnabled()
     return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
 end
 

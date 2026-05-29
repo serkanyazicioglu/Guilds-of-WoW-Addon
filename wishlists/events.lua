@@ -231,20 +231,25 @@ function GoWWishlists:GetRaidNameForEncounter(journalEncounterId)
     if not journalEncounterId then return nil end
     local cached = self.state.raidNameCache[journalEncounterId];
     if cached ~= nil then
-        return cached or nil;
+        return cached;
     end
 
     if EJ_GetEncounterInfo then
         local _, _, _, _, _, journalInstanceID = EJ_GetEncounterInfo(journalEncounterId);
         if journalInstanceID and EJ_GetInstanceInfo then
             local instanceName = EJ_GetInstanceInfo(journalInstanceID);
-            self.state.raidNameCache[journalEncounterId] = instanceName or false;
-            return instanceName;
+            if instanceName then
+                self.state.raidNameCache[journalEncounterId] = instanceName;
+                return instanceName;
+            end
         end
     end
 
-    self.state.raidNameCache[journalEncounterId] = false;
     return nil;
+end
+
+function GoWWishlists:GetRaidNameForItem(item)
+    return item.sourceInstanceName or (item.sourceJournalId and self:GetRaidNameForEncounter(item.sourceJournalId));
 end
 
 function GoWWishlists:CollectWishlistForCharacter(difficultyFilter)
@@ -263,8 +268,8 @@ function GoWWishlists:CollectWishlistForCharacter(difficultyFilter)
                     if not bossGroups[bossName] then
                         bossGroups[bossName] = {};
                         table.insert(bossOrder, bossName);
+                        bossToRaid[bossName] = self:GetRaidNameForItem(entry);
                         if entry.sourceJournalId then
-                            bossToRaid[bossName] = self:GetRaidNameForEncounter(entry.sourceJournalId);
                             bossToJournalId[bossName] = entry.sourceJournalId;
                         end
                     end

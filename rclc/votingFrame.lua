@@ -12,12 +12,18 @@ local GoWVotingColumn = RCGoW:NewModule("GoWVotingColumn", "AceTimer-3.0", "AceE
 
 local GOW_ICON = "|TInterface\\AddOns\\GuildsOfWoW\\icons\\guilds-of-wow-logo-flag-plain.png:20:20|t";
 
-local TAG_RANK = { BIS = 1, NEED = 2, GREED = 3, MINOR = 4, OFFSPEC = 5, TRANSMOG = 6 };
-
 local activeSession = 1;
 
 local function GetDisplayMode()
     return (GOW.DB and GOW.DB.profile.rclcDisplayMode) or "percent";
+end
+
+local function GetShowTag()
+    return GOW.DB == nil or GOW.DB.profile.rclcShowTag ~= false;
+end
+
+local function GetShowNote()
+    return GOW.DB == nil or GOW.DB.profile.rclcShowNote ~= false;
 end
 
 local function GetActiveItemId()
@@ -25,7 +31,7 @@ local function GetActiveItemId()
     if not lootTable or not lootTable[activeSession] then return nil end
     local link = lootTable[activeSession].link;
     if not link then return nil end
-    return C_Item.GetItemInfoInstant(link) or tonumber(link:match("item:(%d+)"));
+    return (C_Item and C_Item.GetItemInfoInstant(link)) or tonumber(link:match("item:(%d+)"));
 end
 
 local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, column, fShow, st)
@@ -53,23 +59,15 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
         return;
     end
 
-    -- Build display string based on current toggle mode
-    local display = "";
     local mode = GetDisplayMode();
-    if mode == "percent" then
-        if wish.gain and wish.gain.percent and wish.gain.percent > 0 then
-            display = string.format("|cff00ff00%.2f%%|r", wish.gain.percent);
-        end
-    elseif mode == "value" then
-        if wish.gain and wish.gain.stat and wish.gain.stat > 0 then
-            local metric = (wish.gain.metric and wish.gain.metric ~= "") and wish.gain.metric or "DPS";
-            display = string.format("|cff00ff00%.1f %s|r", wish.gain.stat, metric);
-        end
+    if mode == "percent" and wish.gain and wish.gain.percent and wish.gain.percent > 0 then
+        cellFrame.text:SetText(string.format("|cff00ff00%.2f%%|r", wish.gain.percent));
+    elseif mode == "value" and wish.gain and wish.gain.stat and wish.gain.stat > 0 then
+        local metric = (wish.gain.metric and wish.gain.metric ~= "") and wish.gain.metric or "DPS";
+        cellFrame.text:SetText(string.format("|cff00ff00%.1f %s|r", wish.gain.stat, metric));
     else
-        local tagInfo = wish.tag and GoWWishlists.constants.TAG_DISPLAY[wish.tag];
-        display = tagInfo and string.format("|cff%s%s|r", tagInfo.color, tagInfo.tip) or "";
+        cellFrame.text:SetText("");
     end
-    cellFrame.text:SetText(display);
 
     -- Build tooltip content
     local tipLines = {};
@@ -117,6 +115,85 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
     end
 end
 
+-- Guards common to tag/note cells: handles fShow, missing row, disabled toggle, missing item/wish.
+-- Sets cellFrame.text and clears cellFrame[textField] on any early-exit; returns nil in those cases.
+local function GetWishForCell(cellFrame, data, realRow, fShow, showToggleFn, textField)
+    if not fShow then
+        cellFrame.text:SetText("");
+        cellFrame[textField] = nil;
+        return nil;
+    end
+    local rowData = data[realRow];
+    if not rowData or not showToggleFn() then
+        cellFrame.text:SetText("|cff666666—|r");
+        cellFrame[textField] = nil;
+        return nil;
+    end
+    local itemId = GetActiveItemId();
+    if not itemId then
+        cellFrame.text:SetText("|cff666666—|r");
+        cellFrame[textField] = nil;
+        return nil;
+    end
+    local wish = RCGoW:GetPlayerWish(itemId, rowData.name);
+    if not wish then
+        cellFrame.text:SetText("|cff666666—|r");
+        cellFrame[textField] = nil;
+        return nil;
+    end
+    return wish;
+end
+
+local function RenderTagCell(rowFrame, cellFrame, data, cols, row, realRow, column, fShow, st)
+    local wish = GetWishForCell(cellFrame, data, realRow, fShow, GetShowTag, "_gowTagText");
+    if not wish then return end
+    if not wish.tag then
+        cellFrame.text:SetText("|cff666666—|r");
+        cellFrame._gowTagText = nil;
+        return;
+    end
+
+    local tagInfo = GoWWishlists.constants.TAG_DISPLAY[wish.tag];
+    cellFrame.text:SetText(tagInfo and string.format("|cff%s%s|r", tagInfo.color, tagInfo.label) or wish.tag);
+    cellFrame._gowTagText = tagInfo and tagInfo.tip or wish.tag;
+
+    if not cellFrame._gowTagTooltip then
+        cellFrame:SetScript("OnEnter", function(self)
+            if not self._gowTagText then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Guilds of WoW", 0.1, 0.8, 0.3);
+            GameTooltip:AddLine(self._gowTagText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end);
+        cellFrame:SetScript("OnLeave", function() GameTooltip:Hide() end);
+        cellFrame._gowTagTooltip = true;
+    end
+end
+
+local function RenderNoteCell(rowFrame, cellFrame, data, cols, row, realRow, column, fShow, st)
+    local wish = GetWishForCell(cellFrame, data, realRow, fShow, GetShowNote, "_gowNoteText");
+    if not wish then return end
+    if not wish.notes or wish.notes == "" then
+        cellFrame.text:SetText("|cff666666—|r");
+        cellFrame._gowNoteText = nil;
+        return;
+    end
+
+    cellFrame.text:SetText("|TInterface\\Buttons\\UI-GuildButton-PublicNote-Up:16:16|t");
+    if not cellFrame._gowNoteTooltip then
+        cellFrame:SetScript("OnEnter", function(self)
+            if not self._gowNoteText then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Guilds of WoW", 0.1, 0.8, 0.3);
+            GameTooltip:AddLine(self._gowNoteText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end);
+        cellFrame:SetScript("OnLeave", function() GameTooltip:Hide() end);
+        cellFrame._gowNoteTooltip = true;
+    end
+    cellFrame._gowNoteText = wish.notes;
+end
+
 local function CompareByPriority(st, rowa, rowb, sortbycol)
     local a = st:GetRow(rowa);
     local b = st:GetRow(rowb);
@@ -145,12 +222,6 @@ local function CompareByPriority(st, rowa, rowb, sortbycol)
         if valA ~= valB then
             if asc then return valA < valB else return valA > valB end
         end
-    else
-        local prioA = wishA and (TAG_RANK[wishA.tag] or 99) or 999;
-        local prioB = wishB and (TAG_RANK[wishB.tag] or 99) or 999;
-        if prioA ~= prioB then
-            if asc then return prioA < prioB else return prioA > prioB end
-        end
     end
 
     -- Tiebreak: use gain percent, following the same sort direction
@@ -165,24 +236,69 @@ end
 local function InsertGoWColumn()
     if not RCVotingFrame.scrollCols then return end
 
-    -- Don't insert twice
+    local isSimEnabled = GOW.Helper:IsSimEnabled();
+    local hasGain, hasTag, hasNote = false, false, false;
     for _, col in ipairs(RCVotingFrame.scrollCols) do
-        if col.colName == "gow" then return end
+        if col.colName == "gow"     then hasGain = true end
+        if col.colName == "gowtag"  then hasTag  = true end
+        if col.colName == "gownote" then hasNote = true end
+    end
+    -- Return early only when all applicable columns are already present:
+    -- gain column is only applicable when sim is enabled.
+    if (not isSimEnabled or hasGain) and hasTag and hasNote then return end
+
+    local insertPos = math.min(8, #RCVotingFrame.scrollCols + 1);
+
+    if isSimEnabled and not hasGain then
+        tinsert(RCVotingFrame.scrollCols, insertPos, {
+            name = GOW_ICON,
+            colName = "gow",
+            width = 80,
+            align = "CENTER",
+            DoCellUpdate = RenderWishCell,
+            comparesort = CompareByPriority,
+            defaultsort = "asc",
+        });
     end
 
-    tinsert(RCVotingFrame.scrollCols, 8, {
-        name = GOW_ICON,
-        colName = "gow",
-        width = 80,
-        align = "CENTER",
-        DoCellUpdate = RenderWishCell,
-        comparesort = CompareByPriority,
-        defaultsort = "asc",
-    });
+    if not hasTag then
+        local tagPos = insertPos;
+        if isSimEnabled then
+            for i, col in ipairs(RCVotingFrame.scrollCols) do
+                if col.colName == "gow" then tagPos = i + 1; break end
+            end
+        end
+        tinsert(RCVotingFrame.scrollCols, tagPos, {
+            name = "Tag",
+            colName = "gowtag",
+            width = 45,
+            align = "CENTER",
+            DoCellUpdate = RenderTagCell,
+        });
+    end
+
+    if not hasNote then
+        local notePos = insertPos;
+        for i, col in ipairs(RCVotingFrame.scrollCols) do
+            if col.colName == "gowtag" then notePos = i + 1; break end
+        end
+        tinsert(RCVotingFrame.scrollCols, notePos, {
+            name = "Note",
+            colName = "gownote",
+            width = 45,
+            align = "CENTER",
+            DoCellUpdate = RenderNoteCell,
+        });
+    end
 end
 
 function GoWVotingColumn:OnInitialize()
     if GOW.DB and GOW.DB.profile.showRCLCWishlist == false then return end
+
+    -- Migrate old "tag" display mode (removed in tbc-wishlists) to "percent"
+    if GOW.DB and GOW.DB.profile.rclcDisplayMode == "tag" then
+        GOW.DB.profile.rclcDisplayMode = "percent";
+    end
 
     if not RCVotingFrame.scrollCols then
         return self:ScheduleTimer("OnInitialize", 0.5);
@@ -232,9 +348,8 @@ function GoWVotingColumn:OnSessionChanged(_, session)
 end
 
 local DISPLAY_MODE_BUTTONS = {
-    { value = "percent", label = "%",   tooltip = "Show % upgrade gain" },
-    { value = "value",   label = "#",   tooltip = "Show raw stat gain" },
-    { value = "tag",     label = "Tag", tooltip = "Show wishlist priority tag" },
+    { value = "percent", label = "%", tooltip = "Show % upgrade gain" },
+    { value = "value",   label = "#", tooltip = "Show raw stat gain" },
 };
 
 local function UpdateModeButtons(buttons)
@@ -248,6 +363,54 @@ local function UpdateModeButtons(buttons)
             btn._gowFs:SetTextColor(0.85, 0.85, 0.85);
         end
     end
+end
+
+local function CreateToggleButton(parent, xOffset, btnW, btnH, label, getShown, profileKey, tooltip)
+    local btn = CreateFrame("Button", nil, parent);
+    btn:SetSize(btnW, btnH);
+    btn:SetPoint("LEFT", parent, "LEFT", xOffset, 0);
+
+    local hl = btn:CreateTexture(nil, "BACKGROUND");
+    hl:SetAllPoints(btn);
+    hl:SetColorTexture(1, 0.84, 0, 0.15);
+    hl:Hide();
+    btn._gowHighlight = hl;
+
+    local hover = btn:CreateTexture(nil, "HIGHLIGHT");
+    hover:SetAllPoints(btn);
+    hover:SetColorTexture(1, 1, 1, 0.08);
+
+    local fs = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    fs:SetAllPoints(btn);
+    fs:SetJustifyH("CENTER");
+    fs:SetText(label);
+    btn._gowFs = fs;
+
+    local function UpdateToggle()
+        local shown = getShown();
+        if shown then
+            btn._gowHighlight:Show();
+            btn._gowFs:SetTextColor(1, 0.84, 0);
+        else
+            btn._gowHighlight:Hide();
+            btn._gowFs:SetTextColor(0.85, 0.85, 0.85);
+        end
+    end
+
+    btn:SetScript("OnClick", function()
+        if GOW.DB then GOW.DB.profile[profileKey] = not getShown() end
+        UpdateToggle();
+        RefreshScrollTable();
+    end);
+    btn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+        GameTooltip:AddLine("Guilds of WoW", 0.1, 0.8, 0.3);
+        GameTooltip:AddLine(tooltip, 1, 1, 1, true);
+        GameTooltip:Show();
+    end);
+    btn:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+    UpdateToggle();
 end
 
 function GoWVotingColumn:AddToggleButton()
@@ -279,8 +442,11 @@ function GoWVotingColumn:AddToggleButton()
     local INSET = BORDER / 2;
     local BTN_H = rclcBtn:GetHeight() - BORDER;
 
+    local isSimEnabled = GOW.Helper:IsSimEnabled();
+    local numModeButtons = isSimEnabled and #DISPLAY_MODE_BUTTONS or 0;
+
     local groupFrame = CreateFrame("Frame", nil, parent, "BackdropTemplate");
-    groupFrame:SetSize(BTN_W * #DISPLAY_MODE_BUTTONS + BORDER, BTN_H + BORDER);
+    groupFrame:SetSize(BTN_W * (numModeButtons + 2) + BORDER, BTN_H + BORDER);
     groupFrame:SetPoint("RIGHT", anchor, "LEFT", -4, 0);
     groupFrame:SetFrameStrata("DIALOG");
     groupFrame:SetBackdrop({
@@ -293,52 +459,72 @@ function GoWVotingColumn:AddToggleButton()
     groupFrame:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.9);
 
     local buttons = {};
-    for i, opt in ipairs(DISPLAY_MODE_BUTTONS) do
-        local btn = CreateFrame("Button", nil, groupFrame);
-        btn:SetSize(BTN_W, BTN_H);
-        btn:SetPoint("LEFT", groupFrame, "LEFT", INSET + (i - 1) * BTN_W, 0);
-        btn._gowMode = opt.value;
+    if isSimEnabled then
+        for i, opt in ipairs(DISPLAY_MODE_BUTTONS) do
+            local btn = CreateFrame("Button", nil, groupFrame);
+            btn:SetSize(BTN_W, BTN_H);
+            btn:SetPoint("LEFT", groupFrame, "LEFT", INSET + (i - 1) * BTN_W, 0);
+            btn._gowMode = opt.value;
 
-        local hl = btn:CreateTexture(nil, "BACKGROUND");
-        hl:SetAllPoints(btn);
-        hl:SetColorTexture(1, 0.84, 0, 0.15);
-        hl:Hide();
-        btn._gowHighlight = hl;
+            local hl = btn:CreateTexture(nil, "BACKGROUND");
+            hl:SetAllPoints(btn);
+            hl:SetColorTexture(1, 0.84, 0, 0.15);
+            hl:Hide();
+            btn._gowHighlight = hl;
 
-        local hover = btn:CreateTexture(nil, "HIGHLIGHT");
-        hover:SetAllPoints(btn);
-        hover:SetColorTexture(1, 1, 1, 0.08);
+            local hover = btn:CreateTexture(nil, "HIGHLIGHT");
+            hover:SetAllPoints(btn);
+            hover:SetColorTexture(1, 1, 1, 0.08);
 
-        local fs = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-        fs:SetAllPoints(btn);
-        fs:SetJustifyH("CENTER");
-        fs:SetText(opt.label);
-        btn._gowFs = fs;
+            local fs = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+            fs:SetAllPoints(btn);
+            fs:SetJustifyH("CENTER");
+            fs:SetText(opt.label);
+            btn._gowFs = fs;
 
-        if i > 1 then
-            local div = groupFrame:CreateTexture(nil, "ARTWORK");
-            div:SetSize(1, BTN_H - 6);
-            div:SetPoint("LEFT", groupFrame, "LEFT", INSET + (i - 1) * BTN_W, 0);
-            div:SetColorTexture(0.5, 0.5, 0.5, 0.6);
+            if i > 1 then
+                local div = groupFrame:CreateTexture(nil, "ARTWORK");
+                div:SetSize(1, BTN_H - 6);
+                div:SetPoint("LEFT", groupFrame, "LEFT", INSET + (i - 1) * BTN_W, 0);
+                div:SetColorTexture(0.5, 0.5, 0.5, 0.6);
+            end
+
+            btn:SetScript("OnClick", function()
+                if GOW.DB then GOW.DB.profile.rclcDisplayMode = opt.value end
+                UpdateModeButtons(buttons);
+                SortScrollTable();
+            end);
+            btn:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+                GameTooltip:AddLine("Guilds of WoW", 0.1, 0.8, 0.3);
+                GameTooltip:AddLine(opt.tooltip, 1, 1, 1, true);
+                GameTooltip:Show();
+            end);
+            btn:SetScript("OnLeave", function() GameTooltip:Hide() end);
+
+            buttons[i] = btn;
         end
-
-        btn:SetScript("OnClick", function()
-            if GOW.DB then GOW.DB.profile.rclcDisplayMode = opt.value end
-            UpdateModeButtons(buttons);
-            SortScrollTable();
-        end);
-        btn:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-            GameTooltip:AddLine("Guilds of WoW", 0.1, 0.8, 0.3);
-            GameTooltip:AddLine(opt.tooltip, 1, 1, 1, true);
-            GameTooltip:Show();
-        end);
-        btn:SetScript("OnLeave", function() GameTooltip:Hide() end);
-
-        buttons[i] = btn;
+        UpdateModeButtons(buttons);
     end
 
-    UpdateModeButtons(buttons);
+    -- Tag toggle (divider only needed when mode buttons precede it)
+    if numModeButtons > 0 then
+        local tagDiv = groupFrame:CreateTexture(nil, "ARTWORK");
+        tagDiv:SetSize(1, BTN_H - 2);
+        tagDiv:SetPoint("LEFT", groupFrame, "LEFT", INSET + numModeButtons * BTN_W, 0);
+        tagDiv:SetColorTexture(0.7, 0.7, 0.7, 0.8);
+    end
+    CreateToggleButton(groupFrame, INSET + numModeButtons * BTN_W, BTN_W, BTN_H,
+        "Tag", GetShowTag, "rclcShowTag", "Show priority tag in column");
+
+    -- Note toggle
+    local noteDiv = groupFrame:CreateTexture(nil, "ARTWORK");
+    noteDiv:SetSize(1, BTN_H - 6);
+    noteDiv:SetPoint("LEFT", groupFrame, "LEFT", INSET + (numModeButtons + 1) * BTN_W, 0);
+    noteDiv:SetColorTexture(0.5, 0.5, 0.5, 0.6);
+    CreateToggleButton(groupFrame, INSET + (numModeButtons + 1) * BTN_W, BTN_W, BTN_H,
+        "Note", GetShowNote, "rclcShowNote", "Show notes in column");
+
     frame._gowToggleBtn = groupFrame;
 end
 
