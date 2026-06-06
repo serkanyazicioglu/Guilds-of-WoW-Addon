@@ -173,7 +173,7 @@ function Keystones:Initialize()
 	openRaidLib = LibStub:GetLibrary("LibOpenRaid-1.0");
 	libKeystone = nil; --LibStub:GetLibrary("LibKeystone", true);
 
-	if (openRaidLib) then
+	if (openRaidLib and not GOW.Helper:IsInCombat()) then
 		openRaidLib.RequestKeystoneDataFromGuild();
 	end
 
@@ -184,6 +184,10 @@ function Keystones:Initialize()
 end
 
 function Keystones:Refresh()
+	if (GOW.Helper:IsInCombat()) then
+		return;
+	end
+
 	if (openRaidLib) then
 		openRaidLibKeystoneData = openRaidLib.GetAllKeystonesInfo();
 		openRaidLib.RequestKeystoneDataFromGuild();
@@ -197,6 +201,10 @@ function Keystones:Refresh()
 end
 
 function Keystones:GetGuildMemberKeystone(name, level, isSelf)
+	if (GOW.Helper:IsInCombat()) then
+		return nil;
+	end
+
 	local normalizedName = GOW.Helper:GetNormalizedCharacterName(name);
 	if (not normalizedName) then
 		return nil;
