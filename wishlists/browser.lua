@@ -51,17 +51,10 @@ local function UpdateRosterTabVisibility(self, host)
         rosterTab:Hide();
     end
 
-    -- Show/hide loot history tab based on whether entries exist
+    -- Loot history tab is always visible; re-anchor based on roster tab
     local lhTab = host.lootHistoryTab;
     if lhTab then
-        local hasEntries = GOW.LootHistoryStore and next(GOW.LootHistoryStore:GetAllEntries()) ~= nil;
-        if hasEntries then
-            lhTab:Show();
-        else
-            lhTab:Hide();
-        end
-
-        -- Re-anchor loot history tab based on roster tab visibility
+        lhTab:Show();
         lhTab:ClearAllPoints();
         if rosterTab:IsShown() then
             lhTab:SetPoint("LEFT", rosterTab, "RIGHT", 4, 0);
@@ -75,9 +68,6 @@ local function GetSavedTabIndex(host)
     local savedTab = GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistActiveTab or 1;
     local rosterTab = host.rosterTab or host.guildWishlistTab;
     if savedTab == 2 and rosterTab and not rosterTab:IsShown() then
-        savedTab = 1;
-    end
-    if savedTab == 3 and host.lootHistoryTab and not host.lootHistoryTab:IsShown() then
         savedTab = 1;
     end
     return savedTab;
@@ -170,9 +160,6 @@ local function InitializeWishlistTabHost(self, host, options)
 
     local function SetActiveTab(tabIndex)
         if tabIndex == 2 and not rosterTab:IsShown() then
-            tabIndex = 1;
-        end
-        if tabIndex == 3 and not lootHistoryTab:IsShown() then
             tabIndex = 1;
         end
         if tabIndex ~= 1 and tabIndex ~= 2 and tabIndex ~= 3 then

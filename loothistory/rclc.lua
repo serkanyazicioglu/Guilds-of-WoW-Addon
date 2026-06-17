@@ -124,6 +124,8 @@ function LootHistoryRCLC:ProcessRCLCLootHistory()
     if not lootDB then return end
 
     local store = Store:GetStore();
+    if not store then return end
+
     local importCount = 0;
 
     for playerKey, entries in pairs(lootDB) do

@@ -114,13 +114,6 @@ function GOW:OnInitialize()
 			else
 				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
 			end
-		elseif (msg:match("^lh") and GOW.Helper:IsWishlistsEnabled() and GOW.consts.ENABLE_DEBUGGING) then
-			local subcmd = msg:match("^lh%s+(%S+)") or "";
-			if GOW.LootHistory then
-				GOW.LootHistory:HandleSlashCommand(subcmd);
-			else
-				GOW.Logger:PrintErrorMessage("LootHistory module not loaded.");
-			end
 		else
 			Core:ToggleWindow();
 		end

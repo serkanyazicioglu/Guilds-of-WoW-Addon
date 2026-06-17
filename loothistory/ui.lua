@@ -122,6 +122,48 @@ function LootHistoryUI:PopulateRow(row, entry)
     end
 end
 
+function LootHistoryUI:ShowEmptyState(container)
+    local scrollChild = container.lhScrollChild;
+    if not container.emptyStateText then
+        local emptyText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+        emptyText:SetPoint("TOP", scrollChild, "TOP", 0, -40);
+        emptyText:SetPoint("LEFT", scrollChild, "LEFT", 16, 0);
+        emptyText:SetPoint("RIGHT", scrollChild, "RIGHT", -16, 0);
+        emptyText:SetJustifyH("CENTER");
+        emptyText:SetTextColor(0.55, 0.55, 0.55, 1);
+        container.emptyStateText = emptyText;
+    end
+    local rclcAvailable = RCLC:IsRCLCAvailable() and "|cff00ff00Yes|r" or "|cffff0000No|r";
+    container.emptyStateText:SetText(
+        "No loot history found.\n\n" ..
+        "Loot history is recorded automatically after raids\n" ..
+        "or when an RCLC loot session ends.\n\n" ..
+        "RCLootCouncil detected: " .. rclcAvailable .. "\n\n" ..
+        "Use \"Scan RCLC\" to import previous sessions,\n" ..
+        "or type /reload if you just installed the addon."
+    );
+    container.emptyStateText:Show();
+end
+
+function LootHistoryUI:HideEmptyState(container)
+    if container.emptyStateText then
+        container.emptyStateText:Hide();
+    end
+end
+
+function LootHistoryUI:ApplyRowBackground(row, index)
+    if not row.bg then
+        row.bg = row:CreateTexture(nil, "BACKGROUND");
+        row.bg:SetAllPoints(row);
+        row.bg:SetTexture("Interface\\Buttons\\WHITE8x8");
+    end
+    if index % 2 == 0 then
+        row.bg:SetVertexColor(1, 1, 1, 0.03);
+    else
+        row.bg:SetVertexColor(0, 0, 0, 0.1);
+    end
+end
+
 function LootHistoryUI:PopulateLootHistoryView(container)
     if container.lootHistoryRows then
         for _, row in ipairs(container.lootHistoryRows) do
@@ -186,6 +228,12 @@ function LootHistoryUI:PopulateLootHistoryView(container)
 
     container.headerBar.countText:SetText(#entries .. " entries");
 
+    if #entries == 0 then
+        self:ShowEmptyState(container);
+    else
+        self:HideEmptyState(container);
+    end
+
     local yOffset = 0;
     for i, entry in ipairs(entries) do
         local row = container.lootHistoryRows[i];
@@ -198,17 +246,7 @@ function LootHistoryUI:PopulateLootHistoryView(container)
         row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
         self:PopulateRow(row, entry);
         row:Show();
-
-        if not row.bg then
-            row.bg = row:CreateTexture(nil, "BACKGROUND");
-            row.bg:SetAllPoints(row);
-            row.bg:SetTexture("Interface\\Buttons\\WHITE8x8");
-        end
-        if i % 2 == 0 then
-            row.bg:SetVertexColor(1, 1, 1, 0.03);
-        else
-            row.bg:SetVertexColor(0, 0, 0, 0.1);
-        end
+        self:ApplyRowBackground(row, i);
 
         yOffset = yOffset + ROW_HEIGHT;
     end
