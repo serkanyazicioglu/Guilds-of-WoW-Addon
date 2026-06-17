@@ -7,6 +7,7 @@ local LootHistoryRCLC = {};
 GOW.LootHistoryRCLC = LootHistoryRCLC;
 
 local RECONCILE_WINDOW_SECONDS = 300;
+local SEASON_LOOKBACK_SECONDS = 43200; -- 12 hrs
 
 function LootHistoryRCLC:GetRCLCGlobal()
     return _G["RCLootCouncil"] or _G["RCLootCouncil_Classic"];
@@ -39,7 +40,7 @@ function LootHistoryRCLC:GetRCLCLootDB()
             return histModule.db.factionrealm;
         end
         if ok and not histModule then
-            GOW.Logger:Warn("LootHistoryRCLC: RCLC.GetModule('RCLootHistory') returned nil. RCLC import unavailable.");
+            GOW.Logger:Debug("LootHistoryRCLC: RCLC.GetModule('RCLootHistory') returned nil. RCLC import unavailable.");
         end
     end
 
@@ -107,7 +108,7 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
 
     if entry.awardedAt > 0 and C_MythicPlus and C_MythicPlus.GetCurrentSeason then
         local age = GetServerTime() - entry.awardedAt;
-        if age <= 43200 then -- 12 hrs
+        if age <= SEASON_LOOKBACK_SECONDS then
             entry.season = C_MythicPlus.GetCurrentSeason();
         end
     end

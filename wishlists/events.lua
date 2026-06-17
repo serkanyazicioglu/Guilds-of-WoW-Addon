@@ -51,6 +51,20 @@ function GoWWishlists:HandleLootHistoryEvents()
     end);
 end
 
+function GoWWishlists:MarkWishlistObtained(itemId, difficulty)
+    for _, entry in ipairs(self.state.allItems) do
+        if entry.itemId == itemId
+            and (not difficulty or entry.difficulty == difficulty)
+            and not entry.isObtained then
+            entry.isObtained = true;
+            GOW.Logger:Debug("Wishlist item marked obtained: " .. tostring(itemId) .. " (" .. tostring(entry.difficulty) .. ")");
+            return true;
+        end
+    end
+
+    return false;
+end
+
 function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encounterName, difficulty)
     if not dropInfo then return end
 
@@ -90,7 +104,13 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
                 local _, _, difficultyID = GetInstanceInfo();
                 local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID);
                 if entry then
-                    Store:SaveDropEntry(entry);
+                    local saved = Store:SaveDropEntry(entry);
+                    if saved then
+                        local wasOnWishlist = self:MarkWishlistObtained(itemId, difficulty);
+                        if wasOnWishlist then
+                            GOW.Logger:PrintSuccessMessage(itemLink .. " obtained! Removed from your wishlist.");
+                        end
+                    end
                 end
             end
         end

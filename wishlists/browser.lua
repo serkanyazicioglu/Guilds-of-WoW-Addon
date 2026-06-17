@@ -220,7 +220,9 @@ local function RefreshStandaloneTab(frame, tabIndex)
         frame.titleText:SetText("|cff00ff00LOOT HISTORY|r");
         if frame.subtitleText then frame.subtitleText:SetText("") end
         frame.compactBtn:Hide();
-        GOW.LootHistoryUI:PopulateLootHistoryView(frame.lootHistoryContainer);
+        if GOW.LootHistoryUI then
+            GOW.LootHistoryUI:PopulateLootHistoryView(frame.lootHistoryContainer);
+        end
     end
 end
 
@@ -396,7 +398,9 @@ function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
             GoWWishlists:PopulateGuildWishlistView(self.guildFrame);
         end
         if self.activeTab == 3 then
-            GOW.LootHistoryUI:PopulateLootHistoryView(self.lootHistoryContainer);
+            if GOW.LootHistoryUI then
+                GOW.LootHistoryUI:PopulateLootHistoryView(self.lootHistoryContainer);
+            end
         end
     end
 

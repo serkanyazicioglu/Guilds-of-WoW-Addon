@@ -129,14 +129,17 @@ function LootHistoryUI:ShowEmptyState(container)
         emptyText:SetTextColor(0.55, 0.55, 0.55, 1);
         container.emptyStateText = emptyText;
     end
-    local rclcAvailable = RCLC:IsRCLCAvailable() and "|cff00ff00Yes|r" or "|cffff0000No|r";
+    local rclcAvailable = RCLC:IsRCLCAvailable();
+    local rclcStatus = rclcAvailable and "|cff00ff00Yes|r" or "|cffff0000No|r";
+    local rclcInstructions = rclcAvailable
+        and "Use \"Scan RCLC\" to import previous sessions,\nor type /reload if you just installed the addon."
+        or "Install RCLootCouncil to import loot history from\nprevious RCLC sessions, or type /reload if you just installed the addon.";
     container.emptyStateText:SetText(
         "No loot history found.\n\n" ..
         "Loot history is recorded automatically after raids\n" ..
         "or when an RCLC loot session ends.\n\n" ..
-        "RCLootCouncil detected: " .. rclcAvailable .. "\n\n" ..
-        "Use \"Scan RCLC\" to import previous sessions,\n" ..
-        "or type /reload if you just installed the addon."
+        "RCLootCouncil detected: " .. rclcStatus .. "\n\n" ..
+        rclcInstructions
     );
     container.emptyStateText:Show();
 end

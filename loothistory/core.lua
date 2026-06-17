@@ -153,9 +153,4 @@ function LootHistory:PollRCLCSession()
     self.state.rclcSessionWasActive = isActive;
 end
 
-function LootHistory:ProcessRCLCLootHistory()
-    local RCLC = GOW.LootHistoryRCLC;
-    if RCLC:IsRCLCAvailable() and not RCLC:IsSessionActive() then
-        RCLC:ProcessRCLCLootHistory();
-    end
-end
+
