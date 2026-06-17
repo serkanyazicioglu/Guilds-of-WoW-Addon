@@ -66,7 +66,6 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
         GOW.Logger:Debug("Loot history: skipping duplicate drop " .. dropKey);
         return true;
     end
-    if dropKey then processedDrops[dropKey] = true; end
 
     local winner = dropInfo.winner;
     local winnerName = winner and (winner.name or winner.playerName) or nil;
@@ -95,6 +94,10 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
                 end
             end
         end
+    end
+
+    if dropKey and winnerName then
+        processedDrops[dropKey] = true;
     end
 
     return winnerName ~= nil;

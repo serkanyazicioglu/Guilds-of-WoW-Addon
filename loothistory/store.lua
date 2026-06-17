@@ -52,6 +52,7 @@ function LootHistoryStore:MakeFallbackHash(entry)
         entry.encounter and entry.encounter.boss or "",
         entry.encounter and entry.encounter.instance or "",
     };
+    -- Simple string hash: concatenate and compute a numeric hash
     local str = table.concat(parts, "|");
     local hash = 0;
     for i = 1, #str do

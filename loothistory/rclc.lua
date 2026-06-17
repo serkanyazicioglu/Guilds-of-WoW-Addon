@@ -39,7 +39,7 @@ function LootHistoryRCLC:GetRCLCLootDB()
             return histModule.db.factionrealm;
         end
         if ok and not histModule then
-            GOW.Logger:Debug("LootHistoryRCLC: RCLC.GetModule('RCLootHistory') returned nil. RCLC import unavailable.");
+            GOW.Logger:Warn("LootHistoryRCLC: RCLC.GetModule('RCLootHistory') returned nil. RCLC import unavailable.");
         end
     end
 
@@ -62,6 +62,7 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
     end
     entry.winner.class = rclcEntry.class or "";
 
+    -- Determine isSelf
     local charInfo = GoWWishlists.state and GoWWishlists.state.currentCharInfo;
     if charInfo then
         local selfKey = (charInfo.name or "") .. "-" .. (charInfo.realmNormalized or "");
@@ -153,6 +154,7 @@ function LootHistoryRCLC:ProcessRCLCLootHistory()
         end
     end
 
+    -- Update ingestion metadata
     store.ingestion.rclc.lastScannedAt = GetServerTime();
 
     if importCount > 0 then
