@@ -102,6 +102,8 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
         iSubClass = rclcEntry.iSubClass,
     };
 
+    -- RCLC entry IDs are formatted as "{unixTimestamp}-{sessionId}-{entryIndex}"
+    -- e.g. "1703001234-1-5". Extract the leading timestamp for awardedAt.
     if rclcEntry.id then
         entry.awardedAt = tonumber((rclcEntry.id):match("^(%d+)")) or 0;
     end
@@ -113,9 +115,7 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
         end
     end
 
-    if entry.sourceEntryId == "" then
-        entry.sourceEntryId = tostring(Store:MakeFallbackHash(entry));
-    end
+    -- If RCLC entry has no id, sourceEntryId remains ""; SaveDropEntry will reject it.
     entry.canonicalId = Store:MakeCanonicalId(entry);
 
     return entry;
@@ -127,7 +127,7 @@ function LootHistoryRCLC:ProcessRCLCLootHistory()
     local lootDB = self:GetRCLCLootDB();
     if not lootDB then return end
 
-    local store = Store:GetStore();
+    local store = Store:EnsureStore();
     if not store then return end
 
     local importCount = 0;

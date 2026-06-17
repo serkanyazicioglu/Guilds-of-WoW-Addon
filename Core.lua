@@ -85,6 +85,8 @@ function GOW:OnInitialize()
 	self.GUI = LibStub("AceGUI-3.0");
 	self.DB = LibStub("AceDB-3.0"):New("GoWDB", GOW.defaults, "Default");
 
+	-- TODO(2.x): Remove this migration once all users are on a version that stores
+	-- loot history via loothistory/store. Gate behind a profile version bump.
 	-- Migration: remove legacy loot history arrays (replaced by loothistory/store)
 	if self.DB and self.DB.profile then
 		if self.DB.profile.lootHistory ~= nil then

@@ -8,11 +8,6 @@ GOW.LootHistoryPersonal = LootHistoryPersonal;
 
 local personalEntryCounter = 0;
 
-function LootHistoryPersonal:IsRelevantForHistory(itemId)
-    if not GoWWishlists or not GoWWishlists.FindWishlistMatch then return nil end
-    return GoWWishlists:FindWishlistMatch(itemId);
-end
-
 function LootHistoryPersonal:GenerateSourceEntryId(itemId, timestamp)
     personalEntryCounter = personalEntryCounter + 1;
     return tostring(itemId or 0) .. "-" .. tostring(timestamp or 0) .. "-" .. tostring(personalEntryCounter);

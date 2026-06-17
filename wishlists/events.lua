@@ -97,10 +97,9 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
 
         local Personal = GOW.LootHistoryPersonal;
         local Store = GOW.LootHistoryStore;
-        local RCLC = GOW.LootHistoryRCLC;
         if Personal and Store then
-            local wishlistMatch = Personal:IsRelevantForHistory(itemId);
-            if wishlistMatch and not (RCLC and RCLC:IsSessionActive()) then
+            local wishlistMatch = self:FindWishlistMatch(itemId);
+            if wishlistMatch and not GOW.LootHistoryRCLC:IsSessionActive() then
                 local _, _, difficultyID = GetInstanceInfo();
                 local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID);
                 if entry then

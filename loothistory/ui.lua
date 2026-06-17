@@ -33,19 +33,20 @@ function LootHistoryUI:CreateRow(parent)
     icon:SetPoint("LEFT", row, "LEFT", 6, 0);
     row.icon = icon;
 
-    local itemText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    itemText:SetPoint("LEFT", icon, "RIGHT", 6, 0);
-    itemText:SetWidth(220);
-    itemText:SetJustifyH("LEFT");
-    itemText:SetWordWrap(false);
-    row.itemText = itemText;
-
     local winnerText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    winnerText:SetPoint("LEFT", itemText, "RIGHT", 8, 0);
     winnerText:SetWidth(120);
     winnerText:SetJustifyH("LEFT");
     winnerText:SetWordWrap(false);
     row.winnerText = winnerText;
+
+    local itemText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    itemText:SetPoint("LEFT", icon, "RIGHT", 6, 0);
+    itemText:SetPoint("RIGHT", winnerText, "LEFT", -8, 0);
+    itemText:SetJustifyH("LEFT");
+    itemText:SetWordWrap(false);
+    row.itemText = itemText;
+
+    winnerText:SetPoint("LEFT", itemText, "RIGHT", 8, 0);
 
     local sourceText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     sourceText:SetPoint("LEFT", winnerText, "RIGHT", 8, 0);
@@ -62,8 +63,8 @@ function LootHistoryUI:CreateRow(parent)
     row.difficultyText = difficultyText;
 
     local timeText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    timeText:SetPoint("LEFT", difficultyText, "RIGHT", 8, 0);
     timeText:SetPoint("RIGHT", row, "RIGHT", -8, 0);
-    timeText:SetWidth(70);
     timeText:SetJustifyH("RIGHT");
     timeText:SetWordWrap(false);
     row.timeText = timeText;

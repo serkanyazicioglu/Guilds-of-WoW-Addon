@@ -9,7 +9,6 @@ LootHistory.SOURCE_RCLC = "rclc";
 LootHistory.state = {
     rclcPollTimer = nil,
     rclcSessionWasActive = false,
-    isInitialized = false,
 };
 
 local RCLC_POLL_INTERVAL_SECONDS = 30;
@@ -21,17 +20,9 @@ function LootHistory:PopulateItemFromLink(entry, itemLink)
     entry.item.itemID = tonumber(string.match(itemLink, "item:(%d+)"));
     entry.item.itemString = string.match(itemLink, "(item:[^|]+)") or "";
 
-    if C_Item and C_Item.GetItemInfo then
-        local itemName, _, _, itemLevel, _, _, itemSubType, _, itemEquipLoc, iconTexture = C_Item.GetItemInfo(itemLink);
-        entry.item.name = itemName or "";
-        entry.item.ilvl = itemLevel;
-        entry.item.subType = itemSubType or "";
-        entry.item.equipLoc = itemEquipLoc or "";
-        if iconTexture then
-            entry.item.icon = string.lower(string.match(tostring(iconTexture), "([^\\/]+)$") or "");
-        end
-    elseif C_Item and C_Item.GetItemInfoInstant then
-        local _, _, itemSubType, itemEquipLoc = C_Item.GetItemInfoInstant(itemLink);
+    -- Fast path: GetItemInfoInstant is always available and never blocks
+    if C_Item and C_Item.GetItemInfoInstant then
+        local _, _, _, _, _, _, itemSubType, _, itemEquipLoc = C_Item.GetItemInfoInstant(itemLink);
         entry.item.subType = itemSubType or "";
         entry.item.equipLoc = itemEquipLoc or "";
         if C_Item.GetItemIconByID and entry.item.itemID then
@@ -39,6 +30,17 @@ function LootHistory:PopulateItemFromLink(entry, itemLink)
             if iconTexture then
                 entry.item.icon = string.lower(string.match(tostring(iconTexture), "([^\\/]+)$") or "");
             end
+        end
+    end
+
+    -- Best-effort enrichment: GetItemInfo provides name and ilvl when cached
+    if C_Item and C_Item.GetItemInfo then
+        local itemName, _, _, itemLevel, _, _, _, _, _, iconTexture = C_Item.GetItemInfo(itemLink);
+        if itemName then entry.item.name = itemName; end
+        if itemLevel then entry.item.ilvl = itemLevel; end
+        -- GetItemInfo icon may be available even when GetItemInfoInstant icon wasn't
+        if iconTexture and entry.item.icon == "" then
+            entry.item.icon = string.lower(string.match(tostring(iconTexture), "([^\\/]+)$") or "");
         end
     end
 end
@@ -85,6 +87,7 @@ function LootHistory:NewCanonicalEntry()
         },
         awardedAt = 0,
         season = nil,
+        rclc = nil,  -- populated only for RCLC-sourced entries
     };
 end
 
@@ -94,13 +97,14 @@ function LootHistory:Init()
     local Store = GOW.LootHistoryStore;
     local RCLC = GOW.LootHistoryRCLC;
 
-    Store:GetStore();
+    Store:EnsureStore();
 
     -- Start RCLC session poll timer (paused during combat)
     if RCLC:IsRCLCAvailable() then
         self.state.rclcSessionWasActive = RCLC:IsSessionActive();
         self:StartRCLCPollTimer();
 
+        -- This frame lives for the duration of the session (no explicit cleanup needed)
         local combatFrame = CreateFrame("Frame");
         combatFrame:RegisterEvent("PLAYER_REGEN_DISABLED");
         combatFrame:RegisterEvent("PLAYER_REGEN_ENABLED");
@@ -109,7 +113,6 @@ function LootHistory:Init()
                 LootHistory:StopRCLCPollTimer();
             elseif event == "PLAYER_REGEN_ENABLED" then
                 LootHistory:StartRCLCPollTimer();
-                LootHistory:PollRCLCSession();
             end
         end);
     end
@@ -121,7 +124,6 @@ function LootHistory:Init()
         end
     end
 
-    self.state.isInitialized = true;
     GOW.Logger:Debug("LootHistory: Initialized");
 end
 

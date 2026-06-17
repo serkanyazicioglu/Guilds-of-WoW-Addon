@@ -6,11 +6,17 @@ GOW.LootHistoryStore = LootHistoryStore;
 local STORE_VERSION = "1.0.0";
 local STARTUP_REFRESH_THRESHOLD_SECONDS = 3600;
 
-function LootHistoryStore:GetStore()
-    if not GOW.DB then return nil end
+function LootHistoryStore:EnsureStore()
+    if not GOW.DB then
+        GOW.Logger:Debug("LootHistoryStore: EnsureStore failed: no GOW.DB");
+        return nil;
+    end
 
     local guildKey = GOW.Core:GetGuildKey();
-    if not guildKey then return nil end
+    if not guildKey then
+        GOW.Logger:Debug("LootHistoryStore: EnsureStore failed: no guild key (player not in a guild)");
+        return nil;
+    end
 
     local guildData = GOW.DB.profile.guilds[guildKey];
     if not guildData.lootHistory then
@@ -21,13 +27,13 @@ function LootHistoryStore:GetStore()
 end
 
 function LootHistoryStore:GetEntry(canonicalId)
-    local store = self:GetStore();
+    local store = self:EnsureStore();
     if not store then return nil end
     return store.entries[canonicalId];
 end
 
 function LootHistoryStore:GetAllEntries()
-    local store = self:GetStore();
+    local store = self:EnsureStore();
     if not store then return {} end
     return store.entries;
 end
@@ -36,29 +42,8 @@ function LootHistoryStore:MakeCanonicalId(entry)
     if not entry then return "" end
     local source = entry.source or "";
     local sourceEntryId = entry.sourceEntryId or "";
-    if sourceEntryId ~= "" then
-        return source .. "-" .. sourceEntryId;
-    end
-
-    return source .. "-" .. self:MakeFallbackHash(entry);
-end
-
-function LootHistoryStore:MakeFallbackHash(entry)
-    if not entry then return "0" end
-    local parts = {
-        entry.winner and entry.winner.fullName or "",
-        entry.item and tostring(entry.item.itemID or "") or "",
-        entry.awardedAt or 0,
-        entry.encounter and entry.encounter.boss or "",
-        entry.encounter and entry.encounter.instance or "",
-    };
-    -- Simple string hash: concatenate and compute a numeric hash
-    local str = table.concat(parts, "|");
-    local hash = 0;
-    for i = 1, #str do
-        hash = (hash * 31 + string.byte(str, i)) % 2147483647;
-    end
-    return tostring(hash);
+    if sourceEntryId == "" then return "" end
+    return source .. "-" .. sourceEntryId;
 end
 
 function LootHistoryStore:IsDuplicate(entry)
@@ -69,11 +54,19 @@ end
 
 function LootHistoryStore:SaveDropEntry(entry)
     if not entry then return false end
-    local store = self:GetStore();
-    if not store then return false end
+    local store = self:EnsureStore();
+    if not store then
+        GOW.Logger:Debug("LootHistoryStore: SaveDropEntry failed: no store (player not in a guild?)");
+        return false;
+    end
 
     if not entry.canonicalId or entry.canonicalId == "" then
         entry.canonicalId = self:MakeCanonicalId(entry);
+    end
+
+    if entry.canonicalId == "" then
+        GOW.Logger:Debug("LootHistoryStore: SaveDropEntry failed: no canonicalId could be generated");
+        return false;
     end
 
     if self:IsDuplicate(entry) then
@@ -87,7 +80,7 @@ function LootHistoryStore:SaveDropEntry(entry)
 end
 
 function LootHistoryStore:RemoveDropEntry(canonicalId)
-    local store = self:GetStore();
+    local store = self:EnsureStore();
     if not store then return false end
     if not store.entries[canonicalId] then return false end
 
@@ -98,7 +91,7 @@ function LootHistoryStore:RemoveDropEntry(canonicalId)
 end
 
 function LootHistoryStore:ShouldRefreshOnStartup(now)
-    local store = self:GetStore();
+    local store = self:EnsureStore();
     if not store then return false end
 
     local lastScanned = store.ingestion.rclc.lastScannedAt or 0;
