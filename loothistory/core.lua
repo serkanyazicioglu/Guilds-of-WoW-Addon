@@ -91,6 +91,15 @@ function LootHistory:NewCanonicalEntry()
     };
 end
 
+function LootHistory:PopulateSeason(entry, maxAgeSeconds)
+    if not C_MythicPlus or not C_MythicPlus.GetCurrentSeason then return end
+    if maxAgeSeconds then
+        local age = GetServerTime() - (entry.awardedAt or 0);
+        if age > maxAgeSeconds then return end
+    end
+    entry.season = C_MythicPlus.GetCurrentSeason();
+end
+
 function LootHistory:Init()
     if not GOW.Helper:IsWishlistsEnabled() then return end
 

@@ -47,9 +47,7 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
 
     entry.awardedAt = now;
 
-    if C_MythicPlus and C_MythicPlus.GetCurrentSeason then
-        entry.season = C_MythicPlus.GetCurrentSeason();
-    end
+    LootHistory:PopulateSeason(entry);
 
     entry.canonicalId = Store:MakeCanonicalId(entry);
 

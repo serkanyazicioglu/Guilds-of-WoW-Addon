@@ -108,11 +108,8 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
         entry.awardedAt = tonumber((rclcEntry.id):match("^(%d+)")) or 0;
     end
 
-    if entry.awardedAt > 0 and C_MythicPlus and C_MythicPlus.GetCurrentSeason then
-        local age = GetServerTime() - entry.awardedAt;
-        if age <= SEASON_LOOKBACK_SECONDS then
-            entry.season = C_MythicPlus.GetCurrentSeason();
-        end
+    if entry.awardedAt > 0 then
+        LootHistory:PopulateSeason(entry, SEASON_LOOKBACK_SECONDS);
     end
 
     -- If RCLC entry has no id, sourceEntryId remains ""; SaveDropEntry will reject it.
@@ -136,9 +133,7 @@ function LootHistoryRCLC:ProcessRCLCLootHistory()
         if type(entries) == "table" then
             for _, rclcEntry in ipairs(entries) do
                 local entryId = rclcEntry.id or "";
-                if entryId ~= "" and Store:GetEntry(LootHistory.SOURCE_RCLC .. "-" .. entryId) then
-                    -- Already imported, skip
-                else
+                if entryId == "" or not Store:GetEntry(LootHistory.SOURCE_RCLC .. "-" .. entryId) then
                     local canonical = self:MapToCanonical(playerKey, rclcEntry);
                     if canonical then
                         local persisted = Store:SaveDropEntry(canonical);

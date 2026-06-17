@@ -14,6 +14,15 @@ local factionIcons = {
     Neutral = "Interface\\Icons\\Achievement_character_pandaren_female"
 };
 
+function Helper:DeepCopy(tbl)
+    if type(tbl) ~= "table" then return tbl end
+    local copy = {};
+    for k, v in pairs(tbl) do
+        copy[k] = self:DeepCopy(v);
+    end
+    return copy;
+end
+
 function Helper:GetRoles()
     return roles;
 end

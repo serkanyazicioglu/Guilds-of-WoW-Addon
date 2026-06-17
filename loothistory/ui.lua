@@ -12,7 +12,16 @@ local ROW_HEIGHT = 28;
 local HEADER_HEIGHT = 32;
 local ICON_SIZE = 22;
 
+local sortedCache = nil;
+local sortedGeneration = nil;
+
 function LootHistoryUI:GetSortedEntries()
+    local store = Store:EnsureStore();
+    local gen = store and store.generation or nil;
+    if sortedCache and gen and gen == sortedGeneration then
+        return sortedCache;
+    end
+
     local entries = Store:GetAllEntries();
     local sorted = {};
     for _, entry in pairs(entries) do
@@ -21,6 +30,9 @@ function LootHistoryUI:GetSortedEntries()
     table.sort(sorted, function(a, b)
         return (a.awardedAt or 0) > (b.awardedAt or 0);
     end);
+
+    sortedCache = sorted;
+    sortedGeneration = gen;
     return sorted;
 end
 

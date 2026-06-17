@@ -35,7 +35,7 @@ end
 function LootHistoryStore:GetAllEntries()
     local store = self:EnsureStore();
     if not store then return {} end
-    return store.entries;
+    return GOW.Helper:DeepCopy(store.entries);
 end
 
 function LootHistoryStore:MakeCanonicalId(entry)
@@ -48,7 +48,6 @@ end
 
 function LootHistoryStore:IsDuplicate(entry)
     if not entry then return true end
-    if not entry.canonicalId or entry.canonicalId == "" then return false end
     return self:GetEntry(entry.canonicalId) ~= nil;
 end
 
@@ -74,6 +73,7 @@ function LootHistoryStore:SaveDropEntry(entry)
     end
 
     store.entries[entry.canonicalId] = entry;
+    store.generation = (store.generation or 0) + 1;
 
     GOW.Logger:Debug("LootHistoryStore: Persisted entry " .. entry.canonicalId);
     return true;
@@ -85,6 +85,7 @@ function LootHistoryStore:RemoveDropEntry(canonicalId)
     if not store.entries[canonicalId] then return false end
 
     store.entries[canonicalId] = nil;
+    store.generation = (store.generation or 0) + 1;
 
     GOW.Logger:Debug("LootHistoryStore: Removed entry " .. canonicalId);
     return true;
@@ -103,6 +104,7 @@ function LootHistoryStore:NewStoreDefaults()
     return {
         version = STORE_VERSION,
         entries = {},
+        generation = 0,
 
         ingestion = {
             rclc = {
