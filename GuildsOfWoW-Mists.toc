@@ -1,9 +1,9 @@
-## Interface: 50503
+## Interface: 50503, 50504
 ## Title: Guilds of WoW
 ## Notes: Guilds of WoW guild herald for Classic Progression servers
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 2.1.8
+## Version: 2.1.9
 ## SavedVariables: GoWDB
 ## OptionalDeps: RCLootCouncil_Classic
 ## IconTexture: Interface\Addons\GuildsOfWoW\icons\guilds-of-wow-logo-flag-plain.png

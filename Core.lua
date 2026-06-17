@@ -955,7 +955,7 @@ function Core:ResetCalendar()
 end
 
 function Core:searchForEvent(event)
-	if (not GOW.Helper:IsInGameCalendarAccessible()) then
+	if (GOW.Helper:IsInCombat() or not GOW.Helper:IsInGameCalendarAccessible()) then
 		return -2;
 	end
 
