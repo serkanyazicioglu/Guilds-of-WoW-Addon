@@ -2,8 +2,6 @@ local GOW = GuildsOfWow;
 local GoWWishlists = GOW.Wishlists;
 local ns = select(2, ...);
 
-local processedDrops = {};
-
 function GoWWishlists:Initialize()
     if not ns.WISHLISTS then GOW.Logger:Debug("No wishlist data found. Skipping wishlist initialization.") return end
 
@@ -62,13 +60,13 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
     local itemId = tonumber(itemLink:match("item:(%d+)"));
     if not itemId then return end
 
-    -- Deduplicate: key on encounterID-lootListID to uniquely identify a specific drop.
-    -- If lootListID is missing (should not happen for LOOT_HISTORY_UPDATE_DROP), skip dedup.
+    local processedDrops = self.state.processedDrops;
     local dropKey = lootListID and (encounterID .. "-" .. lootListID) or nil;
     if dropKey and processedDrops[dropKey] then
         GOW.Logger:Debug("Loot history: skipping duplicate drop " .. dropKey);
         return true;
     end
+    if dropKey then processedDrops[dropKey] = true; end
 
     local winner = dropInfo.winner;
     local winnerName = winner and (winner.name or winner.playerName) or nil;
@@ -84,7 +82,6 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
 
         GOW.Logger:Debug(string.format("Player won item %s (%d) from %s", itemLink, itemId, encounterName));
 
-        -- Record to canonical loot history store
         local Personal = GOW.LootHistoryPersonal;
         local Store = GOW.LootHistoryStore;
         local RCLC = GOW.LootHistoryRCLC;
@@ -95,7 +92,6 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
                 local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID);
                 if entry then
                     Store:SaveDropEntry(entry);
-                    if dropKey then processedDrops[dropKey] = true; end
                 end
             end
         end

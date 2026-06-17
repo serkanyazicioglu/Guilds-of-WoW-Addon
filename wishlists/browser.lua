@@ -395,7 +395,9 @@ function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
             self.guildFrame.guildDifficultyFilter = self.guildDifficultyFilter or "All";
             GoWWishlists:PopulateGuildWishlistView(self.guildFrame);
         end
-        GOW.LootHistoryUI:PopulateLootHistoryView(self.lootHistoryContainer);
+        if self.activeTab == 3 then
+            GOW.LootHistoryUI:PopulateLootHistoryView(self.lootHistoryContainer);
+        end
     end
 
     container:RefreshContent();

@@ -92,8 +92,8 @@ end
 function LootHistoryUI:PopulateRow(row, entry)
     row.itemLink = entry.item.link;
 
-    local iconTexture = nil;
-    if entry.item.itemID then
+    local iconTexture = entry.item.icon;
+    if not iconTexture and entry.item.itemID then
         iconTexture = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(entry.item.itemID);
     end
 
@@ -115,11 +115,7 @@ function LootHistoryUI:PopulateRow(row, entry)
 
     row.difficultyText:SetText(entry.encounter.difficulty or "");
 
-    if Duration then
-        row.timeText:SetText(Duration:Format(entry.awardedAt));
-    else
-        row.timeText:SetText("");
-    end
+    row.timeText:SetText(Duration:Format(entry.awardedAt));
 end
 
 function LootHistoryUI:ShowEmptyState(container)

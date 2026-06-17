@@ -14,6 +14,7 @@ GoWWishlists.state = {
     pendingItemRows = {},
     raidNameCache = {},
     compactMode = false,
+    processedDrops = {},
 };
 
 GoWWishlists.frames = {};

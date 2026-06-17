@@ -38,6 +38,9 @@ function LootHistoryRCLC:GetRCLCLootDB()
         if ok and histModule and histModule.db and histModule.db.factionrealm then
             return histModule.db.factionrealm;
         end
+        if ok and not histModule then
+            GOW.Logger:Debug("LootHistoryRCLC: RCLC.GetModule('RCLootHistory') returned nil. RCLC import unavailable.");
+        end
     end
 
     return nil;
@@ -59,7 +62,6 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
     end
     entry.winner.class = rclcEntry.class or "";
 
-    -- Determine isSelf
     local charInfo = GoWWishlists.state and GoWWishlists.state.currentCharInfo;
     if charInfo then
         local selfKey = (charInfo.name or "") .. "-" .. (charInfo.realmNormalized or "");
@@ -151,7 +153,6 @@ function LootHistoryRCLC:ProcessRCLCLootHistory()
         end
     end
 
-    -- Update ingestion metadata
     store.ingestion.rclc.lastScannedAt = GetServerTime();
 
     if importCount > 0 then
@@ -162,21 +163,20 @@ end
 function LootHistoryRCLC:ReconcilePersonalOverlaps(rclcEntry)
     if not rclcEntry.winner.isSelf then return end
 
+    local itemID = rclcEntry.item.itemID;
+    if not itemID then return end
+
     local allEntries = Store:GetAllEntries();
     local reconcileWindow = RECONCILE_WINDOW_SECONDS;
 
-    local toRemove = {};
     for canonicalId, existingEntry in pairs(allEntries) do
         if existingEntry.source == LootHistory.SOURCE_PERSONAL
-            and existingEntry.item.itemID == rclcEntry.item.itemID
+            and existingEntry.item.itemID == itemID
             and existingEntry.awardedAt and rclcEntry.awardedAt
             and math.abs(existingEntry.awardedAt - rclcEntry.awardedAt) <= reconcileWindow then
-            table.insert(toRemove, canonicalId);
+            Store:RemoveDropEntry(canonicalId);
+            GOW.Logger:Debug("LootHistoryRCLC: Reconciled personal entry " .. canonicalId .. " with RCLC entry");
+            return  -- at most one personal entry will match per RCLC entry
         end
-    end
-
-    for _, canonicalId in ipairs(toRemove) do
-        Store:RemoveDropEntry(canonicalId);
-        GOW.Logger:Debug("LootHistoryRCLC: Reconciled personal entry " .. canonicalId .. " with RCLC entry");
     end
 end

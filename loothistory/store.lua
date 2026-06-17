@@ -17,13 +17,7 @@ function LootHistoryStore:GetStore()
         guildData.lootHistory = LootHistoryStore:NewStoreDefaults();
     end
 
-    local store = guildData.lootHistory;
-
-    if not store.entries then store.entries = {} end
-    if not store.ingestion then store.ingestion = {} end
-    if not store.ingestion.rclc then store.ingestion.rclc = { lastScannedAt = 0 } end
-
-    return store;
+    return guildData.lootHistory;
 end
 
 function LootHistoryStore:GetEntry(canonicalId)
@@ -58,7 +52,6 @@ function LootHistoryStore:MakeFallbackHash(entry)
         entry.encounter and entry.encounter.boss or "",
         entry.encounter and entry.encounter.instance or "",
     };
-    -- Simple string hash: concatenate and compute a numeric hash
     local str = table.concat(parts, "|");
     local hash = 0;
     for i = 1, #str do
