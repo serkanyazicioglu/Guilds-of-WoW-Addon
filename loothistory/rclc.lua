@@ -166,15 +166,20 @@ function LootHistoryRCLC:ReconcilePersonalOverlaps(rclcEntry)
 
     local allEntries = Store:GetAllEntries();
     local reconcileWindow = RECONCILE_WINDOW_SECONDS;
+    local toRemove = nil;
 
     for canonicalId, existingEntry in pairs(allEntries) do
         if existingEntry.source == LootHistory.SOURCE_PERSONAL
             and existingEntry.item.itemID == itemID
             and existingEntry.awardedAt and rclcEntry.awardedAt
             and math.abs(existingEntry.awardedAt - rclcEntry.awardedAt) <= reconcileWindow then
-            Store:RemoveDropEntry(canonicalId);
-            GOW.Logger:Debug("LootHistoryRCLC: Reconciled personal entry " .. canonicalId .. " with RCLC entry");
-            return  -- at most one personal entry will match per RCLC entry
+            toRemove = canonicalId;
+            break;  -- at most one personal entry will match per RCLC entry
         end
+    end
+
+    if toRemove then
+        Store:RemoveDropEntry(toRemove);
+        GOW.Logger:Debug("LootHistoryRCLC: Reconciled personal entry " .. toRemove .. " with RCLC entry");
     end
 end

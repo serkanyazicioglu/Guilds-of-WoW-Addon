@@ -14,8 +14,12 @@ function LootHistoryStore:EnsureStore()
 
     local guildKey = GOW.Core:GetGuildKey();
     if not guildKey then
-        GOW.Logger:Debug("LootHistoryStore: EnsureStore failed: no guild key (player not in a guild)");
-        return nil;
+        if GOW.consts.ENABLE_DEBUGGING then
+            guildKey = "Bank of Nhea Test-debug";
+        else
+            GOW.Logger:Debug("LootHistoryStore: EnsureStore failed: no guild key (player not in a guild)");
+            return nil;
+        end
     end
 
     local guildData = GOW.DB.profile.guilds[guildKey];
@@ -35,7 +39,7 @@ end
 function LootHistoryStore:GetAllEntries()
     local store = self:EnsureStore();
     if not store then return {} end
-    return GOW.Helper:DeepCopy(store.entries);
+    return store.entries;
 end
 
 function LootHistoryStore:MakeCanonicalId(entry)

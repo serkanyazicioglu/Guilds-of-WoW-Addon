@@ -87,7 +87,6 @@ function LootHistory:NewCanonicalEntry()
         },
         awardedAt = 0,
         season = nil,
-        rclc = nil,  -- populated only for RCLC-sourced entries
     };
 end
 

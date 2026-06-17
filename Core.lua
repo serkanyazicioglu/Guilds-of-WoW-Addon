@@ -85,16 +85,15 @@ function GOW:OnInitialize()
 	self.GUI = LibStub("AceGUI-3.0");
 	self.DB = LibStub("AceDB-3.0"):New("GoWDB", GOW.defaults, "Default");
 
-	-- TODO(2.x): Remove this migration once all users are on a version that stores
-	-- loot history via loothistory/store. Gate behind a profile version bump.
 	-- Migration: remove legacy loot history arrays (replaced by loothistory/store)
-	if self.DB and self.DB.profile then
+	if self.DB and self.DB.profile and (self.DB.profile.version or 0) < 2 then
 		if self.DB.profile.lootHistory ~= nil then
 			self.DB.profile.lootHistory = nil;
 		end
 		if self.DB.profile.allLootHistory ~= nil then
 			self.DB.profile.allLootHistory = nil;
 		end
+		self.DB.profile.version = 2;
 	end
 
 	self.LDB = LibStub("LibDataBroker-1.1");
@@ -2012,12 +2011,7 @@ function Core:GetGuildKey()
 	local guildName, _, _, realmName = GetGuildInfo("player");
 
 	if (guildName == nil) then
-		if (GOW.consts.ENABLE_DEBUGGING and not IsInGuild()) then
-			guildName = "Bank of Nhea Test";
-			realmName = realmName or GetNormalizedRealmName() or "DebugRealm";
-		else
-			return nil;
-		end
+		return nil;
 	end
 
 	if (realmName == nil) then

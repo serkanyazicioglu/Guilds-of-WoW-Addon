@@ -66,10 +66,6 @@ local function UpdateRosterTabVisibility(self, host)
     end
 
     -- Loot history tab is always visible
-    local lhTab = host.lootHistoryTab;
-    if lhTab then
-        lhTab:Show();
-    end
 
     ReanchorTabs(host);
 end
@@ -123,7 +119,6 @@ local function InitializeWishlistTabHost(self, host, options)
     local lootHistoryTab = self:CreateTabButton(host, "|cff00ff00LOOT HISTORY|r", 3);
     lootHistoryTab:SetPoint("LEFT", rosterTab, "RIGHT", 4, 0);
     lootHistoryTab:SetWidth(options.lootHistoryTabWidth or 110);
-    lootHistoryTab:Hide();
 
     local tabIndicator = host:CreateTexture(nil, "ARTWORK", nil, 2);
     tabIndicator:SetTexture("Interface\\Buttons\\WHITE8x8");
@@ -323,9 +318,8 @@ end
 function GoWWishlists:ShowWishlistBrowserFrame()
     local frame = self:CreateWishlistBrowserFrame();
 
-    local isStale = self:IsWishlistDataStale();
     if frame.reloadBtn then
-        if isStale then frame.reloadBtn:Show() else frame.reloadBtn:Hide() end
+        if self:IsWishlistDataStale() then frame.reloadBtn:Show() else frame.reloadBtn:Hide() end
     end
 
     UpdateRosterTabVisibility(self, frame);
@@ -379,9 +373,8 @@ end
 function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
     local container = self:CreateCoreWishlistsFrame(parent);
 
-    local isStale = self:IsWishlistDataStale();
     if container.reloadBtn then
-        if isStale then container.reloadBtn:Show() else container.reloadBtn:Hide() end
+        if self:IsWishlistDataStale() then container.reloadBtn:Show() else container.reloadBtn:Hide() end
     end
 
     local subtitleProxy = { SetText = function(_, text) if setStatusFn then setStatusFn(text) end end };
