@@ -74,7 +74,7 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
     local winnerName = winner and (winner.name or winner.playerName) or nil;
 
     if winner and winner.isSelf then
-        if not encounterName then
+        if not encounterName and C_LootHistory then
             local encounterInfo = C_LootHistory.GetInfoForEncounter(encounterID);
             encounterName = encounterInfo and encounterInfo.encounterName or "Unknown";
         end

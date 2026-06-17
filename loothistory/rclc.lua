@@ -8,19 +8,23 @@ GOW.LootHistoryRCLC = LootHistoryRCLC;
 
 local RECONCILE_WINDOW_SECONDS = 300;
 
+function LootHistoryRCLC:GetRCLCGlobal()
+    return _G["RCLootCouncil"] or _G["RCLootCouncil_Classic"];
+end
+
 function LootHistoryRCLC:IsRCLCAvailable()
-    return _G["RCLootCouncil"] ~= nil;
+    return self:GetRCLCGlobal() ~= nil;
 end
 
 function LootHistoryRCLC:IsSessionActive()
-    if not self:IsRCLCAvailable() then return false end
-    return _G["RCLootCouncil"].handleLoot == true;
+    local RCLC = self:GetRCLCGlobal();
+    if not RCLC then return false end
+    return RCLC.handleLoot == true;
 end
 
 function LootHistoryRCLC:GetRCLCLootDB()
-    if not self:IsRCLCAvailable() then return nil end
-
-    local RCLC = _G["RCLootCouncil"];
+    local RCLC = self:GetRCLCGlobal();
+    if not RCLC then return nil end
 
     -- Preferred: public API
     if RCLC.GetHistoryDB then
