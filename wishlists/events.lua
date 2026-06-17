@@ -63,8 +63,9 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
     if not itemId then return end
 
     -- Deduplicate: key on encounterID-lootListID to uniquely identify a specific drop.
-    local dropKey = encounterID .. "-" .. (lootListID or itemId);
-    if processedDrops[dropKey] then
+    -- If lootListID is missing (should not happen for LOOT_HISTORY_UPDATE_DROP), skip dedup.
+    local dropKey = lootListID and (encounterID .. "-" .. lootListID) or nil;
+    if dropKey and processedDrops[dropKey] then
         GOW.Logger:Debug("Loot history: skipping duplicate drop " .. dropKey);
         return true;
     end
@@ -94,7 +95,7 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
                 local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID);
                 if entry then
                     Store:SaveDropEntry(entry);
-                    processedDrops[dropKey] = true;
+                    if dropKey then processedDrops[dropKey] = true; end
                 end
             end
         end

@@ -297,6 +297,7 @@ function GoWWishlists:CreateWishlistBrowserFrame()
         contentBottom = 20,
         personalContainerName = "GoWWishlistContainer",
         guildContainerName = "GoWGuildContainer",
+        lootHistoryContainerName = "GoWLootHistoryContainer",
         onTabChanged = RefreshStandaloneTab,
     });
 
@@ -355,6 +356,7 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
         contentOffsetY = -6,
         contentRight = 0,
         contentBottom = 0,
+        lootHistoryContainerName = "GoWCoreLootHistoryContainer",
     });
 
     local reloadBtn = L:CreateActionButton(container, {

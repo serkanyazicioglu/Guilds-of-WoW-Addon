@@ -24,8 +24,7 @@ GOW.defaults = {
 		rclcDisplayMode = "percent",
 		rclcShowTag = true,
 		rclcShowNote = true,
-		lootHistory = {},
-		allLootHistory = {},
+
 		wishlistInfoFramePos = nil,
 		wishlistBrowserFramePos = nil,
 		wishlistCompactMode = false,

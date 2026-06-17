@@ -38,19 +38,6 @@ function LootHistoryStore:GetAllEntries()
     return store.entries;
 end
 
-function LootHistoryStore:HasEntryBySource(source, sourceEntryId)
-    if not source or not sourceEntryId or sourceEntryId == "" then return false end
-    local store = self:GetStore();
-    if not store then return false end
-
-    for _, entry in pairs(store.entries) do
-        if entry.source == source and entry.sourceEntryId == sourceEntryId then
-            return true;
-        end
-    end
-    return false;
-end
-
 function LootHistoryStore:MakeCanonicalId(entry)
     if not entry then return "" end
     local source = entry.source or "";
@@ -82,21 +69,8 @@ end
 
 function LootHistoryStore:IsDuplicate(entry)
     if not entry then return true end
-
-    -- Primary: check source + sourceEntryId
-    if entry.source and entry.sourceEntryId and entry.sourceEntryId ~= "" then
-        if self:HasEntryBySource(entry.source, entry.sourceEntryId) then
-            return true;
-        end
-    end
-
-    -- Fallback: check canonical ID (which uses fallback hash if no sourceEntryId)
-    local canonicalId = self:MakeCanonicalId(entry);
-    if canonicalId ~= "" and self:GetEntry(canonicalId) then
-        return true;
-    end
-
-    return false;
+    if not entry.canonicalId or entry.canonicalId == "" then return false end
+    return self:GetEntry(entry.canonicalId) ~= nil;
 end
 
 function LootHistoryStore:SaveDropEntry(entry)
@@ -104,16 +78,17 @@ function LootHistoryStore:SaveDropEntry(entry)
     local store = self:GetStore();
     if not store then return false end
 
+    if not entry.canonicalId or entry.canonicalId == "" then
+        entry.canonicalId = self:MakeCanonicalId(entry);
+    end
+
     if self:IsDuplicate(entry) then
         return false;
     end
 
-    local canonicalId = self:MakeCanonicalId(entry);
-    entry.canonicalId = canonicalId;
+    store.entries[entry.canonicalId] = entry;
 
-    store.entries[canonicalId] = entry;
-
-    GOW.Logger:Debug("LootHistoryStore: Persisted entry " .. canonicalId);
+    GOW.Logger:Debug("LootHistoryStore: Persisted entry " .. entry.canonicalId);
     return true;
 end
 

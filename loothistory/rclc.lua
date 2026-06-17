@@ -126,7 +126,7 @@ function LootHistoryRCLC:ProcessRCLCLootHistory()
         if type(entries) == "table" then
             for _, rclcEntry in ipairs(entries) do
                 local entryId = rclcEntry.id or "";
-                if entryId ~= "" and Store:HasEntryBySource(LootHistory.SOURCE_RCLC, entryId) then
+                if entryId ~= "" and Store:GetEntry(LootHistory.SOURCE_RCLC .. "-" .. entryId) then
                     -- Already imported, skip
                 else
                     local canonical = self:MapToCanonical(playerKey, rclcEntry);

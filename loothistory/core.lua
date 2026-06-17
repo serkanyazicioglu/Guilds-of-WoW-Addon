@@ -85,6 +85,7 @@ function LootHistory:NewCanonicalEntry()
         },
         awardedAt = 0,
         season = nil,
+        rclc = {},
     };
 end
 
@@ -434,6 +435,19 @@ function LootHistory:DebugClear()
     GOW.Logger:PrintSuccessMessage("Cleared " .. count .. " loot history entries.");
 end
 
+local SLASH_DISPATCH = {
+    status = function(self) self:DebugStatus() end,
+    test   = function(self) self:DebugTestDrop() end,
+    rclc   = function(self)
+        GOW.Logger:PrintMessage("Scanning RCLC history...");
+        self:ProcessRCLCLootHistory();
+        self:DebugStatus();
+    end,
+    seed   = function(self) self:DebugSeed() end,
+    dump   = function(self) self:DebugDump() end,
+    clear  = function(self) self:DebugClear() end,
+};
+
 function LootHistory:HandleSlashCommand(subcommand)
     if not GOW.consts.ENABLE_DEBUGGING then
         GOW.Logger:PrintErrorMessage("Debug mode is not enabled.");
@@ -445,20 +459,9 @@ function LootHistory:HandleSlashCommand(subcommand)
         return;
     end
 
-    if subcommand == "status" then
-        self:DebugStatus();
-    elseif subcommand == "test" then
-        self:DebugTestDrop();
-    elseif subcommand == "rclc" then
-        GOW.Logger:PrintMessage("Scanning RCLC history...");
-        self:ProcessRCLCLootHistory();
-        self:DebugStatus();
-    elseif subcommand == "seed" then
-        self:DebugSeed();
-    elseif subcommand == "dump" then
-        self:DebugDump();
-    elseif subcommand == "clear" then
-        self:DebugClear();
+    local handler = SLASH_DISPATCH[subcommand];
+    if handler then
+        handler(self);
     else
         GOW.Logger:PrintMessage("Usage: /gow lh <status|test|rclc|seed|dump|clear>");
     end
