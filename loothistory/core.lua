@@ -114,8 +114,8 @@ function LootHistory:Init()
     if GOW.LootHistoryRCLC:IsRCLCAvailable() then
         self.state.rclcSessionWasActive = GOW.LootHistoryRCLC:IsSessionActive();
 
-        -- Only start the timer if we're already in a raid; INSTANCE_CHANGED will
-        -- handle transitions in and out.
+        -- Only start the timer if we're already in a raid; PLAYER_ENTERING_WORLD
+        -- fires on every zone/instance transition and handles the rest.
         local _, instanceType = IsInInstance();
         if instanceType == "raid" then
             self:StartRCLCPollTimer();
@@ -126,7 +126,6 @@ function LootHistory:Init()
         combatFrame:RegisterEvent("PLAYER_REGEN_DISABLED");
         combatFrame:RegisterEvent("PLAYER_REGEN_ENABLED");
         combatFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
-        combatFrame:RegisterEvent("INSTANCE_CHANGED");
         combatFrame:SetScript("OnEvent", function(_, event)
             if event == "PLAYER_REGEN_DISABLED" then
                 LootHistory:StopRCLCPollTimer();
@@ -137,10 +136,9 @@ function LootHistory:Init()
                     LootHistory:StartRCLCPollTimer();
                 end
             elseif event == "PLAYER_ENTERING_WORLD" then
-                -- Re-sync session state after loading screens
+                -- Re-sync session state and gate poll timer to raid instances.
+                -- PLAYER_ENTERING_WORLD fires on all zone/instance transitions.
                 LootHistory.state.rclcSessionWasActive = GOW.LootHistoryRCLC:IsSessionActive();
-            elseif event == "INSTANCE_CHANGED" then
-                -- Gate poll timer to raid instances only
                 local _, instType = IsInInstance();
                 if instType == "raid" then
                     LootHistory:StartRCLCPollTimer();
