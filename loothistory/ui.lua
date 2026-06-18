@@ -104,7 +104,7 @@ function LootHistoryUI:PopulateRow(row, entry)
 
     row.icon:SetTexture((iconTexture and iconTexture ~= "") and iconTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
 
-    local displayName = entry.item.name or entry.item.link or ("Item " .. (entry.item.itemID or "?"));
+    local displayName = (entry.item.name and entry.item.name ~= "" and entry.item.name) or entry.item.link or ("Item " .. (entry.item.itemID or "?"));
     row.itemText:SetText(displayName);
 
     local winnerDisplay = entry.winner.name or entry.winner.fullName or "";
