@@ -28,7 +28,7 @@ function LootHistory:PopulateItemFromLink(entry, itemLink)
     -- Phase 1 — Fast path: GetItemInfoInstant is synchronous and never blocks.
     -- Populates subType, equipLoc, and icon (via GetItemIconByID).
     if C_Item and C_Item.GetItemInfoInstant then
-        local _, _, _, _, _, _, itemSubType, _, itemEquipLoc = C_Item.GetItemInfoInstant(itemLink);
+        local _, _, itemSubType, itemEquipLoc = C_Item.GetItemInfoInstant(itemLink);
         entry.item.subType = itemSubType or "";
         entry.item.equipLoc = itemEquipLoc or "";
         if C_Item.GetItemIconByID and entry.item.itemID then
