@@ -246,6 +246,7 @@ function LootHistoryUI:PopulateLootHistoryView(container)
             container.lootHistoryRows[i] = row;
         end
 
+        row:ClearAllPoints();
         row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
         row:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
         self:PopulateRow(row, entry);
