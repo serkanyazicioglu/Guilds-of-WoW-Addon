@@ -19,7 +19,10 @@ function LootHistoryUI:GetSortedEntries()
         table.insert(sorted, entry);
     end
     table.sort(sorted, function(a, b)
-        return (a.awardedAt or 0) > (b.awardedAt or 0);
+        local aTime = a.awardedAt or 0;
+        local bTime = b.awardedAt or 0;
+        if aTime ~= bTime then return aTime > bTime end
+        return (a.canonicalId or "") < (b.canonicalId or "");
     end);
 
     return sorted;
@@ -100,7 +103,7 @@ function LootHistoryUI:PopulateRow(row, entry)
 
     row.icon:SetTexture(iconTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
 
-    local displayName = entry.item.link or entry.item.name or ("Item " .. (entry.item.itemID or "?"));
+    local displayName = entry.item.name or entry.item.link or ("Item " .. (entry.item.itemID or "?"));
     row.itemText:SetText(displayName);
 
     local winnerDisplay = entry.winner.name or entry.winner.fullName or "";

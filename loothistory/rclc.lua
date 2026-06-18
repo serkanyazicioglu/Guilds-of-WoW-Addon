@@ -63,7 +63,7 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry, charInfo)
     end
     entry.winner.class = rclcEntry.class or "";
 
-    charInfo = charInfo or (GoWWishlists.state and GoWWishlists.state.currentCharInfo);
+    charInfo = charInfo or LootHistory:GetCurrentCharInfo();
     if charInfo then
         local selfKey = (charInfo.name or "") .. "-" .. (charInfo.realmNormalized or "");
         entry.winner.isSelf = (playerKey == selfKey);
@@ -110,9 +110,6 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry, charInfo)
     if entry.awardedAt > 0 then
         LootHistory:PopulateSeason(entry, SEASON_LOOKBACK_SECONDS);
     end
-
-    -- If RCLC entry has no id, sourceEntryId remains ""; SaveDropEntry will reject it.
-    entry.canonicalId = Store:MakeCanonicalId(entry);
 
     return entry;
 end

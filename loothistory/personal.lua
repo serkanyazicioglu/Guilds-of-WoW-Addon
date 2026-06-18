@@ -23,7 +23,7 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
     entry.sourceEntryId = self:GenerateSourceEntryId(itemId, now);
 
     -- charInfo passed explicitly to avoid cross-module init ordering dependency
-    charInfo = charInfo or (GoWWishlists.state and GoWWishlists.state.currentCharInfo);
+    charInfo = charInfo or LootHistory:GetCurrentCharInfo();
     if charInfo then
         entry.winner.name = charInfo.name or "";
         entry.winner.realm = charInfo.realmNormalized or "";
@@ -49,8 +49,6 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
     entry.awardedAt = now;
 
     LootHistory:PopulateSeason(entry);
-
-    entry.canonicalId = Store:MakeCanonicalId(entry);
 
     return entry;
 end

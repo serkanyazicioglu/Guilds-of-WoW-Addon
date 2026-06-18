@@ -1,7 +1,13 @@
 local GOW = GuildsOfWow;
+local GoWWishlists = GOW.Wishlists;
 
 local LootHistory = {};
 GOW.LootHistory = LootHistory;
+
+local function ExtractIconFilename(iconTexture)
+    if not iconTexture then return "" end
+    return string.lower(string.match(tostring(iconTexture), "([^\\/]+)$") or "");
+end
 
 LootHistory.SOURCE_PERSONAL = "personal";
 LootHistory.SOURCE_RCLC = "rclc";
@@ -27,9 +33,7 @@ function LootHistory:PopulateItemFromLink(entry, itemLink)
         entry.item.equipLoc = itemEquipLoc or "";
         if C_Item.GetItemIconByID and entry.item.itemID then
             local iconTexture = C_Item.GetItemIconByID(entry.item.itemID);
-            if iconTexture then
-                entry.item.icon = string.lower(string.match(tostring(iconTexture), "([^\\/]+)$") or "");
-            end
+            entry.item.icon = ExtractIconFilename(iconTexture);
         end
     end
 
@@ -40,7 +44,7 @@ function LootHistory:PopulateItemFromLink(entry, itemLink)
         if itemLevel then entry.item.ilvl = itemLevel; end
         -- GetItemInfo icon may be available even when GetItemInfoInstant icon wasn't
         if iconTexture and entry.item.icon == "" then
-            entry.item.icon = string.lower(string.match(tostring(iconTexture), "([^\\/]+)$") or "");
+            entry.item.icon = ExtractIconFilename(iconTexture);
         end
     end
 end
@@ -85,6 +89,7 @@ function LootHistory:NewCanonicalEntry()
             mapID = nil,
             groupSize = nil,
         },
+        -- entry.rclc is optional RCLC-only metadata (see rclc.lua:MapToCanonical)
         awardedAt = 0,
         season = nil,
     };
@@ -97,6 +102,13 @@ function LootHistory:PopulateSeason(entry, maxAgeSeconds)
         if age > maxAgeSeconds then return end
     end
     entry.season = C_MythicPlus.GetCurrentSeason();
+end
+
+function LootHistory:GetCurrentCharInfo()
+    if GoWWishlists and GoWWishlists.state and GoWWishlists.state.currentCharInfo then
+        return GoWWishlists.state.currentCharInfo;
+    end
+    return nil;
 end
 
 function LootHistory:Init()
