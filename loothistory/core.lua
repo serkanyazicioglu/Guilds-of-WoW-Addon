@@ -5,7 +5,9 @@ GOW.LootHistory = LootHistory;
 
 local function ExtractIconFilename(iconTexture)
     if not iconTexture then return "" end
-    return string.match(iconTexture, "([^\\/]+)$") or "";
+    if type(iconTexture) == "number" then return iconTexture end
+    if type(iconTexture) ~= "string" then return "" end
+    return iconTexture
 end
 
 LootHistory.SOURCE_PERSONAL = "personal";
