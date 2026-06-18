@@ -41,9 +41,12 @@ function GoWWishlists:HandleLootDropEvents()
 end
 
 function GoWWishlists:HandleLootHistoryEvents()
+    -- LOOT_HISTORY_UPDATE_DROP / LOOT_HISTORY_UPDATE_ENCOUNTER are retail-only
+    -- events. C_LootHistory may exist on Classic/TBC but the events won't, so
+    -- use pcall to silently skip registration on unsupported clients.
     local lootHistoryFrame = CreateFrame("Frame");
-    lootHistoryFrame:RegisterEvent("LOOT_HISTORY_UPDATE_DROP");
-    lootHistoryFrame:RegisterEvent("LOOT_HISTORY_UPDATE_ENCOUNTER");
+    pcall(lootHistoryFrame.RegisterEvent, lootHistoryFrame, "LOOT_HISTORY_UPDATE_DROP");
+    pcall(lootHistoryFrame.RegisterEvent, lootHistoryFrame, "LOOT_HISTORY_UPDATE_ENCOUNTER");
 
     lootHistoryFrame:SetScript("OnEvent", function(_, event, encounterID, lootListID)
         if event == "LOOT_HISTORY_UPDATE_DROP" and encounterID and lootListID then

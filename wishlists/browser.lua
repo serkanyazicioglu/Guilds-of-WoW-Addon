@@ -355,6 +355,11 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
         contentRight = 0,
         contentBottom = 0,
         lootHistoryContainerName = "GoWCoreLootHistoryContainer",
+        onTabChanged = function(host, tabIndex)
+            if tabIndex == 3 and GOW.LootHistoryUI then
+                GOW.LootHistoryUI:PopulateLootHistoryView(host.lootHistoryContainer);
+            end
+        end,
     });
 
     local reloadBtn = L:CreateActionButton(container, {
@@ -414,8 +419,10 @@ function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
         end
     end
 
-    container:RefreshContent();
+    -- SetActiveTab must come first so RefreshContent sees the correct activeTab
+    -- when deciding whether to populate the loot history view.
     container.SetActiveTab(GetSavedTabIndex(container));
+    container:RefreshContent();
     container:Show();
 end
 

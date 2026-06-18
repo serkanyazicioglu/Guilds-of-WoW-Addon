@@ -259,5 +259,5 @@ function LootHistoryUI:PopulateLootHistoryView(container)
         container.lootHistoryRows[i]:Hide();
     end
 
-    scrollChild:SetHeight(math.max(yOffset, 1));
+    scrollChild:SetHeight(#entries == 0 and 200 or math.max(yOffset, 1));
 end
