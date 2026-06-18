@@ -214,7 +214,7 @@ function Keystones:GetGuildMemberKeystone(name, level, isSelf)
 		return C_MythicPlus.GetOwnedKeystoneLevel(), C_MythicPlus.GetOwnedKeystoneChallengeMapID();
 	end
 
-	if (C_AddOns.IsAddOnLoaded("AstralKeys") and AstralKeys) then
+	if (C_AddOns.IsAddOnLoaded("AstralKeys") and _G["AstralEngine"]) then
 		if (level >= _G["AstralEngine"].EXPANSION_LEVEL) then
 			local keystoneLevel = _G["AstralEngine"].GetCharacterKeyLevel(name);
 			local keystoneMapId = _G["AstralEngine"].GetCharacterMapID(name);
