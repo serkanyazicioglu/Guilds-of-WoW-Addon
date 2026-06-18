@@ -1,12 +1,11 @@
 local GOW = GuildsOfWow;
-local GoWWishlists = GOW.Wishlists;
 
 local LootHistory = {};
 GOW.LootHistory = LootHistory;
 
 local function ExtractIconFilename(iconTexture)
     if not iconTexture then return "" end
-    return string.lower(string.match(tostring(iconTexture), "([^\\/]+)$") or "");
+    return string.match(iconTexture, "([^\\/]+)$") or "";
 end
 
 LootHistory.SOURCE_PERSONAL = "personal";
@@ -104,24 +103,14 @@ function LootHistory:PopulateSeason(entry, maxAgeSeconds)
     entry.season = C_MythicPlus.GetCurrentSeason();
 end
 
-function LootHistory:GetCurrentCharInfo()
-    if GoWWishlists and GoWWishlists.state and GoWWishlists.state.currentCharInfo then
-        return GoWWishlists.state.currentCharInfo;
-    end
-    return nil;
-end
-
 function LootHistory:Init()
     if not GOW.Helper:IsWishlistsEnabled() then return end
 
-    local Store = GOW.LootHistoryStore;
-    local RCLC = GOW.LootHistoryRCLC;
-
-    Store:EnsureStore();
+    GOW.LootHistoryStore:EnsureStore();
 
     -- Start RCLC session poll timer (paused during combat)
-    if RCLC:IsRCLCAvailable() then
-        self.state.rclcSessionWasActive = RCLC:IsSessionActive();
+    if GOW.LootHistoryRCLC:IsRCLCAvailable() then
+        self.state.rclcSessionWasActive = GOW.LootHistoryRCLC:IsSessionActive();
         self:StartRCLCPollTimer();
 
         -- This frame lives for the duration of the session (no explicit cleanup needed)
@@ -136,15 +125,15 @@ function LootHistory:Init()
                 LootHistory:StartRCLCPollTimer();
             elseif event == "PLAYER_ENTERING_WORLD" then
                 -- Re-sync session state after loading screens
-                LootHistory.state.rclcSessionWasActive = RCLC:IsSessionActive();
+                LootHistory.state.rclcSessionWasActive = GOW.LootHistoryRCLC:IsSessionActive();
             end
         end);
     end
 
     -- On startup, scan RCLC history if stale (or debug mode) and no active session
-    if GOW.consts.ENABLE_DEBUGGING or Store:ShouldRefreshOnStartup(GetServerTime()) then
-        if RCLC:IsRCLCAvailable() and not RCLC:IsSessionActive() then
-            RCLC:ProcessRCLCLootHistory();
+    if GOW.consts.ENABLE_DEBUGGING or GOW.LootHistoryStore:ShouldRefreshOnStartup(GetServerTime()) then
+        if GOW.LootHistoryRCLC:IsRCLCAvailable() and not GOW.LootHistoryRCLC:IsSessionActive() then
+            GOW.LootHistoryRCLC:ProcessRCLCLootHistory();
         end
     end
 

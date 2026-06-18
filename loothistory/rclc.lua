@@ -63,7 +63,7 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry, charInfo)
     end
     entry.winner.class = rclcEntry.class or "";
 
-    charInfo = charInfo or LootHistory:GetCurrentCharInfo();
+    charInfo = charInfo or (GoWWishlists.state and GoWWishlists.state.currentCharInfo);
     if charInfo then
         local selfKey = (charInfo.name or "") .. "-" .. (charInfo.realmNormalized or "");
         entry.winner.isSelf = (playerKey == selfKey);

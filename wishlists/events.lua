@@ -57,6 +57,8 @@ function GoWWishlists:MarkWishlistObtained(itemId, difficulty)
             and (not difficulty or entry.difficulty == difficulty)
             and not entry.isObtained then
             entry.isObtained = true;
+            -- Index cleanup intentionally omitted: FindWishlistMatch filters by isObtained at lookup time,
+            -- and the wishlistIndex is rebuilt each session, so proactive removal is unnecessary.
             GOW.Logger:Debug("Wishlist item marked obtained: " .. tostring(itemId) .. " (" .. tostring(entry.difficulty) .. ")");
             return true;
         end
