@@ -85,7 +85,7 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
     local winnerName = winner and (winner.name or winner.playerName) or nil;
 
     if winner and winner.isSelf then
-        self:RecordPersonalLootDrop(itemId, itemLink, encounterID, encounterName, difficulty);
+        self:RecordWishlistLootDrop(itemId, itemLink, encounterID, encounterName, difficulty);
     end
 
     if winnerName then
@@ -95,8 +95,9 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
     return winnerName ~= nil;
 end
 
-function GoWWishlists:RecordPersonalLootDrop(itemId, itemLink, encounterID, encounterName, difficulty)
+function GoWWishlists:RecordWishlistLootDrop(itemId, itemLink, encounterID, encounterName, difficulty)
     -- Don't record personal drops during an active RCLC session (RCLC import will handle them)
+    -- Only drops that match the wishlist are recorded; non-wishlist wins are intentionally skipped.
     if GOW.LootHistoryRCLC and GOW.LootHistoryRCLC:IsSessionActive() then return end
 
     local wishlistMatch = self:FindWishlistMatch(itemId);

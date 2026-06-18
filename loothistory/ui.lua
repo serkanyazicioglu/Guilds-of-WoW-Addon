@@ -12,16 +12,7 @@ local ROW_HEIGHT = 28;
 local HEADER_HEIGHT = 32;
 local ICON_SIZE = 22;
 
-local sortedCache = nil;
-local sortedGeneration = nil;
-
 function LootHistoryUI:GetSortedEntries()
-    local store = Store:EnsureStore();
-    local gen = store and store.generation or nil;
-    if sortedCache and gen and gen == sortedGeneration then
-        return sortedCache;
-    end
-
     local entries = Store:GetAllEntries();
     local sorted = {};
     for _, entry in pairs(entries) do
@@ -31,8 +22,6 @@ function LootHistoryUI:GetSortedEntries()
         return (a.awardedAt or 0) > (b.awardedAt or 0);
     end);
 
-    sortedCache = sorted;
-    sortedGeneration = gen;
     return sorted;
 end
 
@@ -53,7 +42,6 @@ function LootHistoryUI:CreateRow(parent)
 
     local itemText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     itemText:SetPoint("LEFT", icon, "RIGHT", 6, 0);
-    itemText:SetPoint("RIGHT", winnerText, "LEFT", -8, 0);
     itemText:SetJustifyH("LEFT");
     itemText:SetWordWrap(false);
     row.itemText = itemText;

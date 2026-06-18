@@ -22,6 +22,13 @@ function LootHistoryStore:EnsureStore()
         end
     end
 
+    if not GOW.DB.profile.guilds then
+        GOW.DB.profile.guilds = {};
+    end
+    if not GOW.DB.profile.guilds[guildKey] then
+        GOW.DB.profile.guilds[guildKey] = {};
+    end
+
     local guildData = GOW.DB.profile.guilds[guildKey];
     if not guildData.lootHistory then
         guildData.lootHistory = LootHistoryStore:NewStoreDefaults();
@@ -77,7 +84,6 @@ function LootHistoryStore:SaveDropEntry(entry)
     end
 
     store.entries[entry.canonicalId] = entry;
-    store.generation = (store.generation or 0) + 1;
 
     GOW.Logger:Debug("LootHistoryStore: Persisted entry " .. entry.canonicalId);
     return true;
@@ -89,7 +95,6 @@ function LootHistoryStore:RemoveDropEntry(canonicalId)
     if not store.entries[canonicalId] then return false end
 
     store.entries[canonicalId] = nil;
-    store.generation = (store.generation or 0) + 1;
 
     GOW.Logger:Debug("LootHistoryStore: Removed entry " .. canonicalId);
     return true;
@@ -108,7 +113,6 @@ function LootHistoryStore:NewStoreDefaults()
     return {
         version = STORE_VERSION,
         entries = {},
-        generation = 0,
 
         ingestion = {
             rclc = {
