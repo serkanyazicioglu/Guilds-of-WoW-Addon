@@ -121,9 +121,11 @@ function GoWWishlists:RecordWishlistLootDrop(itemId, itemLink, encounterID, enco
 
     GOW.Logger:Debug(string.format("Player won item %s (%d) from %s", itemLink, itemId, encounterName));
 
-    local _, _, difficultyID = GetInstanceInfo();
+    -- Capture all instance info once to avoid a redundant GetInstanceInfo() call inside MapToCanonical
+    local instanceName, _, difficultyID, _, _, _, _, _, groupSize = GetInstanceInfo();
+    local mapID = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player") or nil;
     local charInfo = self.state.currentCharInfo;
-    local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID, charInfo);
+    local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID, charInfo, instanceName, mapID, groupSize);
     if not entry then return end
 
     if Store:SaveDropEntry(entry) then

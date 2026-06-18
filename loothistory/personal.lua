@@ -14,7 +14,7 @@ function LootHistoryPersonal:GenerateSourceEntryId(itemId, timestamp)
     return tostring(itemId or 0) .. "-" .. tostring(timestamp or 0) .. "-" .. tostring(personalEntryCounter);
 end
 
-function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID, charInfo)
+function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID, charInfo, instanceName, mapID, groupSize)
     if not itemId or not itemLink then return nil end
 
     local entry = LootHistory:NewCanonicalEntry();
@@ -42,10 +42,14 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
     entry.encounter.difficulty = difficulty or "";
     entry.encounter.difficultyID = difficultyID;
 
-    local instanceName, _, _, _, _, _, _, instanceID, instanceGroupSize = GetInstanceInfo();
+    -- Instance info: prefer caller-supplied values (avoids redundant API call);
+    -- fall back to GetInstanceInfo() when called without them.
+    if not instanceName then
+        instanceName, _, _, _, _, _, _, _, groupSize = GetInstanceInfo();
+    end
     entry.encounter.instance = instanceName or "";
-    entry.encounter.mapID = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player") or nil;
-    entry.encounter.groupSize = instanceGroupSize;
+    entry.encounter.mapID = mapID or (C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player") or nil);
+    entry.encounter.groupSize = groupSize;
 
     entry.awardedAt = now;
 

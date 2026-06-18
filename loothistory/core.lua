@@ -75,7 +75,7 @@ function LootHistory:NewCanonicalEntry()
         award = {
             response = "",
             responseID = nil,
-            votes = nil,
+            votes = nil,  -- nil for personal entries; RCLC sets 0 or a count (see rclc.lua:MapToCanonical)
             isAwardReason = false,
             note = "",
             owner = "",
@@ -113,7 +113,13 @@ function LootHistory:Init()
     -- Start RCLC session poll timer (only while in a raid instance; paused during combat)
     if GOW.LootHistoryRCLC:IsRCLCAvailable() then
         self.state.rclcSessionWasActive = GOW.LootHistoryRCLC:IsSessionActive();
-        self:StartRCLCPollTimer();
+
+        -- Only start the timer if we're already in a raid; INSTANCE_CHANGED will
+        -- handle transitions in and out.
+        local _, instanceType = IsInInstance();
+        if instanceType == "raid" then
+            self:StartRCLCPollTimer();
+        end
 
         -- This frame lives for the duration of the session (no explicit cleanup needed)
         local combatFrame = CreateFrame("Frame");
@@ -125,14 +131,18 @@ function LootHistory:Init()
             if event == "PLAYER_REGEN_DISABLED" then
                 LootHistory:StopRCLCPollTimer();
             elseif event == "PLAYER_REGEN_ENABLED" then
-                LootHistory:StartRCLCPollTimer();
+                -- Resume polling only if still in a raid instance
+                local _, instType = IsInInstance();
+                if instType == "raid" then
+                    LootHistory:StartRCLCPollTimer();
+                end
             elseif event == "PLAYER_ENTERING_WORLD" then
                 -- Re-sync session state after loading screens
                 LootHistory.state.rclcSessionWasActive = GOW.LootHistoryRCLC:IsSessionActive();
             elseif event == "INSTANCE_CHANGED" then
                 -- Gate poll timer to raid instances only
-                local _, instanceType = IsInInstance();
-                if instanceType == "raid" then
+                local _, instType = IsInInstance();
+                if instType == "raid" then
                     LootHistory:StartRCLCPollTimer();
                 else
                     LootHistory:StopRCLCPollTimer();
