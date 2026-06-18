@@ -1,11 +1,12 @@
 local GOW = GuildsOfWow;
 local LootHistory = GOW.LootHistory;
-local Store = GOW.LootHistoryStore;
 local GoWWishlists = GOW.Wishlists;
 
 local LootHistoryPersonal = {};
 GOW.LootHistoryPersonal = LootHistoryPersonal;
 
+-- Monotonic counter for sourceEntryId uniqueness; collision probability negligible
+-- at session-scale volumes (tens to low hundreds of entries per session).
 local personalEntryCounter = 0;
 
 function LootHistoryPersonal:GenerateSourceEntryId(itemId, timestamp)

@@ -91,6 +91,8 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
     end
 
     if winnerName then
+        -- processedDrops is session-scoped and bounded by encounter count per raid night
+        -- (typically < 200 entries). No explicit cleanup is needed.
         self.state.processedDrops[dropKey] = true;
     end
 

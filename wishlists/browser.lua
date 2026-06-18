@@ -42,15 +42,20 @@ function GoWWishlists:CreateGainDisplayToggleButton(parent)
 end
 
 function GoWWishlists:ReanchorTabs(host)
-    if not host.orderedTabs then return end
-    local prevTab = nil;
-    for _, tab in ipairs(host.orderedTabs) do
-        if tab:IsShown() then
-            if prevTab then
-                tab:ClearAllPoints();
-                tab:SetPoint("LEFT", prevTab, "RIGHT", 4, 0);
-            end
-            prevTab = tab;
+    -- With 3 fixed tabs (personal, roster, loot history), the only variable is
+    -- whether the roster tab is visible. When hidden, the loot history tab
+    -- re-anchors directly to the personal tab.
+    local rosterTab = host.rosterTab or host.guildWishlistTab;
+    local lootHistoryTab = host.lootHistoryTab;
+    if not rosterTab or not lootHistoryTab then return end
+
+    lootHistoryTab:ClearAllPoints();
+    if rosterTab:IsShown() then
+        lootHistoryTab:SetPoint("LEFT", rosterTab, "RIGHT", 4, 0);
+    else
+        local personalTab = host.wishlistTab;
+        if personalTab then
+            lootHistoryTab:SetPoint("LEFT", personalTab, "RIGHT", 4, 0);
         end
     end
 end
@@ -162,7 +167,6 @@ local function InitializeWishlistTabHost(self, host, options)
 
     local allTabs = { personalTab, rosterTab, lootHistoryTab };
     local allContentFrames = { personalContainer, guildContainer, lootHistoryContainer };
-    host.orderedTabs = allTabs;
 
     local function SetActiveTab(tabIndex)
         if tabIndex == 2 and not rosterTab:IsShown() then

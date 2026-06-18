@@ -25,7 +25,8 @@ function LootHistory:PopulateItemFromLink(entry, itemLink)
     entry.item.itemID = tonumber(string.match(itemLink, "item:(%d+)"));
     entry.item.itemString = string.match(itemLink, "(item:[^|]+)") or "";
 
-    -- Fast path: GetItemInfoInstant is always available and never blocks
+    -- Phase 1 — Fast path: GetItemInfoInstant is synchronous and never blocks.
+    -- Populates subType, equipLoc, and icon (via GetItemIconByID).
     if C_Item and C_Item.GetItemInfoInstant then
         local _, _, _, _, _, _, itemSubType, _, itemEquipLoc = C_Item.GetItemInfoInstant(itemLink);
         entry.item.subType = itemSubType or "";
@@ -36,12 +37,13 @@ function LootHistory:PopulateItemFromLink(entry, itemLink)
         end
     end
 
-    -- Best-effort enrichment: GetItemInfo provides name and ilvl when cached
+    -- Phase 2 — Best-effort enrichment: GetItemInfo may return cached name/ilvl.
+    -- Icon fallback: GetItemInfo icon used only when Phase 1 left icon empty
+    -- (e.g. GetItemIconByID was unavailable or returned nil).
     if C_Item and C_Item.GetItemInfo then
         local itemName, _, _, itemLevel, _, _, _, _, _, iconTexture = C_Item.GetItemInfo(itemLink);
         if itemName then entry.item.name = itemName; end
         if itemLevel then entry.item.ilvl = itemLevel; end
-        -- GetItemInfo icon may be available even when GetItemInfoInstant icon wasn't
         if iconTexture and entry.item.icon == "" then
             entry.item.icon = ExtractIconFilename(iconTexture);
         end
@@ -108,7 +110,7 @@ function LootHistory:Init()
 
     GOW.LootHistoryStore:EnsureStore();
 
-    -- Start RCLC session poll timer (paused during combat)
+    -- Start RCLC session poll timer (only while in a raid instance; paused during combat)
     if GOW.LootHistoryRCLC:IsRCLCAvailable() then
         self.state.rclcSessionWasActive = GOW.LootHistoryRCLC:IsSessionActive();
         self:StartRCLCPollTimer();
@@ -118,6 +120,7 @@ function LootHistory:Init()
         combatFrame:RegisterEvent("PLAYER_REGEN_DISABLED");
         combatFrame:RegisterEvent("PLAYER_REGEN_ENABLED");
         combatFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
+        combatFrame:RegisterEvent("INSTANCE_CHANGED");
         combatFrame:SetScript("OnEvent", function(_, event)
             if event == "PLAYER_REGEN_DISABLED" then
                 LootHistory:StopRCLCPollTimer();
@@ -126,6 +129,14 @@ function LootHistory:Init()
             elseif event == "PLAYER_ENTERING_WORLD" then
                 -- Re-sync session state after loading screens
                 LootHistory.state.rclcSessionWasActive = GOW.LootHistoryRCLC:IsSessionActive();
+            elseif event == "INSTANCE_CHANGED" then
+                -- Gate poll timer to raid instances only
+                local _, instanceType = IsInInstance();
+                if instanceType == "raid" then
+                    LootHistory:StartRCLCPollTimer();
+                else
+                    LootHistory:StopRCLCPollTimer();
+                end
             end
         end);
     end

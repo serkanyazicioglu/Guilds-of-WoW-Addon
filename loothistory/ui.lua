@@ -3,7 +3,6 @@ local L = GOW.Layout;
 local Store = GOW.LootHistoryStore;
 local LootHistory = GOW.LootHistory;
 local RCLC = GOW.LootHistoryRCLC;
-local Duration = GOW.Duration;
 
 local LootHistoryUI = {};
 GOW.LootHistoryUI = LootHistoryUI;
@@ -12,6 +11,8 @@ local ROW_HEIGHT = 28;
 local HEADER_HEIGHT = 32;
 local ICON_SIZE = 22;
 
+-- Re-sorts the full entry set on every call. Acceptable for expected volumes
+-- (< 500 entries); a dirty-flag cache would be premature at this scale.
 function LootHistoryUI:GetSortedEntries()
     local entries = Store:GetAllEntries();
     local sorted = {};
@@ -119,7 +120,7 @@ function LootHistoryUI:PopulateRow(row, entry)
 
     row.difficultyText:SetText(entry.encounter.difficulty or "");
 
-    row.timeText:SetText(Duration:Format(entry.awardedAt));
+    row.timeText:SetText(GOW.Duration:Format(entry.awardedAt));
 end
 
 function LootHistoryUI:ShowEmptyState(container)
