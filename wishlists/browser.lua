@@ -41,7 +41,7 @@ function GoWWishlists:CreateGainDisplayToggleButton(parent)
     return gainBtn;
 end
 
-local function ReanchorTabs(host)
+function GoWWishlists:ReanchorTabs(host)
     if not host.orderedTabs then return end
     local prevTab = nil;
     for _, tab in ipairs(host.orderedTabs) do
@@ -67,7 +67,7 @@ local function UpdateRosterTabVisibility(self, host)
 
     -- Loot history tab is always visible
 
-    ReanchorTabs(host);
+    self:ReanchorTabs(host);
 end
 
 local function GetSavedTabIndex(host)

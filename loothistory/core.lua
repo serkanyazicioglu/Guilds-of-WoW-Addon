@@ -116,11 +116,15 @@ function LootHistory:Init()
         local combatFrame = CreateFrame("Frame");
         combatFrame:RegisterEvent("PLAYER_REGEN_DISABLED");
         combatFrame:RegisterEvent("PLAYER_REGEN_ENABLED");
+        combatFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
         combatFrame:SetScript("OnEvent", function(_, event)
             if event == "PLAYER_REGEN_DISABLED" then
                 LootHistory:StopRCLCPollTimer();
             elseif event == "PLAYER_REGEN_ENABLED" then
                 LootHistory:StartRCLCPollTimer();
+            elseif event == "PLAYER_ENTERING_WORLD" then
+                -- Re-sync session state after loading screens
+                LootHistory.state.rclcSessionWasActive = RCLC:IsSessionActive();
             end
         end);
     end

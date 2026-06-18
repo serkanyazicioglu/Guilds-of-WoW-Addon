@@ -13,7 +13,7 @@ function LootHistoryPersonal:GenerateSourceEntryId(itemId, timestamp)
     return tostring(itemId or 0) .. "-" .. tostring(timestamp or 0) .. "-" .. tostring(personalEntryCounter);
 end
 
-function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID)
+function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID, charInfo)
     if not itemId or not itemLink then return nil end
 
     local entry = LootHistory:NewCanonicalEntry();
@@ -22,7 +22,8 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
     entry.source = LootHistory.SOURCE_PERSONAL;
     entry.sourceEntryId = self:GenerateSourceEntryId(itemId, now);
 
-    local charInfo = GoWWishlists.state and GoWWishlists.state.currentCharInfo;
+    -- charInfo passed explicitly to avoid cross-module init ordering dependency
+    charInfo = charInfo or (GoWWishlists.state and GoWWishlists.state.currentCharInfo);
     if charInfo then
         entry.winner.name = charInfo.name or "";
         entry.winner.realm = charInfo.realmNormalized or "";

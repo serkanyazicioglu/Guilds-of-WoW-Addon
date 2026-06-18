@@ -74,9 +74,9 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
     local itemId = tonumber(itemLink:match("item:(%d+)"));
     if not itemId then return end
 
-    local processedDrops = self.state.processedDrops;
-    local dropKey = lootListID and (encounterID .. "-" .. lootListID) or nil;
-    if dropKey and processedDrops[dropKey] then
+    -- Deduplicate by encounter+lootListID, falling back to itemLink when IDs are unavailable
+    local dropKey = (encounterID and lootListID) and (encounterID .. "-" .. lootListID) or (itemLink or "unknown");
+    if self.state.processedDrops[dropKey] then
         GOW.Logger:Debug("Loot history: skipping duplicate drop " .. dropKey);
         return true;
     end
@@ -85,41 +85,48 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encount
     local winnerName = winner and (winner.name or winner.playerName) or nil;
 
     if winner and winner.isSelf then
-        if not encounterName and C_LootHistory then
-            local encounterInfo = C_LootHistory.GetInfoForEncounter(encounterID);
-            encounterName = encounterInfo and encounterInfo.encounterName or "Unknown";
-        end
-        if not difficulty then
-            difficulty = self:GetCurrentDifficultyName();
-        end
-
-        GOW.Logger:Debug(string.format("Player won item %s (%d) from %s", itemLink, itemId, encounterName));
-
-        local Personal = GOW.LootHistoryPersonal;
-        local Store = GOW.LootHistoryStore;
-        if Personal and Store then
-            local wishlistMatch = self:FindWishlistMatch(itemId);
-            if wishlistMatch and not GOW.LootHistoryRCLC:IsSessionActive() then
-                local _, _, difficultyID = GetInstanceInfo();
-                local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID);
-                if entry then
-                    local saved = Store:SaveDropEntry(entry);
-                    if saved then
-                        local wasOnWishlist = self:MarkWishlistObtained(itemId, difficulty);
-                        if wasOnWishlist then
-                            GOW.Logger:PrintSuccessMessage(itemLink .. " obtained! Removed from your wishlist.");
-                        end
-                    end
-                end
-            end
-        end
+        self:RecordPersonalLootDrop(itemId, itemLink, encounterID, encounterName, difficulty);
     end
 
-    if dropKey and winnerName then
-        processedDrops[dropKey] = true;
+    if winnerName then
+        self.state.processedDrops[dropKey] = true;
     end
 
     return winnerName ~= nil;
+end
+
+function GoWWishlists:RecordPersonalLootDrop(itemId, itemLink, encounterID, encounterName, difficulty)
+    -- Don't record personal drops during an active RCLC session (RCLC import will handle them)
+    if GOW.LootHistoryRCLC and GOW.LootHistoryRCLC:IsSessionActive() then return end
+
+    local wishlistMatch = self:FindWishlistMatch(itemId);
+    if not wishlistMatch then return end
+
+    local Personal = GOW.LootHistoryPersonal;
+    local Store = GOW.LootHistoryStore;
+    if not Personal or not Store then return end
+
+    if not encounterName and C_LootHistory then
+        local encounterInfo = C_LootHistory.GetInfoForEncounter(encounterID);
+        encounterName = encounterInfo and encounterInfo.encounterName or "Unknown";
+    end
+    if not difficulty then
+        difficulty = self:GetCurrentDifficultyName();
+    end
+
+    GOW.Logger:Debug(string.format("Player won item %s (%d) from %s", itemLink, itemId, encounterName));
+
+    local _, _, difficultyID = GetInstanceInfo();
+    local charInfo = self.state.currentCharInfo;
+    local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID, charInfo);
+    if not entry then return end
+
+    if Store:SaveDropEntry(entry) then
+        local wasOnWishlist = self:MarkWishlistObtained(itemId, difficulty);
+        if wasOnWishlist then
+            GOW.Logger:PrintSuccessMessage(itemLink .. " obtained! Removed from your wishlist.");
+        end
+    end
 end
 
 function GoWWishlists:ProcessLootHistoryDrop(encounterID, lootListID)

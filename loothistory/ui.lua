@@ -116,7 +116,7 @@ function LootHistoryUI:PopulateRow(row, entry)
     row.itemText:SetText(displayName);
 
     local winnerDisplay = entry.winner.name or entry.winner.fullName or "";
-    local classColor = entry.winner.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[entry.winner.class];
+    local classColor = GOW.Helper and GOW.Helper:GetClassColor(entry.winner.class);
     if classColor then
         row.winnerText:SetText(classColor:WrapTextInColorCode(winnerDisplay));
     else

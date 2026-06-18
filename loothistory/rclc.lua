@@ -47,7 +47,7 @@ function LootHistoryRCLC:GetRCLCLootDB()
     return nil;
 end
 
-function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
+function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry, charInfo)
     if not rclcEntry then return nil end
 
     local entry = LootHistory:NewCanonicalEntry();
@@ -63,8 +63,7 @@ function LootHistoryRCLC:MapToCanonical(playerKey, rclcEntry)
     end
     entry.winner.class = rclcEntry.class or "";
 
-    -- Determine isSelf
-    local charInfo = GoWWishlists.state and GoWWishlists.state.currentCharInfo;
+    charInfo = charInfo or (GoWWishlists.state and GoWWishlists.state.currentCharInfo);
     if charInfo then
         local selfKey = (charInfo.name or "") .. "-" .. (charInfo.realmNormalized or "");
         entry.winner.isSelf = (playerKey == selfKey);
@@ -127,22 +126,20 @@ function LootHistoryRCLC:ProcessRCLCLootHistory()
     local store = Store:EnsureStore();
     if not store then return end
 
+    local charInfo = GoWWishlists.state and GoWWishlists.state.currentCharInfo;
     local importCount = 0;
 
     for playerKey, entries in pairs(lootDB) do
         if type(entries) == "table" then
             for _, rclcEntry in ipairs(entries) do
-                local entryId = rclcEntry.id or "";
-                if entryId == "" or not Store:GetEntry(LootHistory.SOURCE_RCLC .. "-" .. entryId) then
-                    local canonical = self:MapToCanonical(playerKey, rclcEntry);
-                    if canonical then
-                        local persisted = Store:SaveDropEntry(canonical);
-                        if persisted then
-                            importCount = importCount + 1;
-                            -- Reconcile: if self loot, remove any personal duplicate
-                            if canonical.winner.isSelf then
-                                self:ReconcilePersonalOverlaps(canonical);
-                            end
+                local canonical = self:MapToCanonical(playerKey, rclcEntry, charInfo);
+                if canonical then
+                    local persisted = Store:SaveDropEntry(canonical);
+                    if persisted then
+                        importCount = importCount + 1;
+                        -- Reconcile: if self loot, remove any personal duplicate
+                        if canonical.winner.isSelf then
+                            self:ReconcilePersonalOverlaps(canonical);
                         end
                     end
                 end
