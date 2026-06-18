@@ -5,8 +5,7 @@ local GoWWishlists = GOW.Wishlists;
 local LootHistoryPersonal = {};
 GOW.LootHistoryPersonal = LootHistoryPersonal;
 
--- Monotonic counter for sourceEntryId uniqueness; collision probability negligible
--- at session-scale volumes (tens to low hundreds of entries per session).
+-- Monotonic counter for sourceEntryId uniqueness; collision probability negligible at session-scale volumes
 local personalEntryCounter = 0;
 
 function LootHistoryPersonal:GenerateSourceEntryId(itemId, timestamp)
@@ -42,7 +41,7 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
     entry.encounter.difficulty = difficulty or "";
     entry.encounter.difficultyID = difficultyID;
 
-    -- Instance info: prefer caller-supplied values (avoids redundant API call);
+    -- Instance info: prefer caller-supplied values
     -- fall back to GetInstanceInfo() when called without them.
     if not instanceName then
         instanceName, _, _, _, _, _, _, _, groupSize = GetInstanceInfo();

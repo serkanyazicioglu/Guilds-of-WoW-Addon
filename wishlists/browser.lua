@@ -405,6 +405,8 @@ function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
             self.guildFrame.guildDifficultyFilter = self.guildDifficultyFilter or "All";
             GoWWishlists:PopulateGuildWishlistView(self.guildFrame);
         end
+        -- Only refresh loot history when tab 3 is active to avoid
+        -- unnecessary sort/rebuild on every roster or wishlist update.
         if self.activeTab == 3 then
             if GOW.LootHistoryUI then
                 GOW.LootHistoryUI:PopulateLootHistoryView(self.lootHistoryContainer);

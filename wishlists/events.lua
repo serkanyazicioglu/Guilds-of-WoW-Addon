@@ -9,6 +9,9 @@ function GoWWishlists:Initialize()
     self.state.gainDisplayMode = GOW.DB and GOW.DB.profile and GOW.DB.profile.gainDisplayMode or "percent";
     self:BuildWishlistIndex();
     self:HandleLootDropEvents();
+    -- Registered before LootHistory:Init() runs, but event handlers nil-guard
+    -- GOW.LootHistoryPersonal / GOW.LootHistoryRCLC and the store is lazily
+    -- created on first SaveDropEntry, so ordering is safe.
     self:HandleLootHistoryEvents();
     self:HandleLootInfoEvents();
 
