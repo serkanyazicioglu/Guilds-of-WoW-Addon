@@ -98,11 +98,11 @@ function LootHistoryUI:PopulateRow(row, entry)
     row.itemLink = entry.item.link;
 
     local iconTexture = entry.item.icon;
-    if not iconTexture and entry.item.itemID then
+    if (not iconTexture or iconTexture == "") and entry.item.itemID then
         iconTexture = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(entry.item.itemID);
     end
 
-    row.icon:SetTexture(iconTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
+    row.icon:SetTexture((iconTexture and iconTexture ~= "") and iconTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
 
     local displayName = entry.item.name or entry.item.link or ("Item " .. (entry.item.itemID or "?"));
     row.itemText:SetText(displayName);
