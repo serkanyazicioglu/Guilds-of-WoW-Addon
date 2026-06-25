@@ -14,6 +14,7 @@ GoWWishlists.state = {
     pendingItemRows = {},
     raidNameCache = {},
     compactMode = false,
+    processedDrops = {},
 };
 
 GoWWishlists.frames = {};
@@ -115,6 +116,12 @@ function GoWWishlists:BuildWishlistIndex()
                             local sourceKey = item.sourceItemId;
                             self.state.wishlistIndex[sourceKey] = self.state.wishlistIndex[sourceKey] or {};
                             table.insert(self.state.wishlistIndex[sourceKey], item);
+                        end
+
+                        if item.catalystItemId then
+                            local catalystKey = item.catalystItemId;
+                            self.state.wishlistIndex[catalystKey] = self.state.wishlistIndex[catalystKey] or {};
+                            table.insert(self.state.wishlistIndex[catalystKey], item);
                         end
                     end
                 end

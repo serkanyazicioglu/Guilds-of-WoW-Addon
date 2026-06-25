@@ -24,8 +24,7 @@ GOW.defaults = {
 		rclcDisplayMode = "percent",
 		rclcShowTag = true,
 		rclcShowNote = true,
-		lootHistory = {},
-		allLootHistory = {},
+
 		wishlistInfoFramePos = nil,
 		wishlistBrowserFramePos = nil,
 		wishlistCompactMode = false,
@@ -85,6 +84,18 @@ local LibQTip = LibStub('LibQTip-1.0');
 function GOW:OnInitialize()
 	self.GUI = LibStub("AceGUI-3.0");
 	self.DB = LibStub("AceDB-3.0"):New("GoWDB", GOW.defaults, "Default");
+
+	-- Migration: remove legacy loot history arrays (replaced by loothistory/store)
+	if self.DB and self.DB.profile and (self.DB.profile.version or 0) < 2 then
+		if self.DB.profile.lootHistory ~= nil then
+			self.DB.profile.lootHistory = nil;
+		end
+		if self.DB.profile.allLootHistory ~= nil then
+			self.DB.profile.allLootHistory = nil;
+		end
+		self.DB.profile.version = 2;
+	end
+
 	self.LDB = LibStub("LibDataBroker-1.1");
 	self.LDBIcon = LibStub("LibDBIcon-1.0");
 	self.CONSOLE = LibStub("AceConsole-3.0");
@@ -469,6 +480,10 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 
 		if GOW.Wishlists then
 			GOW.Wishlists:Initialize();
+		end
+
+		if GOW.LootHistory then
+			GOW.LootHistory:Init();
 		end
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		Core:SetRosterInfo();

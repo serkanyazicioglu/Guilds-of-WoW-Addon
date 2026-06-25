@@ -9,7 +9,10 @@ function GoWWishlists:Initialize()
     self.state.gainDisplayMode = GOW.DB and GOW.DB.profile and GOW.DB.profile.gainDisplayMode or "percent";
     self:BuildWishlistIndex();
     self:HandleLootDropEvents();
-    -- self:HandleLootHistoryEvents();
+    -- Registered before LootHistory:Init() runs, but event handlers nil-guard
+    -- GOW.LootHistoryPersonal / GOW.LootHistoryRCLC and the store is lazily
+    -- created on first SaveDropEntry, so ordering is safe.
+    self:HandleLootHistoryEvents();
     self:HandleLootInfoEvents();
 
     GOW.Logger:Debug("Wishlist module initialized.");
@@ -38,9 +41,12 @@ function GoWWishlists:HandleLootDropEvents()
 end
 
 function GoWWishlists:HandleLootHistoryEvents()
+    -- LOOT_HISTORY_UPDATE_DROP / LOOT_HISTORY_UPDATE_ENCOUNTER are retail-only
+    -- events. C_LootHistory may exist on Classic/TBC but the events won't, so
+    -- use pcall to silently skip registration on unsupported clients.
     local lootHistoryFrame = CreateFrame("Frame");
-    lootHistoryFrame:RegisterEvent("LOOT_HISTORY_UPDATE_DROP");
-    lootHistoryFrame:RegisterEvent("LOOT_HISTORY_UPDATE_ENCOUNTER");
+    pcall(lootHistoryFrame.RegisterEvent, lootHistoryFrame, "LOOT_HISTORY_UPDATE_DROP");
+    pcall(lootHistoryFrame.RegisterEvent, lootHistoryFrame, "LOOT_HISTORY_UPDATE_ENCOUNTER");
 
     lootHistoryFrame:SetScript("OnEvent", function(_, event, encounterID, lootListID)
         if event == "LOOT_HISTORY_UPDATE_DROP" and encounterID and lootListID then
@@ -51,98 +57,15 @@ function GoWWishlists:HandleLootHistoryEvents()
     end);
 end
 
-function GoWWishlists:RecordLootHistory(itemId, itemLink, encounterName, difficulty, timestamp)
-    if not GOW.DB or not GOW.DB.profile then return end
-
-    local history = GOW.DB.profile.lootHistory;
-    if not history then
-        GOW.DB.profile.lootHistory = {};
-        history = GOW.DB.profile.lootHistory;
-    end
-
-    table.insert(history, {
-        itemId = itemId,
-        itemLink = itemLink,
-        encounterName = encounterName,
-        difficulty = difficulty,
-        timestamp = timestamp or GetServerTime(),
-    });
-
-end
-
-function GoWWishlists:RecordAllLootDrop(itemId, itemLink, encounterName, difficulty, winnerName, timestamp)
-    if not GOW.DB or not GOW.DB.profile then return end
-
-    local allHistory = GOW.DB.profile.allLootHistory;
-    if not allHistory then
-        GOW.DB.profile.allLootHistory = {};
-        allHistory = GOW.DB.profile.allLootHistory;
-    end
-
-    table.insert(allHistory, {
-        itemId = itemId,
-        itemLink = itemLink,
-        encounterName = encounterName,
-        difficulty = difficulty,
-        winner = winnerName or "Unknown",
-        timestamp = timestamp or GetServerTime(),
-    });
-
-end
-
-function GoWWishlists:IsLootRecorded(history, itemId, encounterName, matchKey, matchValue)
-    for _, record in ipairs(history) do
-        if record.itemId == itemId and record.encounterName == encounterName
-            and (not matchKey or record[matchKey] == matchValue)
-            and record.timestamp and (GetServerTime() - record.timestamp) < 300 then
-            return true;
-        end
-    end
-    return false;
-end
-
-function GoWWishlists:IsAllLootAlreadyRecorded(itemId, encounterName, winnerName)
-    local allHistory = GOW.DB and GOW.DB.profile and GOW.DB.profile.allLootHistory or {};
-    return self:IsLootRecorded(allHistory, itemId, encounterName, "winner", winnerName);
-end
-
 function GoWWishlists:MarkWishlistObtained(itemId, difficulty)
     for _, entry in ipairs(self.state.allItems) do
         if entry.itemId == itemId
             and (not difficulty or entry.difficulty == difficulty)
             and not entry.isObtained then
             entry.isObtained = true;
+            -- Index cleanup intentionally omitted: FindWishlistMatch filters by isObtained at lookup time,
+            -- and the wishlistIndex is rebuilt each session, so proactive removal is unnecessary.
             GOW.Logger:Debug("Wishlist item marked obtained: " .. tostring(itemId) .. " (" .. tostring(entry.difficulty) .. ")");
-
-            local indexed = self.state.wishlistIndex[itemId];
-            if indexed then
-                for i = #indexed, 1, -1 do
-                    if indexed[i] == entry then
-                        table.remove(indexed, i);
-                        break;
-                    end
-                end
-                if #indexed == 0 then
-                    self.state.wishlistIndex[itemId] = nil;
-                end
-            end
-
-            local crossKey = (entry.itemId == itemId) and entry.sourceItemId or entry.itemId;
-            if crossKey then
-                local crossList = self.state.wishlistIndex[crossKey];
-                if crossList then
-                    for j = #crossList, 1, -1 do
-                        if crossList[j] == entry then
-                            table.remove(crossList, j);
-                            break;
-                        end
-                    end
-                    if #crossList == 0 then
-                        self.state.wishlistIndex[crossKey] = nil;
-                    end
-                end
-            end
-
             return true;
         end
     end
@@ -150,7 +73,7 @@ function GoWWishlists:MarkWishlistObtained(itemId, difficulty)
     return false;
 end
 
-function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, difficulty)
+function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, lootListID, encounterName, difficulty)
     if not dropInfo then return end
 
     local itemLink = dropInfo.itemHyperlink;
@@ -159,7 +82,42 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, diff
     local itemId = tonumber(itemLink:match("item:(%d+)"));
     if not itemId then return end
 
-    if not encounterName then
+    -- Deduplicate by encounter+lootListID, falling back to itemLink when IDs are unavailable
+    local dropKey = (encounterID and lootListID) and (encounterID .. "-" .. lootListID) or (itemLink or "unknown");
+    if self.state.processedDrops[dropKey] then
+        GOW.Logger:Debug("Loot history: skipping duplicate drop " .. dropKey);
+        return true;
+    end
+
+    local winner = dropInfo.winner;
+    local winnerName = winner and (winner.name or winner.playerName) or nil;
+
+    if winner and winner.isSelf then
+        self:RecordWishlistLootDrop(itemId, itemLink, encounterID, encounterName, difficulty);
+    end
+
+    if winnerName then
+        -- processedDrops is session-scoped and bounded by encounter count per raid night
+        -- (typically < 200 entries). No explicit cleanup is needed.
+        self.state.processedDrops[dropKey] = true;
+    end
+
+    return winnerName ~= nil;
+end
+
+function GoWWishlists:RecordWishlistLootDrop(itemId, itemLink, encounterID, encounterName, difficulty)
+    -- Don't record personal drops during an active RCLC session (RCLC import will handle them)
+    -- Only drops that match the wishlist are recorded; non-wishlist wins are intentionally skipped.
+    if GOW.LootHistoryRCLC and GOW.LootHistoryRCLC:IsSessionActive() then return end
+
+    local wishlistMatch = self:FindWishlistMatch(itemId);
+    if not wishlistMatch then return end
+
+    local Personal = GOW.LootHistoryPersonal;
+    local Store = GOW.LootHistoryStore;
+    if not Personal or not Store then return end
+
+    if not encounterName and C_LootHistory then
         local encounterInfo = C_LootHistory.GetInfoForEncounter(encounterID);
         encounterName = encounterInfo and encounterInfo.encounterName or "Unknown";
     end
@@ -167,42 +125,34 @@ function GoWWishlists:ProcessDropInfo(dropInfo, encounterID, encounterName, diff
         difficulty = self:GetCurrentDifficultyName();
     end
 
-    local winner = dropInfo.winner;
-    local winnerName = winner and (winner.name or winner.playerName) or nil;
+    GOW.Logger:Debug(string.format("Player won item %s (%d) from %s", itemLink, itemId, encounterName));
 
-    if winnerName and not self:IsAllLootAlreadyRecorded(itemId, encounterName, winnerName) then
-        self:RecordAllLootDrop(itemId, itemLink, encounterName, difficulty, winnerName);
-    end
+    -- Capture all instance info once to avoid a redundant GetInstanceInfo() call inside MapToCanonical
+    local instanceName, _, difficultyID, _, _, _, _, _, groupSize = GetInstanceInfo();
+    local mapID = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player") or nil;
+    local charInfo = self.state.currentCharInfo;
+    local entry = Personal:MapToCanonical(itemId, itemLink, encounterName, difficulty, difficultyID, charInfo, instanceName, mapID, groupSize);
+    if not entry then return end
 
-    if winner and winner.isSelf then
-        GOW.Logger:Debug(string.format("Player won item %s (%d) from %s", itemLink, itemId, encounterName));
-
-        local history = GOW.DB and GOW.DB.profile and GOW.DB.profile.lootHistory or {};
-        local alreadyRecorded = self:IsLootRecorded(history, itemId, encounterName);
-
-        if not alreadyRecorded then
-            self:RecordLootHistory(itemId, itemLink, encounterName, difficulty);
-            local wasOnWishlist = self:MarkWishlistObtained(itemId, difficulty);
-            if wasOnWishlist then
-                GOW.Logger:PrintSuccessMessage(itemLink .. " obtained! Removed from your wishlist.");
-            end
+    if Store:SaveDropEntry(entry) then
+        local wasOnWishlist = self:MarkWishlistObtained(itemId, difficulty);
+        if wasOnWishlist then
+            GOW.Logger:PrintSuccessMessage(itemLink .. " obtained! Removed from your wishlist.");
         end
     end
-
-    return winnerName ~= nil; -- true if winner was resolved
 end
 
 function GoWWishlists:ProcessLootHistoryDrop(encounterID, lootListID)
     if not C_LootHistory or not C_LootHistory.GetSortedInfoForDrop then return end
 
     local dropInfo = C_LootHistory.GetSortedInfoForDrop(encounterID, lootListID);
-    local resolved = self:ProcessDropInfo(dropInfo, encounterID);
+    local resolved = self:ProcessDropInfo(dropInfo, encounterID, lootListID);
 
     -- If winner isn't known yet (rolls in progress), retry after rolls end (~30s)
     if not resolved and dropInfo and dropInfo.itemHyperlink then
         C_Timer.After(32, function()
             local retryInfo = C_LootHistory.GetSortedInfoForDrop(encounterID, lootListID);
-            self:ProcessDropInfo(retryInfo, encounterID);
+            self:ProcessDropInfo(retryInfo, encounterID, lootListID);
         end);
     end
 end
@@ -222,7 +172,7 @@ function GoWWishlists:ProcessLootHistoryEncounter(encounterID)
     for _, dropEntry in ipairs(drops) do
         if dropEntry.lootListID and C_LootHistory.GetSortedInfoForDrop then
             local dropInfo = C_LootHistory.GetSortedInfoForDrop(encounterID, dropEntry.lootListID);
-            self:ProcessDropInfo(dropInfo, encounterID, encounterName, difficulty);
+            self:ProcessDropInfo(dropInfo, encounterID, dropEntry.lootListID, encounterName, difficulty);
         end
     end
 end

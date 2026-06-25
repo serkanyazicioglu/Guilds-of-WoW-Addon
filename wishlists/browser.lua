@@ -41,6 +41,25 @@ function GoWWishlists:CreateGainDisplayToggleButton(parent)
     return gainBtn;
 end
 
+function GoWWishlists:ReanchorTabs(host)
+    -- With 3 fixed tabs (personal, roster, loot history), the only variable is
+    -- whether the roster tab is visible. When hidden, the loot history tab
+    -- re-anchors directly to the personal tab.
+    local rosterTab = host.rosterTab or host.guildWishlistTab;
+    local lootHistoryTab = host.lootHistoryTab;
+    if not rosterTab or not lootHistoryTab then return end
+
+    lootHistoryTab:ClearAllPoints();
+    if rosterTab:IsShown() then
+        lootHistoryTab:SetPoint("LEFT", rosterTab, "RIGHT", 4, 0);
+    else
+        local personalTab = host.wishlistTab;
+        if personalTab then
+            lootHistoryTab:SetPoint("LEFT", personalTab, "RIGHT", 4, 0);
+        end
+    end
+end
+
 local function UpdateRosterTabVisibility(self, host)
     local rosterTab = host.rosterTab or host.guildWishlistTab;
     if not rosterTab then return end
@@ -50,6 +69,10 @@ local function UpdateRosterTabVisibility(self, host)
     else
         rosterTab:Hide();
     end
+
+    -- Loot history tab is always visible
+
+    self:ReanchorTabs(host);
 end
 
 local function GetSavedTabIndex(host)
@@ -98,6 +121,10 @@ local function InitializeWishlistTabHost(self, host, options)
     rosterTab:SetWidth(options.rosterTabWidth or 90);
     rosterTab:Hide();
 
+    local lootHistoryTab = self:CreateTabButton(host, "|cff00ff00LOOT HISTORY|r", 3);
+    lootHistoryTab:SetPoint("LEFT", rosterTab, "RIGHT", 4, 0);
+    lootHistoryTab:SetWidth(options.lootHistoryTabWidth or 110);
+
     local tabIndicator = host:CreateTexture(nil, "ARTWORK", nil, 2);
     tabIndicator:SetTexture("Interface\\Buttons\\WHITE8x8");
     tabIndicator:SetVertexColor(L.constants.GOW_ACCENT_COLOR.r, L.constants.GOW_ACCENT_COLOR.g, L.constants.GOW_ACCENT_COLOR.b, 0.9);
@@ -115,14 +142,20 @@ local function InitializeWishlistTabHost(self, host, options)
 
     local guildPanel = self:Create3PanelLayout(guildContainer);
 
+    local lootHistoryContainer = CreateFrame("Frame", options.lootHistoryContainerName, host);
+    lootHistoryContainer:SetPoint("TOPLEFT", personalTab, "BOTTOMLEFT", options.contentOffsetX or -4, options.contentOffsetY or -8);
+    lootHistoryContainer:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", options.contentRight or 0, options.contentBottom or 0);
+
     host.compactBtn = compactBtn;
     host.gainDisplayBtn = gainDisplayBtn;
     host.wishlistTab = personalTab;
     host.rosterTab = rosterTab;
     host.guildWishlistTab = rosterTab;
+    host.lootHistoryTab = lootHistoryTab;
     host.tabIndicator = tabIndicator;
     host.wishlistContainer = personalContainer;
     host.guildContainer = guildContainer;
+    host.lootHistoryContainer = lootHistoryContainer;
     host.wishlist3Panel = personalPanel;
     host.scrollChild = personalPanel.lootPanel.scrollChild;
     host.scrollFrame = personalPanel.lootPanel.scrollFrame;
@@ -132,14 +165,14 @@ local function InitializeWishlistTabHost(self, host, options)
     host.guildDifficultyFilter = host.guildDifficultyFilter or "All";
     host.activeTab = 1;
 
-    local allTabs = { personalTab, rosterTab };
-    local allContentFrames = { personalContainer, guildContainer };
+    local allTabs = { personalTab, rosterTab, lootHistoryTab };
+    local allContentFrames = { personalContainer, guildContainer, lootHistoryContainer };
 
     local function SetActiveTab(tabIndex)
         if tabIndex == 2 and not rosterTab:IsShown() then
             tabIndex = 1;
         end
-        if tabIndex ~= 1 and tabIndex ~= 2 then
+        if tabIndex ~= 1 and tabIndex ~= 2 and tabIndex ~= 3 then
             tabIndex = 1;
         end
 
@@ -177,6 +210,7 @@ local function InitializeWishlistTabHost(self, host, options)
     host.SetActiveTab = SetActiveTab;
     personalTab:SetScript("OnClick", function() SetActiveTab(1) end);
     rosterTab:SetScript("OnClick", function() SetActiveTab(2) end);
+    lootHistoryTab:SetScript("OnClick", function() SetActiveTab(3) end);
     SetActiveTab(1);
 end
 
@@ -186,10 +220,19 @@ local function RefreshStandaloneTab(frame, tabIndex)
         if frame.wishlistSubtitle then
             frame.subtitleText:SetText(frame.wishlistSubtitle);
         end
+        frame.compactBtn:Show();
         GoWWishlists:PopulatePersonalWishlistView(frame);
-    else
+    elseif tabIndex == 2 then
         frame.titleText:SetText("|cff00ff00ROSTER|r");
+        frame.compactBtn:Show();
         GoWWishlists:PopulateGuildWishlistView(frame);
+    elseif tabIndex == 3 then
+        frame.titleText:SetText("|cff00ff00LOOT HISTORY|r");
+        if frame.subtitleText then frame.subtitleText:SetText("") end
+        frame.compactBtn:Hide();
+        if GOW.LootHistoryUI then
+            GOW.LootHistoryUI:PopulateLootHistoryView(frame.lootHistoryContainer);
+        end
     end
 end
 
@@ -253,6 +296,7 @@ function GoWWishlists:CreateWishlistBrowserFrame()
         contentBottom = 20,
         personalContainerName = "GoWWishlistContainer",
         guildContainerName = "GoWGuildContainer",
+        lootHistoryContainerName = "GoWLootHistoryContainer",
         onTabChanged = RefreshStandaloneTab,
     });
 
@@ -310,6 +354,12 @@ function GoWWishlists:CreateCoreWishlistsFrame(parent)
         contentOffsetY = -6,
         contentRight = 0,
         contentBottom = 0,
+        lootHistoryContainerName = "GoWCoreLootHistoryContainer",
+        onTabChanged = function(host, tabIndex)
+            if tabIndex == 3 and GOW.LootHistoryUI then
+                GOW.LootHistoryUI:PopulateLootHistoryView(host.lootHistoryContainer);
+            end
+        end,
     });
 
     local reloadBtn = L:CreateActionButton(container, {
@@ -360,10 +410,19 @@ function GoWWishlists:ShowCoreWishlistsTab(parent, setStatusFn)
             self.guildFrame.guildDifficultyFilter = self.guildDifficultyFilter or "All";
             GoWWishlists:PopulateGuildWishlistView(self.guildFrame);
         end
+        -- Only refresh loot history when tab 3 is active to avoid
+        -- unnecessary sort/rebuild on every roster or wishlist update.
+        if self.activeTab == 3 then
+            if GOW.LootHistoryUI then
+                GOW.LootHistoryUI:PopulateLootHistoryView(self.lootHistoryContainer);
+            end
+        end
     end
 
-    container:RefreshContent();
+    -- SetActiveTab must come first so RefreshContent sees the correct activeTab
+    -- when deciding whether to populate the loot history view.
     container.SetActiveTab(GetSavedTabIndex(container));
+    container:RefreshContent();
     container:Show();
 end
 
