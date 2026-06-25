@@ -27,13 +27,11 @@ function LootHistoryRCLC:GetRCLCLootDB()
     local RCLC = self:GetRCLCGlobal();
     if not RCLC then return nil end
 
-    -- Preferred: public API
     if RCLC.GetHistoryDB then
         local ok, db = pcall(RCLC.GetHistoryDB, RCLC);
         if ok and db then return db end
     end
 
-    -- Fallback: navigate module structure
     if RCLC.GetModule then
         local ok, histModule = pcall(RCLC.GetModule, RCLC, "RCLootHistory", true);
         if ok and histModule and histModule.db and histModule.db.factionrealm then

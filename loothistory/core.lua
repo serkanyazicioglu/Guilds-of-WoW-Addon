@@ -132,7 +132,6 @@ function LootHistory:Init()
             if event == "PLAYER_REGEN_DISABLED" then
                 LootHistory:StopRCLCPollTimer();
             elseif event == "PLAYER_REGEN_ENABLED" then
-                -- Resume polling only if still in a raid instance
                 local _, instType = IsInInstance();
                 if instType == "raid" then
                     LootHistory:StartRCLCPollTimer();

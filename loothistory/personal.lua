@@ -5,7 +5,6 @@ local GoWWishlists = GOW.Wishlists;
 local LootHistoryPersonal = {};
 GOW.LootHistoryPersonal = LootHistoryPersonal;
 
--- Monotonic counter for sourceEntryId uniqueness; collision probability negligible at session-scale volumes
 local personalEntryCounter = 0;
 
 function LootHistoryPersonal:GenerateSourceEntryId(itemId, timestamp)
@@ -22,7 +21,6 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
     entry.source = LootHistory.SOURCE_PERSONAL;
     entry.sourceEntryId = self:GenerateSourceEntryId(itemId, now);
 
-    -- charInfo passed explicitly to avoid cross-module init ordering dependency
     charInfo = charInfo or (GoWWishlists.state and GoWWishlists.state.currentCharInfo);
     if charInfo then
         entry.winner.name = charInfo.name or "";
@@ -41,8 +39,6 @@ function LootHistoryPersonal:MapToCanonical(itemId, itemLink, encounterName, dif
     entry.encounter.difficulty = difficulty or "";
     entry.encounter.difficultyID = difficultyID;
 
-    -- Instance info: prefer caller-supplied values
-    -- fall back to GetInstanceInfo() when called without them.
     if not instanceName then
         instanceName, _, _, _, _, _, _, _, groupSize = GetInstanceInfo();
     end
