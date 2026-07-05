@@ -878,6 +878,11 @@ local handleBuffAura = function(aura)
     local auraInfo = C_UnitAuras.GetAuraDataByAuraInstanceID(auraUnitId, aura.auraInstanceID)
     if (auraInfo) then
         local spellId = auraInfo.spellId
+        --WoW 12.x can return secret aura values for other units; comparing a
+        --secret spellId raises an error, so skip those auras
+        if (issecretvalue and issecretvalue(spellId)) then
+            return
+        end
         if (auraSpellID == spellId) then
             auraSpellID = nil
             auraDurationTime = auraInfo.duration
