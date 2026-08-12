@@ -1,9 +1,9 @@
-## Interface: 120007
+## Interface: 120007, 120100
 ## Title: Guilds of WoW
 ## Notes: Guilds of WoW guild herald for retail World of Warcraft
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 2.1.10
+## Version: 2.1.11
 ## SavedVariables: GoWDB
 ## OptionalDeps: AstralKeys, RCLootCouncil
 ## AddonCompartmentFunc: GuildsOfWow_OnAddonButtonClick

@@ -443,11 +443,13 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	GOW.Logger:Debug(event);
 
 	if event == "PLAYER_ENTERING_WORLD" then
-		C_Calendar.OpenCalendar(); -- initializes the calendar but doesn't open it during login
-		isInitialLogin = arg1;
+		C_Timer.After(3, function()
+			C_Calendar.OpenCalendar(); -- initializes the calendar but doesn't open it during login
+			isInitialLogin = arg1;
 
-		GOW.Logger:Debug(tostring(arg1));
-		GOW.Logger:Debug(tostring(arg2));
+			GOW.Logger:Debug(tostring(arg1));
+			GOW.Logger:Debug(tostring(arg2));
+		end)
 	elseif event == "FIRST_FRAME_RENDERED" then
 		if (GOW.Helper:IsInGameCalendarAccessible()) then
 			isCalendarOpened = true;
@@ -2022,86 +2024,94 @@ function Core:GetGuildKey()
 end
 
 function Core:SetRosterInfo()
-	local inCombat = GOW.Helper:IsInCombat();
-	if (inCombat) then
+	if (GOW.Helper:IsInCombat()) then
 		GOW.Logger:Debug("Cannot set roster info in combat!");
 		return;
 	end
 
-	local numTotalMembers, _, _ = GetNumGuildMembers();
+	C_Timer.After(0, function()
+		if (GOW.Helper:IsInCombat()) then
+			GOW.Logger:Debug("Cannot set roster info in combat (deferred check)!");
+			return;
+		end
 
-	if (numTotalMembers > 0) then
-		local guildKey = Core:GetGuildKey();
+		GOW.Logger:Debug("Exporting roster info.");
 
-		if (guildKey) then
-			local me = GOW.Helper:GetCurrentCharacterUniqueKey();
-			local isKeystonesEnabled = GOW.Helper:IsKeystonesEnabled();
+		local numTotalMembers = GetNumGuildMembers();
 
-			GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime();
-			GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD();
-			GOW.DB.profile.guilds[guildKey].roster = {};
-			GOW.DB.profile.guilds[guildKey].ranks = {};
+		if (numTotalMembers > 0) then
+			local guildKey = Core:GetGuildKey();
 
-			if (isKeystonesEnabled) then
-				GOW.DB.profile.guilds[guildKey].keystones = {};
-				GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = nil;
-			end
+			if (guildKey) then
+				local me = GOW.Helper:GetCurrentCharacterUniqueKey();
+				local isKeystonesEnabled = GOW.Helper:IsKeystonesEnabled();
 
-			if (GOW.Keystones) then
-				GOW.Keystones:Refresh();
-			end
+				GOW.DB.profile.guilds[guildKey].rosterRefreshTime = GetServerTime();
+				GOW.DB.profile.guilds[guildKey].motd = GetGuildRosterMOTD();
+				GOW.DB.profile.guilds[guildKey].roster = {};
+				GOW.DB.profile.guilds[guildKey].ranks = {};
 
-			local anyKeystoneFound = false;
+				if (isKeystonesEnabled) then
+					GOW.DB.profile.guilds[guildKey].keystones = {};
+					GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = nil;
+				end
 
-			for i = 1, numTotalMembers do
-				local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, isSoREligible, standingID, guid = GetGuildRosterInfo(i);
-				if (name) then
-					GOW.DB.profile.guilds[guildKey].roster[name] = {
-						guid = guid,
-						note = note,
-						rankIndex = rankIndex,
-						officerNote = officernote
-					};
+				if (GOW.Keystones) then
+					GOW.Keystones:Refresh();
+				end
 
-					if (isKeystonesEnabled and C_MythicPlus.IsMythicPlusActive()) then
-						local normalizedName = GOW.Helper:GetNormalizedCharacterName(name);
-						local keystoneLevel = nil;
-						local keystoneMapId = nil;
+				local anyKeystoneFound = false;
 
-						if (GOW.Keystones) then
-							keystoneLevel, keystoneMapId = GOW.Keystones:GetGuildMemberKeystone(name, level, normalizedName == me);
-						end
+				for i = 1, numTotalMembers do
+					local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, isSoREligible, standingID, guid = GetGuildRosterInfo(i);
+					if (name) then
+						GOW.DB.profile.guilds[guildKey].roster[name] = {
+							guid = guid,
+							note = note,
+							rankIndex = rankIndex,
+							officerNote = officernote
+						};
 
-						if (keystoneLevel and keystoneMapId) then
-							GOW.DB.profile.guilds[guildKey].keystones[name] = {
-								keystoneLevel = keystoneLevel,
-								keystoneMapId = keystoneMapId,
-								date = GetServerTime()
-							};
+						if (isKeystonesEnabled and C_MythicPlus.IsMythicPlusActive()) then
+							local normalizedName = GOW.Helper:GetNormalizedCharacterName(name);
+							local keystoneLevel = nil;
+							local keystoneMapId = nil;
 
-							anyKeystoneFound = true;
+							if (GOW.Keystones) then
+								keystoneLevel, keystoneMapId = GOW.Keystones:GetGuildMemberKeystone(name, level, normalizedName == me);
+							end
+
+							if (keystoneLevel and keystoneMapId) then
+								GOW.DB.profile.guilds[guildKey].keystones[name] = {
+									keystoneLevel = keystoneLevel,
+									keystoneMapId = keystoneMapId,
+									date = GetServerTime()
+								};
+
+								anyKeystoneFound = true;
+							end
 						end
 					end
 				end
-			end
 
-			if (anyKeystoneFound) then
-				GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = GetServerTime();
-			end
-			local numTotalRanks = GuildControlGetNumRanks();
+				if (anyKeystoneFound) then
+					GOW.DB.profile.guilds[guildKey].keystonesRefreshTime = GetServerTime();
+				end
+				local numTotalRanks = GuildControlGetNumRanks();
 
-			for i = 1, numTotalRanks do
-				local rankName = GuildControlGetRankName(i);
+				for i = 1, numTotalRanks do
+					local rankName = GuildControlGetRankName(i);
 
-				if (rankName) then
-					GOW.DB.profile.guilds[guildKey].ranks[i] = {
-						index = i,
-						name = rankName
-					};
+					if (rankName) then
+						GOW.DB.profile.guilds[guildKey].ranks[i] = {
+							index = i,
+							name = rankName
+						};
+					end
 				end
 			end
 		end
-	end
+	end)
 end
 
 local isEventAttendancesInitialProcessStarted = false;
