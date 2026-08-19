@@ -66,8 +66,7 @@ function RCGoW:GetPlayerWish(itemId, playerFullName)
 
     for _, charEntry in ipairs(data.wishlists) do
         local nameMatch = charEntry.name == playerName;
-        local realmMatch = not playerRealm
-            or (charEntry.realmName and charEntry.realmName:gsub("%s", "") == playerRealm);
+        local realmMatch = not playerRealm or charEntry.realmNameNormalized == playerRealm;
         if nameMatch and realmMatch then
             for _, item in ipairs(charEntry.wishlist) do
                 if (item.itemId == itemId or item.sourceItemId == itemId) and not item.isObtained then
