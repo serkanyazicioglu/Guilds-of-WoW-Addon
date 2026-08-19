@@ -75,6 +75,19 @@ local function UpdateRosterTabVisibility(self, host)
     self:ReanchorTabs(host);
 end
 
+-- Guild data can resolve after the wishlist UI is already open.
+function GoWWishlists:RefreshRosterTabVisibility()
+    local browserFrame = self.frames.browserFrame;
+    if browserFrame and browserFrame:IsShown() then
+        UpdateRosterTabVisibility(self, browserFrame);
+    end
+
+    local coreFrame = self.frames.coreWishlists;
+    if coreFrame and coreFrame:IsShown() then
+        UpdateRosterTabVisibility(self, coreFrame);
+    end
+end
+
 local function GetSavedTabIndex(host)
     local savedTab = GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistActiveTab or 1;
     local rosterTab = host.rosterTab or host.guildWishlistTab;

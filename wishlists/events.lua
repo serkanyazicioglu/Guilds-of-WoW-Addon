@@ -8,6 +8,7 @@ function GoWWishlists:Initialize()
     self.state.compactMode = GOW.DB and GOW.DB.profile and GOW.DB.profile.wishlistCompactMode or false;
     self.state.gainDisplayMode = GOW.DB and GOW.DB.profile and GOW.DB.profile.gainDisplayMode or "percent";
     self:BuildWishlistIndex();
+    self:HandleGuildDataEvents();
     self:HandleLootDropEvents();
     -- Registered before LootHistory:Init() runs, but event handlers nil-guard
     -- GOW.LootHistoryPersonal / GOW.LootHistoryRCLC and the store is lazily
@@ -16,6 +17,26 @@ function GoWWishlists:Initialize()
     self:HandleLootInfoEvents();
 
     GOW.Logger:Debug("Wishlist module initialized.");
+end
+
+-- Initialize() runs on FIRST_FRAME_RENDERED, where GetGuildInfo("player") is
+-- usually still nil, leaving the guild wishlist unresolved for the whole session.
+function GoWWishlists:HandleGuildDataEvents()
+    if self.state.guildWishlistData then return end
+
+    local guildFrame = CreateFrame("Frame");
+    guildFrame:RegisterEvent("PLAYER_GUILD_UPDATE");
+    guildFrame:RegisterEvent("GUILD_ROSTER_UPDATE");
+
+    guildFrame:SetScript("OnEvent", function(frame)
+        -- Stop only once the lookup succeeds: the guild realm can land a tick
+        -- after the name, and a guildless player may join a listed guild later.
+        if not GoWWishlists:ResolveGuildWishlistData() then return end
+
+        frame:UnregisterAllEvents();
+        GOW.Logger:Debug("Guild wishlist data resolved after login.");
+        GoWWishlists:RefreshRosterTabVisibility();
+    end);
 end
 
 function GoWWishlists:HandleLootInfoEvents()

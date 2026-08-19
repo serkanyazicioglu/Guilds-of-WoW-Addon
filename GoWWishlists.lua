@@ -130,31 +130,42 @@ function GoWWishlists:BuildWishlistIndex()
         end
     end
 
-    -- Guild wishlists: find matching guild for current character (or first entry in debug mode)
-    local guildLists = ns.WISHLISTS.guildWishlists;
-    if guildLists then
-        if isDebug and #guildLists > 0 then
-            self.state.guildWishlistData = guildLists[1];
-        else
-            local playerGuild, _, _, playerGuildRealm = GetGuildInfo("player");
-            -- GetGuildInfo returns nil for realm when guild is on the player's own realm
-            playerGuildRealm = playerGuildRealm or charInfo.realmNormalized;
-            if playerGuild then
-                for _, guildEntry in ipairs(guildLists) do
-                    if guildEntry.guild == playerGuild and guildEntry.guildRegionId == charInfo.regionId and guildEntry.guildRealmNormalized == playerGuildRealm then
-                        self.state.guildWishlistData = guildEntry;
-                        break;
-                    end
-                end
-            end
-        end
-    end
+    self:ResolveGuildWishlistData();
 
     for _, entry in ipairs(self.state.allItems) do
         C_Item.GetItemInfo(entry.itemId);
     end
 
     GOW.Logger:Debug("Wishlist index built: " .. #self.state.allItems .. " items indexed for " .. charInfo.nameLower .. "-" .. charInfo.realmLower);
+end
+
+function GoWWishlists:ResolveGuildWishlistData()
+    if self.state.guildWishlistData then return true end
+    if not ns.WISHLISTS then return false end
+
+    local guildLists = ns.WISHLISTS.guildWishlists;
+    if not guildLists then return false end
+
+    if GOW.consts.ENABLE_DEBUGGING and #guildLists > 0 then
+        self.state.guildWishlistData = guildLists[1];
+        return true;
+    end
+
+    local playerGuild, _, _, playerGuildRealm = GetGuildInfo("player");
+    if not playerGuild then return false end
+
+    local charInfo = self.state.currentCharInfo or self:GetCurrentCharacterInfo();
+    -- GetGuildInfo returns nil for realm when guild is on the player's own realm
+    playerGuildRealm = playerGuildRealm or charInfo.realmNormalized;
+
+    for _, guildEntry in ipairs(guildLists) do
+        if guildEntry.guild == playerGuild and guildEntry.guildRegionId == charInfo.regionId and guildEntry.guildRealmNormalized == playerGuildRealm then
+            self.state.guildWishlistData = guildEntry;
+            return true;
+        end
+    end
+
+    return false;
 end
 
 function GoWWishlists:IsWishlistDataStale()
