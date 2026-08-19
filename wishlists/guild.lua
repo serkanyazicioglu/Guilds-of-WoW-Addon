@@ -129,6 +129,8 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
                             boss.items[itemKey] = {
                                 itemId = item.itemId,
                                 difficulty = item.difficulty,
+                                itemLevel = item.itemLevel,
+                                bonusIds = item.bonusIds,
                                 isTierSetPiece = item.isTierSetPiece,
                                 isCatalystItem = item.isCatalystItem,
                                 catalystItemId = item.catalystItemId,
@@ -212,13 +214,16 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
     row.itemId = itemData.itemId;
 
     local displayId = itemData.itemId;
-    local itemName = self:SetItemIconAndName(row, itemData.itemId, nil, nil);
+    local itemName = self:SetItemIconAndName(row, itemData.itemId, nil, nil, itemData.bonusIds);
 
     if row.badgeCol then
         self:ApplyBadgeColumnState(row.badgeCol, itemData.difficulty, nil);
     end
 
     local parts = {};
+    if itemData.itemLevel then
+        table.insert(parts, "|cffffd100" .. itemData.itemLevel .. "|r");
+    end
     local memberCount = #itemData.members;
     table.insert(parts, "|cff888888" .. memberCount .. (memberCount == 1 and " wants" or " want") .. "|r");
     row.infoText:SetText(table.concat(parts, "  "));

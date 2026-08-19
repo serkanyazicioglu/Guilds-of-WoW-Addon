@@ -667,11 +667,31 @@ function GoWWishlists:SetupDifficultyDropdown(sourcePanel, onChangeCallback)
     sourcePanel.scrollFrame:SetPoint("TOPLEFT", btn, "BOTTOMLEFT", -4, -4);
 end
 
-function GoWWishlists:SetItemIconAndName(row, itemId, itemLink, displayItemId)
+-- item:ID:enchant:gem1:gem2:gem3:gem4:suffix:unique:linkLevel:specID:modifiersMask:itemContext:numBonusIDs:bonusID1:...
+-- Without the bonus ids the client renders the item's base record, not the ilvl it drops at.
+function GoWWishlists:BuildItemLink(itemId, bonusIds)
+    if not itemId or not bonusIds then return nil end
+
+    local valid = {};
+    for _, bonusId in ipairs(bonusIds) do
+        if bonusId ~= 0 then valid[#valid + 1] = bonusId end
+    end
+    if #valid == 0 then return nil end
+
+    local parts = { "item", itemId };
+    for _ = 1, 11 do parts[#parts + 1] = "" end
+    parts[#parts + 1] = #valid;
+    for _, bonusId in ipairs(valid) do parts[#parts + 1] = bonusId end
+
+    return table.concat(parts, ":");
+end
+
+function GoWWishlists:SetItemIconAndName(row, itemId, itemLink, displayItemId, bonusIds)
     local lookupId = displayItemId or itemId;
     local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(lookupId);
     row.icon:SetTexture(itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
     row.tooltipItemId = lookupId;
+    row.tooltipItemLink = itemLink or self:BuildItemLink(lookupId, bonusIds);
 
     if itemQuality then
         local r, g, b, hex = C_Item.GetItemQualityColor(itemQuality);
@@ -687,6 +707,9 @@ end
 
 function GoWWishlists:BuildInfoLine(entry, showSource)
     local parts = {};
+    if entry.itemLevel then
+        table.insert(parts, "|cffffd100" .. entry.itemLevel .. "|r");
+    end
     if showSource ~= false and entry.sourceBossName then
         table.insert(parts, "|cff888888" .. entry.sourceBossName .. "|r");
     end
@@ -1083,10 +1106,15 @@ function GoWWishlists:CreateItemTooltipZone(row, iconBorder)
     iconHover:EnableMouse(true);
     iconHover:SetScript("OnEnter", function()
         row.highlight:Show();
+        local tipLink = row.tooltipItemLink;
         local tipId = row.tooltipItemId or row.itemId;
-        if tipId then
+        if tipLink or tipId then
             GameTooltip:SetOwner(row, "ANCHOR_RIGHT");
-            GameTooltip:SetItemByID(tipId);
+            if tipLink then
+                GameTooltip:SetHyperlink(tipLink);
+            else
+                GameTooltip:SetItemByID(tipId);
+            end
             GameTooltip:Show();
         end
     end);

@@ -98,7 +98,7 @@ function GoWWishlists:PopulateItemRow(row, entry, itemLink)
     row.itemId = entry.itemId;
 
     local displayId = entry.catalystItemId or entry.itemId;
-    local itemName = self:SetItemIconAndName(row, entry.itemId, itemLink, entry.catalystItemId);
+    local itemName = self:SetItemIconAndName(row, entry.itemId, itemLink, entry.catalystItemId, entry.bonusIds);
     if not itemName then
         self:RegisterPendingItem(displayId, function()
             if row:GetParent() then
