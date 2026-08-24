@@ -78,11 +78,18 @@ function GoWWishlists:HandleLootHistoryEvents()
     end);
 end
 
-function GoWWishlists:MarkWishlistObtained(itemId, difficulty)
+function GoWWishlists:MarkWishlistObtained(itemId, difficulty, itemLink)
+    local candidates = {};
     for _, entry in ipairs(self.state.allItems) do
-        if entry.itemId == itemId
-            and (not difficulty or entry.difficulty == difficulty)
-            and not entry.isObtained then
+        if entry.itemId == itemId and not entry.isObtained then
+            table.insert(candidates, entry);
+        end
+    end
+    if #candidates == 0 then return false end
+
+    local isVariantMatch = self:GetVariantMatcher(itemLink, candidates, difficulty);
+    for _, entry in ipairs(candidates) do
+        if isVariantMatch(entry) then
             entry.isObtained = true;
             -- Index cleanup intentionally omitted: FindWishlistMatch filters by isObtained at lookup time,
             -- and the wishlistIndex is rebuilt each session, so proactive removal is unnecessary.
@@ -131,7 +138,7 @@ function GoWWishlists:RecordWishlistLootDrop(itemId, itemLink, encounterID, enco
     -- Only drops that match the wishlist are recorded; non-wishlist wins are intentionally skipped.
     if GOW.LootHistoryRCLC and GOW.LootHistoryRCLC:IsSessionActive() then return end
 
-    local wishlistMatch = self:FindWishlistMatch(itemId);
+    local wishlistMatch = self:FindWishlistMatch(itemId, itemLink);
     if not wishlistMatch then return end
 
     local Personal = GOW.LootHistoryPersonal;
@@ -156,7 +163,7 @@ function GoWWishlists:RecordWishlistLootDrop(itemId, itemLink, encounterID, enco
     if not entry then return end
 
     if Store:SaveDropEntry(entry) then
-        local wasOnWishlist = self:MarkWishlistObtained(itemId, difficulty);
+        local wasOnWishlist = self:MarkWishlistObtained(itemId, difficulty, itemLink);
         if wasOnWishlist then
             GOW.Logger:PrintSuccessMessage(itemLink .. " obtained! Removed from your wishlist.");
         end

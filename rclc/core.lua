@@ -50,7 +50,7 @@ local function SplitFullName(fullName)
     return name, (realm and realm ~= "") and realm or nil;
 end
 
-function RCGoW:GetPlayerWish(itemId, playerFullName)
+function RCGoW:GetPlayerWish(itemId, playerFullName, itemLink)
     if GOW.DB and GOW.DB.profile.showRCLCWishlist == false then return nil end
 
     local data = GoWWishlists.state.guildWishlistData;
@@ -82,11 +82,11 @@ function RCGoW:GetPlayerWish(itemId, playerFullName)
         return nil;
     end
 
-    local currentDiff = GoWWishlists:GetCurrentDifficultyName();
+    local isVariantMatch = GoWWishlists:GetVariantMatcher(itemLink, matches);
     local best = nil;
 
     for _, m in ipairs(matches) do
-        if m.difficulty == currentDiff then
+        if isVariantMatch(m) then
             local mPct = (m.gain and m.gain.percent) or 0;
             local bestPct = best and ((best.gain and best.gain.percent) or 0) or -1;
             if mPct > bestPct then

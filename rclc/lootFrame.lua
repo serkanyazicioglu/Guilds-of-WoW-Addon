@@ -27,17 +27,17 @@ local function OnEntryRefreshed(entry)
     local sessions = entry.item and entry.item.sessions;
     if not sessions then return end
 
-    local itemId;
+    local itemId, itemLink;
     for _, session in ipairs(sessions) do
         if lootTable[session] and lootTable[session].link then
             local link = lootTable[session].link;
             itemId = (C_Item and C_Item.GetItemInfoInstant(link)) or tonumber(link:match("item:(%d+)"));
-            if itemId then break end
+            if itemId then itemLink = link; break end
         end
     end
     if not itemId then return end
 
-    local wish = GoWWishlists:FindWishlistMatch(itemId);
+    local wish = GoWWishlists:FindWishlistMatch(itemId, itemLink);
     if not wish then
         if GOW.consts.ENABLE_DEBUGGING then
             wish = GOW.RCGoW and GOW.RCGoW.GetDebugWish();

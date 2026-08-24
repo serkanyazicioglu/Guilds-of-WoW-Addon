@@ -177,22 +177,73 @@ function GoWWishlists:IsWishlistDataStale()
     return (now - ns.WISHLISTS.exportTime) > staleThresholdSeconds;
 end
 
+-- nil outside an instance, and for difficulty ids with no raid equivalent (M+, delves).
+-- Callers treat nil as "unknown" and stop filtering rather than matching nothing.
 function GoWWishlists:GetCurrentDifficultyName()
     local _, _, difficultyId = GetInstanceInfo();
     return self.constants.DIFFICULTY_NAMES[difficultyId];
 end
 
-function GoWWishlists:FindWishlistMatch(itemId)
+-- Bonus ids pin the exact variant (difficulty and upgrade track), so they identify
+-- which wishlist entry a distributed item refers to without asking where the player
+-- is standing. RCLootCouncil rebuilds the full link on every candidate.
+function GoWWishlists:GetBonusIdsFromLink(itemLink)
+    if not itemLink then return nil end
+
+    local itemString = itemLink:match("item:[%d:%-]+");
+    if not itemString then return nil end
+
+    local parts = { strsplit(":", itemString) };
+    local count = tonumber(parts[14]);
+    if not count or count == 0 then return nil end
+
+    local bonusIds = {};
+    for i = 15, 14 + count do
+        local id = tonumber(parts[i]);
+        if id then bonusIds[id] = true end
+    end
+
+    return next(bonusIds) and bonusIds or nil;
+end
+
+-- The export carries only the ids that pin the variant; a real drop carries those
+-- plus others, so a wish matches when its ids are a subset of the dropped item's.
+function GoWWishlists:EntryMatchesBonusIds(entry, bonusIdSet)
+    if not entry.bonusIds or #entry.bonusIds == 0 then return false end
+
+    for _, id in ipairs(entry.bonusIds) do
+        if not bonusIdSet[id] then return false end
+    end
+    return true;
+end
+
+-- Prefers bonus id matching, but only when the link carries them and at least one
+-- candidate does too; otherwise falls back to instance difficulty (nil = unknown).
+function GoWWishlists:GetVariantMatcher(itemLink, entries, difficulty)
+    local bonusIdSet = self:GetBonusIdsFromLink(itemLink);
+    if bonusIdSet and entries then
+        for _, entry in ipairs(entries) do
+            if entry.bonusIds and #entry.bonusIds > 0 then
+                return function(e) return self:EntryMatchesBonusIds(e, bonusIdSet) end;
+            end
+        end
+    end
+
+    difficulty = difficulty or self:GetCurrentDifficultyName();
+    return function(entry) return not difficulty or entry.difficulty == difficulty end;
+end
+
+function GoWWishlists:FindWishlistMatch(itemId, itemLink)
     local entries = self.state.wishlistIndex[itemId];
     if not entries then
         return nil;
     end
 
-    local difficulty = self:GetCurrentDifficultyName();
+    local isVariantMatch = self:GetVariantMatcher(itemLink, entries);
     local best = nil;
 
     for _, entry in ipairs(entries) do
-        if entry.difficulty == difficulty and not entry.isObtained then
+        if not entry.isObtained and isVariantMatch(entry) then
             local entryPct = (entry.gain and entry.gain.percent) or 0;
             local bestPct = best and ((best.gain and best.gain.percent) or 0) or -1;
             if entryPct > bestPct then
@@ -204,17 +255,17 @@ function GoWWishlists:FindWishlistMatch(itemId)
     return best;
 end
 
-function GoWWishlists:FindAllWishlistMatches(itemId)
+function GoWWishlists:FindAllWishlistMatches(itemId, itemLink)
     local entries = self.state.wishlistIndex[itemId];
     if not entries then
         return nil;
     end
 
-    local difficulty = self:GetCurrentDifficultyName();
+    local isVariantMatch = self:GetVariantMatcher(itemLink, entries);
     local matches = {};
 
     for _, entry in ipairs(entries) do
-        if entry.difficulty == difficulty and not entry.isObtained then
+        if not entry.isObtained and isVariantMatch(entry) then
             table.insert(matches, entry);
         end
     end

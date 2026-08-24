@@ -108,6 +108,12 @@ function GOW:OnInitialize()
 			else
 				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
 			end
+		elseif (msg == "wltest" and GOW.Helper:IsWishlistsEnabled()) then
+			if GOW.Wishlists then
+				GOW.Wishlists:RunWishlistTests();
+			else
+				GOW.Logger:PrintErrorMessage("Wishlist module not loaded.");
+			end
 		elseif (msg:match("^testloot") and GOW.Helper:IsWishlistsEnabled() and GOW.consts.ENABLE_DEBUGGING) then
 			local count = tonumber(msg:match("^testloot%s+(%d+)")) or 1;
 			if GOW.Wishlists then

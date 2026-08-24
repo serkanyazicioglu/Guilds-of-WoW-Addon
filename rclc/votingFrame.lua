@@ -26,12 +26,13 @@ local function GetShowNote()
     return GOW.DB == nil or GOW.DB.profile.rclcShowNote ~= false;
 end
 
-local function GetActiveItemId()
+local function GetActiveItem()
     local lootTable = RCLootCouncil:GetLootTable();
     if not lootTable or not lootTable[activeSession] then return nil end
     local link = lootTable[activeSession].link;
     if not link then return nil end
-    return (C_Item and C_Item.GetItemInfoInstant(link)) or tonumber(link:match("item:(%d+)"));
+    local itemId = (C_Item and C_Item.GetItemInfoInstant(link)) or tonumber(link:match("item:(%d+)"));
+    return itemId, link;
 end
 
 local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, column, fShow, st)
@@ -46,13 +47,13 @@ local function RenderWishCell(rowFrame, cellFrame, data, cols, row, realRow, col
         return;
     end
 
-    local itemId = GetActiveItemId();
+    local itemId, itemLink = GetActiveItem();
     if not itemId then
         cellFrame.text:SetText("");
         return;
     end
 
-    local wish = RCGoW:GetPlayerWish(itemId, rowData.name);
+    local wish = RCGoW:GetPlayerWish(itemId, rowData.name, itemLink);
     if not wish then
         cellFrame.text:SetText("|cff666666—|r");
         cellFrame._gowTip = nil;
@@ -129,13 +130,13 @@ local function GetWishForCell(cellFrame, data, realRow, fShow, showToggleFn, tex
         cellFrame[textField] = nil;
         return nil;
     end
-    local itemId = GetActiveItemId();
+    local itemId, itemLink = GetActiveItem();
     if not itemId then
         cellFrame.text:SetText("|cff666666—|r");
         cellFrame[textField] = nil;
         return nil;
     end
-    local wish = RCGoW:GetPlayerWish(itemId, rowData.name);
+    local wish = RCGoW:GetPlayerWish(itemId, rowData.name, itemLink);
     if not wish then
         cellFrame.text:SetText("|cff666666—|r");
         cellFrame[textField] = nil;
@@ -199,11 +200,11 @@ local function CompareByPriority(st, rowa, rowb, sortbycol)
     local b = st:GetRow(rowb);
     if not a or not b then return false end
 
-    local itemId = GetActiveItemId();
+    local itemId, itemLink = GetActiveItem();
     if not itemId then return false end
 
-    local wishA = RCGoW:GetPlayerWish(itemId, a.name);
-    local wishB = RCGoW:GetPlayerWish(itemId, b.name);
+    local wishA = RCGoW:GetPlayerWish(itemId, a.name, itemLink);
+    local wishB = RCGoW:GetPlayerWish(itemId, b.name, itemLink);
 
     local col = st.cols[sortbycol];
     local dir = col and (col.sort or col.defaultsort) or 1;
