@@ -6,6 +6,10 @@ GuildsOfWow = GOW;
 
 GOW.consts = {
 	INVITE_INTERVAL = 2,
+	ATTENDANCE_REFRESH_INTERVAL = 600,
+	ATTENDANCE_REFRESH_DEBOUNCE = 1,
+	ATTENDANCE_REFRESH_RETRY_DELAY = 3,
+	ATTENDANCE_REFRESH_MAX_RETRIES = 3,
 	ENABLE_DEBUGGING = false,
 	GUILD_EVENT = 1,
 	PLAYER_EVENT = 2,
@@ -66,6 +70,7 @@ local workQueue = nil;
 local persistentWorkQueue = nil;
 
 local processedEvents = nil;
+local scannedEvents = nil;
 local isEventProcessCompleted = false;
 local isNewEventBeingCreated = false;
 local isProcessedEventsPrinted = false;
@@ -95,7 +100,9 @@ function GOW:OnInitialize()
 	LibStub("AceEvent-3.0"):Embed(self.events);
 	workQueue = self.WorkQueue.new();
 	persistentWorkQueue = self.WorkQueue.new();
+	self.AttendanceManager:SetWorkQueue(workQueue);
 	processedEvents = GOW.List.new();
+	scannedEvents = GOW.List.new();
 	isEventProcessCompleted = GOW.Helper:IsInGameCalendarAccessible() == false; -- if calendar is not accessible, consider event process completed to avoid blocking the app
 
 	local consoleCommandFunc = function(msg, editbox)
@@ -487,6 +494,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 	elseif event == "CALENDAR_ACTION_PENDING" then
 		if (tostring(arg1) == "false") then
 			GOW.Logger:Debug("CALENDAR_ACTION_PENDING: " .. tostring(arg1));
+			GOW.AttendanceManager:OnCalendarReady();
 			Core:RefreshUpcomingEventsList();
 		end
 	elseif event == "CALENDAR_UPDATE_EVENT_LIST" then
@@ -495,6 +503,7 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		if (CalendarFrame and not isCalendarOpenEventBound) then
 			isCalendarOpenEventBound = true;
 			hooksecurefunc(CalendarFrame, "Show", function()
+				GOW.AttendanceManager:OnCalendarShown();
 				if (isEventProcessCompleted and not isNewEventBeingCreated) then
 					GOW.Logger:Debug("Clearing tasks: CALENDAR_UPDATE_EVENT_LIST");
 					workQueue:clearTasks();
@@ -511,6 +520,8 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 		--Core:InitializeEventInvites();
 		--Core:RefreshUpcomingEventsList();
 	elseif event == "CALENDAR_NEW_EVENT" or event == "CALENDAR_UPDATE_EVENT" or event == "CALENDAR_UPDATE_GUILD_EVENTS" then
+		GOW.AttendanceManager:OnCalendarChanged(event);
+
 		if (CalendarFrame and CalendarFrame:IsShown()) then
 			GOW.Logger:Debug("Calendar frame is open.");
 			return;
@@ -523,8 +534,13 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 
 		Core:RefreshUpcomingEventsList();
 	elseif event == "CALENDAR_OPEN_EVENT" then
+		if (GOW.AttendanceManager:OnCalendarOpenEvent()) then
+			return;
+		end
+
 		if (CalendarFrame and CalendarFrame:IsShown()) then
 			GOW.Logger:Debug("Calendar frame is open.");
+			GOW.AttendanceManager:TrackUserOpenEvent();
 			return;
 		end
 
@@ -552,9 +568,9 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 
 						if (eventInfo.calendarType == "PLAYER") then
 							--processedEvents:remove(upcomingEvent.titleWithKey)
-							Core:CreateEventInvites(upcomingEvent, not isEventProcessCompleted);
+							GOW.AttendanceManager:CreateEventInvites(upcomingEvent, not isEventProcessCompleted);
 						else
-							Core:SetAttendance(upcomingEvent, not isEventProcessCompleted);
+							GOW.AttendanceManager:SetAttendance(upcomingEvent, not isEventProcessCompleted, false);
 						end
 					else
 						GOW.Logger:Debug("Event couldn't be found!");
@@ -573,6 +589,10 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 			end, nil, 10);
 		end
 	elseif event == "CALENDAR_CLOSE_EVENT" then
+		if (GOW.AttendanceManager:OnCalendarCloseEvent()) then
+			return;
+		end
+
 		if (isNewEventBeingCreated) then
 			isNewEventBeingCreated = false;
 
@@ -585,6 +605,16 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 			Core:ClearEventInvites(true);
 		end
 	elseif event == "CALENDAR_UPDATE_INVITE_LIST" then
+		if (GOW.AttendanceManager:OnInviteListUpdated(arg1)) then
+			return;
+		end
+
+		if (arg1 == false) then
+			GOW.Logger:Debug("Invite list is incomplete; waiting for the complete list.");
+			GOW.AttendanceManager:RetryIncompleteOpenEvent(not isEventProcessCompleted);
+			return;
+		end
+
 		if (not isEventProcessCompleted and CalendarFrame and CalendarFrame:IsShown()) then
 			GOW.Logger:Debug("Calendar frame is open.");
 			return;
@@ -600,14 +630,14 @@ f:SetScript("OnEvent", function(self, event, arg1, arg2)
 					local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title);
 					if (upcomingEvent) then
 						--processedEvents:remove(eventInfo.title);
-						Core:SetAttendance(upcomingEvent, false);
+						GOW.AttendanceManager:SetAttendance(upcomingEvent, false, false);
 					end
 				end
 			elseif (workQueue:isEmpty()) then
 				GOW.Logger:Debug("Continuing event attendance and moderation!");
 				local upcomingEvent = Core:FindUpcomingEventFromName(eventInfo.title);
 				if (upcomingEvent) then
-					Core:SetAttendance(upcomingEvent, false);
+					GOW.AttendanceManager:SetAttendance(upcomingEvent, false, upcomingEvent.calendarType == GOW.consts.PLAYER_EVENT);
 				end
 			end
 		end
@@ -998,7 +1028,7 @@ function Core:searchForEvent(event)
 		for i = 1, numDayEvents do
 			local dayEvent = C_Calendar.GetDayEvent(offsetMonths, event.day, i);
 
-			if (string.match(dayEvent.title, "*" .. event.eventKey)) then
+			if (dayEvent.title and string.find(dayEvent.title, event.eventKey, 1, true)) then
 				return i, offsetMonths, dayEvent;
 			end
 		end
@@ -1522,33 +1552,11 @@ function Core:ConfirmEventCreation(event)
 
 	C_Calendar.AddEvent();
 	if (event.calendarType == GOW.consts.PLAYER_EVENT) then
-		Core:InviteMultiplePeopleToEvent(event);
+		GOW.AttendanceManager:InviteMultiplePeopleToEvent(event);
 	else
 		Core:EventAttendanceProcessCompleted(event, true);
 	end
 	Core:DialogClosed();
-end
-
-function Core:InviteMultiplePeopleToEvent(event)
-	local currentPlayer = GOW.Helper:GetCurrentCharacterUniqueKey();
-
-	local numInvites = C_Calendar.GetNumInvites();
-
-	if (numInvites < event.totalMembers and numInvites < 100) then
-		GOW.Logger:PrintMessage(
-			"Event invites are being processed in the background. Please wait for the process to complete before logging out.");
-
-		for i = 1, event.totalMembers do
-			local currentInviteMember = event.inviteMembers[i];
-			local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized;
-
-			if (inviteName ~= currentPlayer) then
-				workQueue:addTask(function() C_Calendar.EventInvite(inviteName) end, nil, GOW.consts.INVITE_INTERVAL);
-			end
-		end
-	else
-		Core:EventAttendanceProcessCompleted(event, true);
-	end
 end
 
 function Core:ClearEventInvites(restartInvites)
@@ -1578,6 +1586,38 @@ function Core:AddCheckEventsTask()
 	end, 6);
 end
 
+function Core:IsAttendanceCaptureSafe()
+	return isCalendarOpened
+		and isEventProcessCompleted
+		and not isNewEventBeingCreated
+		and not GOW.Helper:IsInCombat()
+		and not (CalendarFrame and CalendarFrame:IsShown())
+		and not C_Calendar.IsEventOpen()
+		and not C_Calendar.IsActionPending()
+		and workQueue:isEmpty();
+end
+
+function Core:IsEventProcessed(eventKey)
+	return processedEvents:contains(eventKey);
+end
+
+function Core:IsEventSynchronizationCompleted()
+	return isEventProcessCompleted;
+end
+
+function Core:IsNewEventBeingCreated()
+	return isNewEventBeingCreated;
+end
+
+function Core:RetryEventImports(eventKeys)
+	for eventKey in pairs(eventKeys) do
+		processedEvents:remove(eventKey);
+		scannedEvents:remove(eventKey);
+	end
+	isEventProcessCompleted = false;
+	Core:AddCheckEventsTask();
+end
+
 function Core:IsInvitedToEvent(upcomingEvent)
 	if (upcomingEvent.isEventMember) then
 		if (upcomingEvent.calendarType == GOW.consts.GUILD_EVENT) then
@@ -1587,7 +1627,7 @@ function Core:IsInvitedToEvent(upcomingEvent)
 
 			for m = 1, upcomingEvent.totalMembers do
 				local currentInviteMember = upcomingEvent.inviteMembers[m];
-				if (currentInviteMember and currentCharacterInvite == currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized) then
+				if (currentInviteMember and GOW.Helper:AreCharacterNamesEqual(currentCharacterInvite, currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized)) then
 					return true;
 				end
 			end
@@ -1628,7 +1668,7 @@ function Core:CheckEventInvites()
 					if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
 						GOW.Logger:Debug("Event found for guild: " .. upcomingEvent.titleWithKey);
 
-						if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
+						if (not scannedEvents:contains(upcomingEvent.titleWithKey)) then
 							local eventIndex, offsetMonths, dayEvent = Core:searchForEvent(upcomingEvent);
 
 							GOW.Logger:Debug("Event search result: " .. upcomingEvent.titleWithKey .. ". Result: " .. eventIndex);
@@ -1685,6 +1725,8 @@ function Core:CheckEventInvites()
 						end
 					end
 				end
+
+				GOW.AttendanceManager:OnLegacyImportCompleted();
 			end
 		else
 			GOW.Logger:Debug("Event is open!");
@@ -1715,7 +1757,7 @@ function Core:FindUpcomingEventFromName(eventTitle)
 			local upcomingEvent = ns.UPCOMING_EVENTS.events[i];
 
 			if (guildName == upcomingEvent.guild and realmName == upcomingEvent.guildRealmNormalized and regionId == upcomingEvent.guildRegionId) then
-				if (string.match(eventTitle, "*" .. upcomingEvent.eventKey)) then
+				if (string.find(eventTitle, upcomingEvent.eventKey, 1, true)) then
 					GOW.Logger:Debug("Upcoming event found: " .. upcomingEvent.title);
 					return upcomingEvent;
 				end
@@ -1727,200 +1769,26 @@ function Core:FindUpcomingEventFromName(eventTitle)
 end
 
 function Core:CreateEventInvites(upcomingEvent, closeAfterEnd)
-	if (processedEvents:contains(upcomingEvent.titleWithKey)) then
-		GOW.Logger:Debug("Processed queue contains event!");
-		return;
-	end
-
-	GOW.Logger:Debug("Processing event: " .. upcomingEvent.titleWithKey);
-
-	local canSendInvite = C_Calendar.EventCanEdit();
-	if (canSendInvite) then
-		if (upcomingEvent.calendarType == GOW.consts.GUILD_EVENT) then
-			Core:SetAttendance(upcomingEvent, closeAfterEnd);
-			return;
-		end
-
-		local invitesNum = C_Calendar.GetNumInvites();
-
-		if (invitesNum >= 100) then
-			Core:SetAttendance(upcomingEvent, closeAfterEnd);
-			return;
-		end
-
-		GOW.Logger:Debug("CreateEventInvites: " .. upcomingEvent.titleWithKey .. ". Currently invited members: " .. invitesNum);
-
-		local invitedCount = 0;
-
-		for m = 1, upcomingEvent.totalMembers do
-			local currentInviteMember = upcomingEvent.inviteMembers[m];
-			local inviteName = currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized;
-			local isMemberInvited = false;
-
-			for a = 1, invitesNum do
-				local inviteInfo = C_Calendar.EventGetInvite(a);
-
-				if (inviteInfo and inviteInfo.name ~= nil) then
-					if (string.find(inviteInfo.name, "-")) then
-						--GOW.Logger:Debug("Character with dash! " .. inviteInfo.name);
-
-						if (inviteInfo.name == inviteName) then
-							isMemberInvited = true;
-							--GOW.Logger:Debug("Member is invited with realm name: " .. inviteInfo.name);
-						end
-					else
-						if (inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId) then
-							--GOW.Logger:Debug("Member is invited: " .. inviteInfo.name);
-							isMemberInvited = true;
-						end
-					end
-				end
-			end
-
-			if (not isMemberInvited) then
-				GOW.Logger:Debug("Inviting: " .. inviteName .. "-" .. currentInviteMember.level .. "-" .. currentInviteMember.classId);
-				workQueue:addTask(function() C_Calendar.EventInvite(inviteName) end, nil, GOW.consts.INVITE_INTERVAL);
-
-				invitedCount = invitedCount + 1;
-			end
-		end
-
-		if (invitedCount > 0) then
-			GOW.Logger:Debug("CreateEventInvites Ended: " .. upcomingEvent.title .. ". Invited: " .. tostring(invitedCount));
-			workQueue:addTask(function()
-				GOW.Logger:Debug("Event invites completed: " .. upcomingEvent.titleWithKey);
-				Core:SetAttendance(upcomingEvent, closeAfterEnd);
-			end, nil, 10);
-		else
-			Core:SetAttendance(upcomingEvent, closeAfterEnd);
-		end
-	else
-		GOW.Logger:Debug("Cannot invite to this event!");
-	end
+	GOW.AttendanceManager:CreateEventInvites(upcomingEvent, closeAfterEnd);
 end
 
-function Core:SetAttendance(upcomingEvent, closeAfterEnd)
-	local canSendInvite = C_Calendar.EventCanEdit();
-	if (canSendInvite) then
-		local invitesNum = C_Calendar.GetNumInvites();
-
-		GOW.Logger:Debug("SetAttendance: " .. upcomingEvent.titleWithKey .. ". Currently invited members: " .. invitesNum);
-
-		local attendanceChangedCount = 0;
-		local currentEventAttendances = {};
-		local processAttendanceValues = (not processedEvents:contains(upcomingEvent.titleWithKey) and upcomingEvent.calendarType == GOW.consts.PLAYER_EVENT);
-
-		for a = 1, invitesNum do
-			local inviteInfo = C_Calendar.EventGetInvite(a);
-
-			if (inviteInfo.name) then
-				if (inviteInfo.inviteStatus > Enum.CalendarStatus.Invited) then
-					local responseTime = C_Calendar.EventGetInviteResponseTime(a);
-					local responeTimeFormatted = nil;
-					if (responseTime) then
-						responeTimeFormatted = responseTime.year .. "-" .. string.lpad(tostring(responseTime.month), 2, '0') .. "-" .. string.lpad(tostring(responseTime.monthDay), 2, '0') .. "T" .. string.lpad(tostring(responseTime.hour), 2, '0') .. ":" .. string.lpad(tostring(responseTime.minute), 2, '0');
-					end
-
-					table.insert(currentEventAttendances, {
-						name = inviteInfo.name,
-						level = inviteInfo.level,
-						attendance = inviteInfo.inviteStatus,
-						classId = inviteInfo.classID,
-						guid = inviteInfo.guid,
-						date = responeTimeFormatted
-					});
-				end
-
-				if (processAttendanceValues) then
-					local isInvitationChanged = Core:SetAttendanceValues(upcomingEvent, inviteInfo, a);
-					if (isInvitationChanged) then
-						GOW.Logger:Debug("Invitation changed");
-						attendanceChangedCount = attendanceChangedCount + 1;
-					end
-				end
-			end
-		end
-
-		local guildKey = Core:GetGuildKey();
-
-		if (GOW.DB.profile.guilds[guildKey].events == nil) then
-			GOW.DB.profile.guilds[guildKey].events = {};
-		end
-
-		local eventId = tostring(upcomingEvent.id);
-
-		if (GOW.DB.profile.guilds[guildKey].events[eventId] == nil) then
-			GOW.DB.profile.guilds[guildKey].events[eventId] = {};
-		end
-
-		GOW.DB.profile.guilds[guildKey].events[eventId].refreshTime = GetServerTime();
-
-		if (GOW.DB.profile.guilds[guildKey].events[eventId].attendances == nil) then
-			GOW.DB.profile.guilds[guildKey].events[eventId].attendances = {};
-		end
-
-		GOW.DB.profile.guilds[guildKey].events[eventId].attendances = currentEventAttendances;
-
-		if (attendanceChangedCount > 0) then
-			GOW.Logger:Debug("SetAttendance Ended: " .. upcomingEvent.title .. ". SetAttendance: " .. tostring(attendanceChangedCount));
-			workQueue:addTask(function() Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd) end, nil, GOW.consts.INVITE_INTERVAL);
-		else
-			Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd);
-		end
-	else
-		GOW.Logger:Debug("Cannot set attendance to this event!");
-	end
+function Core:SetAttendance(upcomingEvent, closeAfterEnd, applyImportedValues)
+	GOW.AttendanceManager:SetAttendance(upcomingEvent, closeAfterEnd, applyImportedValues);
 end
 
 function Core:SetAttendanceValues(upcomingEvent, inviteInfo, inviteIndex)
-	for m = 1, upcomingEvent.totalMembers do
-		local currentInviteMember = upcomingEvent.inviteMembers[m];
-
-		if (currentInviteMember) then
-			if (currentInviteMember.isManager or currentInviteMember.inviteStatus > Enum.CalendarStatus.Invited) then
-				local isFound = false;
-
-				if (string.find(inviteInfo.name, "-")) then
-					isFound = inviteInfo.name == currentInviteMember.name .. "-" .. currentInviteMember.realmNormalized;
-				else
-					isFound = inviteInfo.name == currentInviteMember.name and inviteInfo.level == currentInviteMember.level and inviteInfo.classID == currentInviteMember.classId;
-				end
-
-				if (isFound) then
-					local isInvitationChanged = false;
-
-					if (currentInviteMember.isManager and not GOW.Helper:IsInGameEventAdmin(inviteInfo)) then
-						isInvitationChanged = true;
-						GOW.Logger:Debug("Setting member as moderator: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name);
-						workQueue:addTask(function() C_Calendar.EventSetModerator(inviteIndex) end, nil, GOW.consts.INVITE_INTERVAL);
-					end
-
-					if (currentInviteMember.forceUpdate or (currentInviteMember.inviteStatus > Enum.CalendarStatus.Invited and inviteInfo.inviteStatus == Enum.CalendarStatus.Invited)) then
-						if (currentInviteMember.inviteStatus == Enum.CalendarStatus.Available and inviteInfo.inviteStatus == Enum.CalendarStatus.Confirmed) then
-							GOW.Logger:Debug("Member accepted but status is confirmed in-game! " .. inviteInfo.name);
-						elseif (currentInviteMember.inviteStatus == inviteInfo.inviteStatus) then
-							GOW.Logger:Debug("Member in-game status is up-to-date! " .. inviteInfo.name);
-						else
-							isInvitationChanged = true;
-							GOW.Logger:Debug("Setting member attendance: " .. upcomingEvent.title .. ". Title: " .. inviteInfo.name .. ". GoWAttendance: " .. tostring(currentInviteMember.inviteStatus) .. ". In-Game Attendance: " .. tostring(inviteInfo.inviteStatus));
-							workQueue:addTask(function() C_Calendar.EventSetInviteStatus(inviteIndex, currentInviteMember.inviteStatus) end, nil, GOW.consts.INVITE_INTERVAL);
-						end
-					end
-
-					return isInvitationChanged;
-				end
-			end
-		end
-	end
-
-	return false;
+	return GOW.AttendanceManager:SetAttendanceValue(upcomingEvent, inviteInfo, inviteIndex);
 end
 
 function Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
 	GOW.Logger:Debug("Event attendances process completed: " .. upcomingEvent.titleWithKey);
 
-	if (not processedEvents:contains(upcomingEvent.titleWithKey)) then
-		processedEvents:push(upcomingEvent.titleWithKey);
+	local isFirstCompletion = not scannedEvents:contains(upcomingEvent.titleWithKey);
+	if (isFirstCompletion) then
+		scannedEvents:push(upcomingEvent.titleWithKey);
+		if (upcomingEvent.calendarType == GOW.consts.PLAYER_EVENT and not processedEvents:contains(upcomingEvent.titleWithKey)) then
+			processedEvents:push(upcomingEvent.titleWithKey);
+		end
 
 		if (isNewEventBeingCreated) then
 			GOW.Logger:PrintSuccessMessage("New event is successfully created: " .. upcomingEvent.titleWithKey);
@@ -1933,6 +1801,15 @@ function Core:EventAttendanceProcessCompleted(upcomingEvent, closeAfterEnd)
 		end
 	end
 
+	if (closeAfterEnd) then
+		C_Calendar.CloseEvent();
+	end
+end
+
+function Core:EventAttendanceProcessFailed(upcomingEvent, closeAfterEnd)
+	if (not scannedEvents:contains(upcomingEvent.titleWithKey)) then
+		scannedEvents:push(upcomingEvent.titleWithKey);
+	end
 	if (closeAfterEnd) then
 		C_Calendar.CloseEvent();
 	end
@@ -2127,17 +2004,30 @@ function Core:InitializeEventInvites()
 
 		if (guildKey and not isEventAttendancesInitialProcessStarted and ns.UPCOMING_EVENTS ~= nil and ns.UPCOMING_EVENTS.totalEvents > 0) then
 			isEventAttendancesInitialProcessStarted = true;
+			local guildData = GOW.DB.profile.guilds[guildKey];
+			local sourceExportTime = ns.UPCOMING_EVENTS.exportTime;
 
-			if (GOW.DB.profile.guilds[guildKey].eventsRefreshTime and ns.UPCOMING_EVENTS.exportTime and ns.UPCOMING_EVENTS.exportTime < GOW.DB.profile.guilds[guildKey].eventsRefreshTime) then
+			if (guildData.lastAppliedEventsExportTime == nil
+				and guildData.eventsRefreshTime
+				and sourceExportTime
+				and sourceExportTime < guildData.eventsRefreshTime) then
+				guildData.lastAppliedEventsExportTime = sourceExportTime;
+			end
+
+			GOW.AttendanceManager:Initialize(ns.UPCOMING_EVENTS);
+
+			if (sourceExportTime and guildData.lastAppliedEventsExportTime and guildData.lastAppliedEventsExportTime >= sourceExportTime) then
 				isEventProcessCompleted = true;
 
 				if (not GOW.DB.profile.reduceEventNotifications) then
 					GOW.Logger:PrintMessage("The most recently imported data has already been processed, the RSVP synchronization will be skipped...");
 				end
+
+				GOW.AttendanceManager:RequestCapture("session startup");
 			else
 				GOW.Logger:Debug("Event attendance initial process started!");
 
-				GOW.DB.profile.guilds[guildKey].events = {};
+				guildData.events = {};
 				Core:CheckEventInvites();
 			end
 		end

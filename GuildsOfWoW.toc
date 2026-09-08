@@ -3,7 +3,7 @@
 ## Notes: Guilds of WoW guild herald for retail World of Warcraft
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 2.1.12
+## Version: 2.2.1
 ## SavedVariables: GoWDB
 ## OptionalDeps: AstralKeys, RCLootCouncil
 ## AddonCompartmentFunc: GuildsOfWow_OnAddonButtonClick
@@ -32,3 +32,4 @@ List.lua
 Options.lua
 WorkQueue.lua
 Logger.lua
+AttendanceManager.lua

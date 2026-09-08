@@ -1,9 +1,9 @@
-## Interface: 20505
+## Interface: 20505, 20506
 ## Title: Guilds of WoW
 ## Notes: Guilds of WoW guild herald for Classic Anniversary servers
 ## X-Website: https://guildsofwow.com
 ## Author: Nhea
-## Version: 2.1.12
+## Version: 2.2.1
 ## SavedVariables: GoWDB
 ## OptionalDeps: RCLootCouncil_Classic
 ## IconTexture: Interface\Addons\GuildsOfWoW\icons\guilds-of-wow-logo-flag-plain.png
@@ -30,3 +30,4 @@ List.lua
 Options.lua
 WorkQueue.lua
 Logger.lua
+AttendanceManager.lua

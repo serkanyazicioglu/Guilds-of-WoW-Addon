@@ -105,6 +105,17 @@ function Helper:GetNormalizedCharacterName(name)
     return name .. "-" .. GetNormalizedRealmName();
 end
 
+-- Calendar realm capitalization can differ from the exported realm name.
+function Helper:AreCharacterNamesEqual(first, second)
+    if (not first or not second) then return false; end
+    local firstName, firstRealm = string.match(first, "^([^-]+)%-(.+)$");
+    local secondName, secondRealm = string.match(second, "^([^-]+)%-(.+)$");
+    if (firstRealm and secondRealm) then
+        return firstName == secondName and string.lower(firstRealm) == string.lower(secondRealm);
+    end
+    return first == second;
+end
+
 function Helper:IsInCombat()
     return InCombatLockdown() or UnitAffectingCombat("player");
 end
