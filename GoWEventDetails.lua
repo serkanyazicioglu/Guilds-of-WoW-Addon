@@ -54,7 +54,7 @@ local InviteStatuses = {
     },
     {
         EnumCalendarStatus = Enum.CalendarStatus.Invited,
-        Name = "Awaiting Response",
+        Name = "Pending",
         IsEligibleToAttend = true,
         Color = { r = 0.3, g = 0.9, b = 1 }
     },
@@ -167,7 +167,7 @@ function GoWEventDetails:GetAudienceText(event)
 
     local totalMembers = event.totalMembers or 0;
     local text = tostring(totalMembers) .. ((totalMembers == 1) and " member" or " members");
-    if (not event.isEventMember) then
+    if (totalMembers > 0 and not event.isEventMember) then
         text = text .. ", not eligible";
     end
 
@@ -212,37 +212,32 @@ function GoWEventDetails:AppendEvent(event)
     local canAddEvent = event.isEventManager and GOW.Helper:IsInGameCalendarAccessible();
     local eventIndex = select(1, self.CORE:searchForEvent(event));
     local hasInviteAction = event.isEventManager and event.eventEndDate >= C_DateAndTime.GetServerTimeLocal();
+    local hasNoInviteMembers = event.calendarType == GOW.consts.PLAYER_EVENT and (event.totalMembers or 0) == 0;
+    local isInviteActive = not hasNoInviteMembers and eventIndex <= 0;
 
     local actionWidth = 0;
     local actions = {};
 
     table.insert(actions, {
-        text = "Copy Link",
+        text = "Copy",
         width = 90,
         isActive = true,
         onClick = function()
-            GOW.Layout:ShowCopyUrlDialog(self.GUI, event.webUrl, "Event URL");
+            GOW.Layout:ShowCopyUrlDialog(self.GUI, event.webUrl, "Event Details", event.eventKey);
         end
     });
     actionWidth = actionWidth + 90;
 
-    if (canAddEvent and eventIndex < 0) then
-        table.insert(actions, {
-            text = "Copy Key",
-            width = 90,
-            isActive = true,
-            onClick = function()
-                self.CORE:OpenDialogWithData("COPY_TEXT", nil, nil, event.eventKey);
-            end
-        });
-        actionWidth = actionWidth + 98;
-    end
-
     if (hasInviteAction) then
         table.insert(actions, {
-            text = "Invite Attendees",
+            text = "Invite",
             width = 120,
-            isActive = true,
+            isActive = isInviteActive,
+            tooltip = hasNoInviteMembers
+                and "This event doesn't have any members to invite."
+                or (eventIndex > 0
+                    and "This event is also created on the in-game calendar. Please use the calendar event's 'Invite Members' button."
+                    or "You can invite attendees directly into your party or raid."),
             onClick = function()
                 if (eventIndex > 0) then
                     self.CORE:OpenDialog("INVITE_TO_PARTY_USE_CALENDAR");
@@ -323,21 +318,42 @@ function GoWEventDetails:AppendEvent(event)
         GOW.tooltip = nil;
     end);
 
+    local eventDateText = (event.dateText or "") .. ((event.hourText and event.hourText ~= "") and (", " .. event.hourText) or "");
+    local eventDurationText = (event.durationText and event.durationText ~= "") and event.durationText or "Unset";
+    local dateContainer = CreateFrame("Frame", nil, detailAnchor);
+    dateContainer:SetPoint("LEFT", calendarBadge, "RIGHT", 8, 0);
+    dateContainer:SetHeight(18);
+
+    local dateText = dateContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+    dateText:SetPoint("LEFT", dateContainer, "LEFT", 0, 0);
+    dateText:SetText("|cffaaaaaa" .. eventDateText .. "|r");
+    dateContainer:SetWidth(math.ceil(dateText:GetStringWidth()));
+    dateContainer:EnableMouse(true);
+    dateContainer:SetScript("OnEnter", function(selfFrame)
+        GameTooltip:SetOwner(selfFrame, "ANCHOR_BOTTOM");
+        GameTooltip:AddLine("Duration", 1, 0.82, 0);
+        GameTooltip:AddLine(eventDurationText, 1, 1, 1);
+        GameTooltip:Show();
+    end);
+    dateContainer:SetScript("OnLeave", function(selfFrame)
+        if (GameTooltip:GetOwner() == selfFrame) then
+            GameTooltip:Hide();
+        end
+    end);
+
     local metaText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    metaText:SetPoint("LEFT", calendarBadge, "RIGHT", 8, 0);
+    metaText:SetPoint("LEFT", dateContainer, "RIGHT", 0, 0);
     metaText:SetPoint("RIGHT", detailAnchor, "RIGHT", 0, 0);
     metaText:SetJustifyH("LEFT");
     metaText:SetWordWrap(false);
 
     local metaParts = {
-        (event.dateText or "") .. ((event.hourText and event.hourText ~= "") and (", " .. event.hourText) or ""),
-        event.durationText or "",
         self:GetAudienceText(event)
     };
     if (event.team and event.team ~= "") then
         table.insert(metaParts, event.team);
     end
-    metaText:SetText("|cffaaaaaa" .. table.concat(metaParts, "  •  ") .. "|r");
+    metaText:SetText("|cffaaaaaa  •  " .. table.concat(metaParts, "  •  ") .. "|r");
 
     local description = event.description;
     if (description and description ~= "") then
@@ -441,7 +457,94 @@ function GoWEventDetails:ShouldInviteRole(roleName, roleFilter)
     return roleName == roleFilter;
 end
 
+function GoWEventDetails:BuildGuildRosterInviteRows(event, roleFilter)
+    if (C_GuildInfo and C_GuildInfo.GuildRoster) then
+        C_GuildInfo.GuildRoster();
+    end
+
+    local me = GOW.Helper:GetCurrentCharacterUniqueKey();
+    local inviteRows = {};
+    local numTotalMembers = GetNumGuildMembers() or 0;
+    local attendanceMetadata = {};
+
+    for _, attendance in ipairs(event.inviteMembers or {}) do
+        if (attendance.name) then
+            local attendanceRealm = attendance.realmNormalized or attendance.realm or "";
+            local attendanceName = attendance.name .. ((attendanceRealm ~= "") and ("-" .. attendanceRealm) or "");
+            attendanceMetadata[self:NormalizeCharacterKey(attendanceName)] = {
+                notes = attendance.notes,
+                isLate = attendance.isLate,
+                isBenched = attendance.isBenched,
+                isConfirmed = attendance.isConfirmed
+            };
+        end
+    end
+
+    for i = 1, numTotalMembers do
+        local memberName, rankName, rankIndex, level, className, _, _, _, isOnline, _, classFile = GetGuildRosterInfo(i);
+        if (memberName) then
+            local name, realm = string.match(memberName, "^([^-]+)%-(.+)$");
+            name = name or memberName;
+            realm = realm or GetNormalizedRealmName();
+            local inviteName = name .. "-" .. realm;
+            local isSelf = GOW.Helper:AreCharacterNamesEqual(inviteName, me);
+            local isInGroup = self:IsMemberInCurrentGroup(inviteName);
+            local isInvitePending = self.eventInvitePendingMembers[inviteName] == true;
+            local guildRankKey = "GuildRank:" .. tostring(rankIndex or -1);
+            local metadata = attendanceMetadata[self:NormalizeCharacterKey(inviteName)] or attendanceMetadata[self:NormalizeCharacterKey(name)] or {};
+            local buttonText = "Invite";
+
+            if (isSelf) then
+                buttonText = "You";
+            elseif (isInGroup) then
+                buttonText = "Joined";
+            elseif (isInvitePending) then
+                buttonText = "Invite Pending";
+            elseif (not isOnline) then
+                buttonText = "Offline";
+            end
+
+            if (roleFilter == nil or roleFilter == "All" or roleFilter == guildRankKey) then
+                table.insert(inviteRows, {
+                    inviteName = inviteName,
+                    name = name,
+                    realm = realm,
+                    className = className,
+                    classFile = classFile,
+                    level = level,
+                    guildRank = rankName,
+                    guildRankIndex = rankIndex,
+                    guildRankKey = guildRankKey,
+                    notes = metadata.notes,
+                    isLate = metadata.isLate,
+                    isBenched = metadata.isBenched,
+                    isConfirmed = metadata.isConfirmed,
+                    isGuildRosterMember = true,
+                    roleName = "Unknown",
+                    roleId = 0,
+                    inviteStatusInfo = {
+                        Name = isOnline and "Online" or "Offline",
+                        Color = isOnline and { r = 0.1, g = 1, b = 0.1 } or { r = 0.6, g = 0.6, b = 0.6 }
+                    },
+                    buttonText = buttonText,
+                    canInvite = isOnline and not isSelf and not isInGroup and not isInvitePending
+                });
+            end
+        end
+    end
+
+    table.sort(inviteRows, function(a, b)
+        return string.lower(a.name or "") < string.lower(b.name or "");
+    end);
+
+    return inviteRows;
+end
+
 function GoWEventDetails:BuildEventInviteRows(event, roleFilter)
+    if (event.calendarType == GOW.consts.GUILD_EVENT) then
+        return self:BuildGuildRosterInviteRows(event, roleFilter);
+    end
+
     local me = GOW.Helper:GetCurrentCharacterUniqueKey();
     local onlineMap = self:GetGuildOnlineMemberMap();
     local inviteRows = {};
@@ -483,6 +586,10 @@ function GoWEventDetails:BuildEventInviteRows(event, roleFilter)
                     roleName = roleName,
                     roleId = currentInviteMember.specRoleId,
                     specName = currentInviteMember.spec,
+                    notes = currentInviteMember.notes,
+                    isLate = currentInviteMember.isLate,
+                    isBenched = currentInviteMember.isBenched,
+                    isConfirmed = currentInviteMember.isConfirmed,
                     inviteStatusInfo = inviteStatusInfo,
                     buttonText = buttonText,
                     canInvite = (not isSelf and isAttendanceEligible and not isInGroup and not isInvitePending)
@@ -518,6 +625,44 @@ function GoWEventDetails:DestroyEventInviteRoot()
 end
 
 function GoWEventDetails:BuildEventInviteFilters(event)
+    if (event.calendarType == GOW.consts.GUILD_EVENT) then
+        local rows = self:BuildGuildRosterInviteRows(event, "All");
+        local ranksByKey = {};
+        local filters = {
+            { key = "All", label = "All Ranks", count = #rows }
+        };
+
+        for _, row in ipairs(rows) do
+            local rank = ranksByKey[row.guildRankKey];
+            if (not rank) then
+                rank = {
+                    key = row.guildRankKey,
+                    label = row.guildRank or "Unknown",
+                    count = 0,
+                    rankIndex = row.guildRankIndex or 999
+                };
+                ranksByKey[row.guildRankKey] = rank;
+            end
+            rank.count = rank.count + 1;
+        end
+
+        local ranks = {};
+        for _, rank in pairs(ranksByKey) do
+            table.insert(ranks, rank);
+        end
+        table.sort(ranks, function(a, b)
+            if (a.rankIndex == b.rankIndex) then
+                return string.lower(a.label) < string.lower(b.label);
+            end
+            return a.rankIndex < b.rankIndex;
+        end);
+        for _, rank in ipairs(ranks) do
+            table.insert(filters, rank);
+        end
+
+        return filters;
+    end
+
     local counts = {
         All = 0,
         Tank = 0,
@@ -574,20 +719,95 @@ function GoWEventDetails:CreateEventInviteRow(parent, row, index, total)
     frame.factionIcon = frame:CreateTexture(nil, "ARTWORK");
     frame.factionIcon:SetSize(16, 16);
     frame.factionIcon:SetPoint("LEFT", frame, "LEFT", 10, 0);
-    frame.factionIcon:SetTexture(GOW.Helper:GetFactionIcon(row.faction));
+    if (row.faction ~= nil) then
+        frame.factionIcon:SetTexture(GOW.Helper:GetFactionIcon(row.faction));
+    end
 
+    local nameLeftOffset = row.isGuildRosterMember and 10 or 34;
+    local nameWidth = row.isGuildRosterMember and 150 or 135;
     local nameText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    nameText:SetPoint("LEFT", frame.factionIcon, "RIGHT", 8, 0);
-    nameText:SetWidth(135);
+    if (row.isGuildRosterMember) then
+        nameText:SetPoint("LEFT", frame, "LEFT", 10, 0);
+    else
+        nameText:SetPoint("LEFT", frame.factionIcon, "RIGHT", 8, 0);
+    end
+    nameText:SetWidth(nameWidth);
     nameText:SetJustifyH("LEFT");
     nameText:SetWordWrap(false);
 
-    local _, classFile = GetClassInfo(row.classId or 0);
+    local classFile = row.classFile;
+    if (not classFile) then
+        local _, resolvedClassFile = GetClassInfo(row.classId or 0);
+        classFile = resolvedClassFile;
+    end
     local classColor = GOW.Helper:GetClassColor(classFile);
     if (classColor) then
         nameText:SetText(string.format("|cff%02x%02x%02x%s|r", classColor.r * 255, classColor.g * 255, classColor.b * 255, row.name or ""));
     else
         nameText:SetText(row.name or "");
+    end
+
+    local nameCursorOffset = math.min(math.ceil(nameText:GetStringWidth()) + 4, nameWidth);
+    if (type(row.notes) == "string" and row.notes ~= "") then
+        nameText:SetWidth(nameWidth - 18);
+
+        local noteButton = CreateFrame("Button", nil, frame);
+        noteButton:SetSize(14, 14);
+        noteButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up");
+        local noteOffset = math.min(math.ceil(nameText:GetStringWidth()) + 4, nameWidth - 14);
+        noteButton:SetPoint("LEFT", frame, "LEFT", nameLeftOffset + noteOffset, 0);
+        nameCursorOffset = noteOffset + 18;
+        noteButton:SetScript("OnEnter", function(selfButton)
+            frame.highlight:Show();
+            GameTooltip:SetOwner(selfButton, "ANCHOR_RIGHT");
+            GameTooltip:AddLine("Notes", 1, 0.82, 0);
+            GameTooltip:AddLine(row.notes, 1, 1, 1, true);
+            GameTooltip:Show();
+        end);
+        noteButton:SetScript("OnLeave", function(selfButton)
+            frame.highlight:Hide();
+            if (GameTooltip:GetOwner() == selfButton) then
+                GameTooltip:Hide();
+            end
+        end);
+        frame.noteButton = noteButton;
+    end
+
+    local function CreateAttendanceFlagIcon(texturePath, label, tooltipText, headerR, headerG, headerB)
+        local button = CreateFrame("Button", nil, frame);
+        button:SetSize(14, 14);
+        button:SetPoint("LEFT", frame, "LEFT", nameLeftOffset + nameCursorOffset, 0);
+
+        local texture = button:CreateTexture(nil, "ARTWORK");
+        texture:SetAllPoints();
+        texture:SetTexture(texturePath);
+
+        button:SetScript("OnEnter", function(selfButton)
+            frame.highlight:Show();
+            GameTooltip:SetOwner(selfButton, "ANCHOR_RIGHT");
+            GameTooltip:AddLine(label, headerR, headerG, headerB);
+            GameTooltip:AddLine(tooltipText, 1, 1, 1, true);
+            GameTooltip:Show();
+        end);
+        button:SetScript("OnLeave", function(selfButton)
+            frame.highlight:Hide();
+            if (GameTooltip:GetOwner() == selfButton) then
+                GameTooltip:Hide();
+            end
+        end);
+
+        nameCursorOffset = nameCursorOffset + 18;
+        return button;
+    end
+
+    if (row.isLate == true) then
+        frame.lateIcon = CreateAttendanceFlagIcon("Interface\\AddOns\\GuildsOfWoW\\icons\\late.png", "Late", "This attendee will arrive late.", 1, 0.82, 0);
+    end
+    if (row.isBenched == true) then
+        frame.benchedIcon = CreateAttendanceFlagIcon("Interface\\AddOns\\GuildsOfWoW\\icons\\benched.png", "Benched", "This attendee is benched for this event.", 1, 0.82, 0);
+    end
+    if (row.isConfirmed == true) then
+        frame.confirmedIcon = CreateAttendanceFlagIcon("Interface\\AddOns\\GuildsOfWoW\\icons\\confirmed.png", "Confirmed", "This attendee is confirmed for this event.", 0.1, 1, 0.1);
     end
 
     local realmText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
@@ -618,11 +838,20 @@ function GoWEventDetails:CreateEventInviteRow(parent, row, index, total)
     end
 
     local specText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    specText:SetPoint("LEFT", roleContainer, "LEFT", 20, 0);
-    specText:SetWidth(100);
+    specText:SetPoint("LEFT", roleContainer, "LEFT", row.isGuildRosterMember and 0 or 20, 0);
+    specText:SetWidth(row.isGuildRosterMember and 120 or 100);
     specText:SetJustifyH("LEFT");
     specText:SetWordWrap(false);
-    specText:SetText(row.specName or row.roleName or "");
+    if (row.isGuildRosterMember) then
+        specText:SetText(tostring(row.level or "?"));
+        if (row.level == GOW.Helper:GetCurrentMaxPlayerLevel()) then
+            specText:SetTextColor(1, 0.82, 0);
+        else
+            specText:SetTextColor(0.87, 0.87, 0.87);
+        end
+    else
+        specText:SetText(row.specName or row.roleName or "");
+    end
 
     local statusText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     statusText:SetPoint("LEFT", frame, "LEFT", 535, 0);
@@ -652,9 +881,9 @@ function GoWEventDetails:RenderEventInviteRows()
     local L = GOW.Layout;
     local windowFrame = self.eventInviteDialog.frame;
     local currentEvent = self.eventInviteActiveEvent;
+    local isGuildEvent = currentEvent.calendarType == GOW.consts.GUILD_EVENT;
     local currentRows = self:BuildEventInviteRows(currentEvent, self.eventInviteCurrentRoleFilter);
     local inviteAllMembers = self:GetInvitableMemberNames(currentRows);
-    local filters = self:BuildEventInviteFilters(currentEvent);
 
     self:DestroyEventInviteRoot();
 
@@ -664,7 +893,7 @@ function GoWEventDetails:RenderEventInviteRows()
     self.eventInviteRoot = nativeRoot;
 
     local leftPanel = L:GetContainerPanel(nativeRoot, {
-        title = "ROLES",
+        title = isGuildEvent and "GUILD RANKS" or "ROLES",
         width = EVENT_DETAIL_LEFT_WIDTH,
         height = EVENT_DETAIL_PANEL_HEIGHT,
         xOffset = 0,
@@ -675,7 +904,7 @@ function GoWEventDetails:RenderEventInviteRows()
     leftPanel:SetPoint("TOPLEFT", nativeRoot, "TOPLEFT", 6, -6);
 
     local rightPanel = L:GetContainerPanel(nativeRoot, {
-        title = "ATTENDANCE",
+        title = isGuildEvent and "GUILD ROSTER" or "ATTENDANCE",
         width = EVENT_DETAIL_RIGHT_WIDTH,
         height = EVENT_DETAIL_PANEL_HEIGHT,
         xOffset = EVENT_DETAIL_LEFT_WIDTH + 12,
@@ -699,6 +928,7 @@ function GoWEventDetails:RenderEventInviteRows()
     });
     inviteAllButton:SetPoint("RIGHT", rightPanel.headerBar, "RIGHT", 0, 0);
 
+    local filters = self:BuildEventInviteFilters(currentEvent);
     local sidebar = L:CreateSidebarList(leftPanel.scrollChild, {
         rowHeight = EVENT_DETAIL_FILTER_ROW_HEIGHT,
         getLabel = function(item) return item.label end,
@@ -732,7 +962,7 @@ function GoWEventDetails:RenderEventInviteRows()
     summaryText:SetPoint("RIGHT", summaryFrame, "RIGHT", 0, 0);
     summaryText:SetJustifyH("LEFT");
     summaryText:SetWordWrap(false);
-    summaryText:SetText("|cff888888" .. (currentEvent.title or "") .. "|r");
+    summaryText:SetText("|cff888888" .. (currentEvent.description or "") .. "|r");
 
     local headerRow = CreateFrame("Frame", nil, rightPanel.scrollChild);
     headerRow:SetHeight(18);
@@ -747,11 +977,19 @@ function GoWEventDetails:RenderEventInviteRows()
         label:SetText("|cffaaaaaa" .. text .. "|r");
     end
 
-    CreateHeaderLabel("Name", 34, 135);
-    CreateHeaderLabel("Realm", 170, 130);
-    CreateHeaderLabel("Class", 300, 100);
-    CreateHeaderLabel("Role", 405, 120);
-    CreateHeaderLabel("Status", 535, 125);
+    if (isGuildEvent) then
+        CreateHeaderLabel("Name", 10, 150);
+        CreateHeaderLabel("Realm", 170, 130);
+        CreateHeaderLabel("Class", 300, 100);
+        CreateHeaderLabel("Level", 405, 120);
+        CreateHeaderLabel("Status", 535, 125);
+    else
+        CreateHeaderLabel("Name", 34, 135);
+        CreateHeaderLabel("Realm", 170, 130);
+        CreateHeaderLabel("Class", 300, 100);
+        CreateHeaderLabel("Role", 405, 120);
+        CreateHeaderLabel("Status", 535, 125);
+    end
 
     local rowsAnchor = CreateFrame("Frame", nil, rightPanel.scrollChild);
     rowsAnchor:SetPoint("TOPLEFT", headerRow, "BOTTOMLEFT", 0, -4);
@@ -761,7 +999,11 @@ function GoWEventDetails:RenderEventInviteRows()
     if (#currentRows == 0) then
         local emptyText = rightPanel.scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal");
         emptyText:SetPoint("TOPLEFT", rowsAnchor, "TOPLEFT", 10, -10);
-        emptyText:SetText("|cff888888No attendees found for this role.|r");
+        if (currentEvent.calendarType == GOW.consts.GUILD_EVENT) then
+            emptyText:SetText("|cff888888No guild members found for this role.|r");
+        else
+            emptyText:SetText("|cff888888No attendees found for this role.|r");
+        end
     else
         for index, row in ipairs(currentRows) do
             self:CreateEventInviteRow(rowsAnchor, row, index, #currentRows);
@@ -803,7 +1045,7 @@ function GoWEventDetails:OpenEventAttendeesInviteDialog(event)
     local inviteMembers = event.inviteMembers or {};
     local inviteMembersCount = event.totalMembers or #inviteMembers;
 
-    if (inviteMembersCount <= 0) then
+    if (event.calendarType ~= GOW.consts.GUILD_EVENT and inviteMembersCount <= 0) then
         self.CORE:OpenDialog("INVITE_TO_PARTY_NOONE_FOUND");
         return;
     end

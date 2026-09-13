@@ -85,6 +85,14 @@ function Helper:IsSimEnabled()
     return WOW_PROJECT_ID == WOW_PROJECT_MAINLINE;
 end
 
+function Helper:GetCurrentMaxPlayerLevel()
+    if (GetMaxLevelForLatestExpansion) then
+        return GetMaxLevelForLatestExpansion();
+    end
+
+    return MAX_PLAYER_LEVEL or 80;
+end
+
 function Helper:GetCurrentCharacterUniqueKey()
     local name, characterRealm = UnitName("player");
     if (characterRealm == nil) then

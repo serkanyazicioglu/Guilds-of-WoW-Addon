@@ -276,7 +276,7 @@ function Layout:CreateSidebarList(parent, options)
     return sidebar;
 end
 
-function Layout:ShowCopyUrlDialog(gui, url, title)
+function Layout:ShowCopyUrlDialog(gui, url, title, eventKey)
     local frameName = _G.FRAME_NAME;
 
     if (self.copyUrlDialog) then
@@ -288,15 +288,24 @@ function Layout:ShowCopyUrlDialog(gui, url, title)
     local dialog = gui:Create("Window");
     dialog:SetTitle(title or "Copy URL");
     dialog:SetWidth(720);
-    dialog:SetHeight(90);
+    dialog:SetHeight(eventKey and 120 or 90);
     dialog:EnableResize(false);
     dialog:SetLayout("Flow");
     dialog.frame:SetFrameStrata("DIALOG");
     dialog.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
     dialog.previousEscapeFrame = frameName and _G[frameName] or nil;
 
+    if (eventKey) then
+        local keyWidget = gui:Create("SFX-Info-URL");
+        keyWidget:SetLabel("Event Key");
+        keyWidget:SetText(eventKey);
+        keyWidget:SetDisabled(false);
+        keyWidget:SetFullWidth(true);
+        dialog:AddChild(keyWidget);
+    end
+
     local urlWidget = gui:Create("SFX-Info-URL");
-    urlWidget:SetLabel("URL");
+    urlWidget:SetLabel(eventKey and "Event URL" or "URL");
     urlWidget:SetText(url or "");
     urlWidget:SetDisabled(false);
     urlWidget:SetFullWidth(true);

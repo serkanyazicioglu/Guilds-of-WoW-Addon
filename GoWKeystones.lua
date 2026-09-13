@@ -67,14 +67,6 @@ local function GetRandomDebugKeystone()
 	return math.random(2, 15), mapIds[math.random(1, #mapIds)];
 end
 
-local function GetCurrentMaxPlayerLevel()
-	if (GetMaxLevelForLatestExpansion) then
-		return GetMaxLevelForLatestExpansion();
-	end
-
-	return MAX_PLAYER_LEVEL or 80;
-end
-
 local function RebuildLatestEntries()
 	latestEntries = {};
 
@@ -89,7 +81,7 @@ local function RebuildLatestEntries()
 
 	local me = GOW.Helper:GetCurrentCharacterUniqueKey();
 	local playerFaction = UnitFactionGroup("player");
-	local maxPlayerLevel = GetCurrentMaxPlayerLevel();
+	local maxPlayerLevel = GOW.Helper:GetCurrentMaxPlayerLevel();
 
 	for i = 1, numTotalMembers do
 		local name, _, _, level, className, _, _, _, _, _, classFileName, _, _, _, _, _, guid = GetGuildRosterInfo(i);
