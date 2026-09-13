@@ -437,6 +437,20 @@ function GOW:OnInitialize()
 		preferredIndex         = 1
 	};
 
+	StaticPopupDialogs["CANNOT_OPEN_IN_COMBAT"] = {
+		text                   = "Guilds of WoW cannot be opened while you are in combat.",
+		button1                = OKAY,
+		OnHide                 = function()
+			Core:DialogClosed();
+		end,
+		timeout                = 0,
+		enterClicksFirstButton = 1,
+		whileDead              = true,
+		hideOnEscape           = true,
+		exclusive              = 1,
+		preferredIndex         = 1
+	};
+
 	StaticPopupDialogs["INVITE_TO_PARTY_USE_CALENDAR"] = {
 		text                   = "This event is also created on calendar. Please use calendar event's 'Invite Members' button.",
 		button1                = OKAY,
@@ -741,6 +755,11 @@ function Core:ToggleWindow()
 			GOW.recruitmentDetails:Hide();
 		end
 	else
+		if (GOW.Helper:IsInCombat()) then
+			Core:OpenDialog("CANNOT_OPEN_IN_COMBAT");
+			return;
+		end
+
 		if (CalendarFrame) then
 			HideUIPanel(CalendarFrame);
 		end
@@ -1027,8 +1046,9 @@ function Core:searchForEvent(event)
 	if (numDayEvents > 0) then
 		for i = 1, numDayEvents do
 			local dayEvent = C_Calendar.GetDayEvent(offsetMonths, event.day, i);
+			local title = dayEvent.title;
 
-			if (dayEvent.title and string.find(dayEvent.title, event.eventKey, 1, true)) then
+			if ((not canaccessvalue or canaccessvalue(title)) and title and string.find(title, event.eventKey, 1, true)) then
 				return i, offsetMonths, dayEvent;
 			end
 		end
