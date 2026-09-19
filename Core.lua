@@ -1,7 +1,7 @@
 local ADDON_NAME = "GuildsOfWoW";
 local FRAME_NAME = ADDON_NAME .. "MainFrame";
 _G["FRAME_NAME"] = FRAME_NAME;
-local GOW = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME, "AceComm-3.0");
+local GOW = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME);
 GuildsOfWow = GOW;
 
 GOW.consts = {

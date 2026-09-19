@@ -24,7 +24,6 @@ loothistory\load.xml
 rclc\load.xml
 GoWTeams.lua
 GoWEventDetails.lua
-GoWComm.lua
 Class.lua
 List.lua
 Options.lua

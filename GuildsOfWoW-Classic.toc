@@ -17,7 +17,6 @@ GoWKeystoneDetails.lua
 GoWRecruitmentDetails.lua
 GoWTeams.lua
 GoWEventDetails.lua
-GoWComm.lua
 Class.lua
 List.lua
 Options.lua
