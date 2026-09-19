@@ -7,39 +7,43 @@
 
 # Guilds of WoW Addon
 
-Welcome to [Guilds of WoW](https://gow.gg) in-game addon.
+Welcome to the [Guilds of WoW](https://gow.gg) in-game addon.
 
-This project is in-game addon of Guilds of WoW. It is aiming to help guilds who use Guilds of WoW with additional in-game functionalities.
+The Guilds of WoW addon extends your guild management experience with additional in-game functionality, including events, recruitment, attendance, Mythic+ keystones, wishlists, and loot management.
 
 ## HOW TO USE
-In order to use the addon, you must install GoW Desktop application.
+
+To use the addon, you must install the GoW Desktop App.
+
 https://guildsofwow.com/addon
 
 ## FEATURES
 
-- In-game event generation and inviting characters within rules.
+- Create in-game events and invite eligible characters based on event rules.
 
-- Team bound events and only inviting characters within that team.
+- Support team-based events and invite only characters from the selected team.
 
-- Exporting attendance data to Guilds of WoW for attendance reports and syncing RSVPs bidirectional.
+- Export attendance data to Guilds of WoW for attendance reports and sync RSVPs bidirectionally.
 
-- Easier in-game recruitment management for inviting to guild, adding as friend or whispering.
+- Manage recruitment in-game by inviting applicants to your guild, adding them as friends, or whispering them.
 
-- Syncing back your guild's Mythic+ keystones to GoW and Discord (Supports AstralKeys, LibOpenRaid/Details).
+- Sync your guild's Mythic+ keystones with Guilds of WoW and Discord. Supports AstralKeys and LibOpenRaid/Details.
 
-- Personal and guild-wide item wishlists with loot drop alerts, browser interface, and team filtering.
+- Manage personal and guild-wide item wishlists with loot drop alerts, a browser interface, and team filtering.
 
-- RCLootCouncil integration displaying wishlist priorities and stat gains during loot distribution.
+- Integrate with RCLootCouncil to display wishlist priorities and stat gains during loot distribution.
 
 ## EVENTS
 
-When you access events section of your guild management, at least one upcoming event should be existing. After your guild's upcoming events are generated sync client will migrate your event data to in game addon database.
+Create and manage your guild events on Guilds of WoW. Upcoming events are synced to the in-game addon through the GoW Desktop App, allowing you to create events and invite eligible characters in-game.
+
+At least one upcoming event must be available for event data to be synced.
 
 https://guildsofwow.com/manage/events
 
 ## WISHLISTS
 
-The Wishlist system lets you track desired items for your character and view what your entire guild wants from current content. Wishlist data is synced via the GoW Sync App.
+The Wishlist system lets you track desired items for your characters and see what your entire guild wants from current content. Wishlist data is synced through the GoW Desktop App.
 
 ### Slash Commands
 
