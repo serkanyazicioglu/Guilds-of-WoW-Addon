@@ -12,14 +12,8 @@ Welcome to [Guilds of WoW](https://gow.gg) in-game addon.
 This project is in-game addon of Guilds of WoW. It is aiming to help guilds who use Guilds of WoW with additional in-game functionalities.
 
 ## HOW TO USE
-
-In order to use this addon your guild must be registered on Guilds of WoW.
-
-https://guildsofwow.com/my-guilds
-
-If you are not the guild master then ask from your GM to give you related permissions for event and/or recruitment management. Later you should visit addon page on management and download the sync client. Sync client will automatically install and update the in-game addon.
-
-https://guildsofwow.com/manage/addon
+In order to use the addon, you must install GoW Desktop application.
+https://guildsofwow.com/addon
 
 ## FEATURES
 
