@@ -65,9 +65,15 @@ function RCGoW:GetPlayerWish(itemId, playerFullName, itemLink)
     local matches = {};
 
     for _, charEntry in ipairs(data.wishlists) do
-        local nameMatch = charEntry.name == playerName;
-        local realmMatch = not playerRealm or charEntry.realmNameNormalized == playerRealm;
-        if nameMatch and realmMatch then
+        local isSamePlayer = false;
+        if charEntry.name then
+            if playerRealm then
+                isSamePlayer = GOW.Helper:AreCharacterNamesEqual(playerFullName, charEntry.name .. "-" .. (charEntry.realmNameNormalized or ""));
+            else
+                isSamePlayer = charEntry.name == playerName;
+            end
+        end
+        if isSamePlayer then
             for _, item in ipairs(charEntry.wishlist) do
                 if (item.itemId == itemId or item.sourceItemId == itemId) and not item.isObtained then
                     table.insert(matches, item);

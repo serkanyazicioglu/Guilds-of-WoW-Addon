@@ -38,7 +38,8 @@ end
 
 local function FirstTestable(items)
     for _, entry in ipairs(items) do
-        if not entry.isObtained and entry.bonusIds and #entry.bonusIds > 0 then
+        local variantIds = GoWWishlists:GetVariantBonusIds(entry);
+        if not entry.isObtained and variantIds and #variantIds > 0 then
             return entry;
         end
     end
@@ -86,20 +87,42 @@ function GoWWishlists:RunWishlistTests()
     end
 
     -- Matchers ------------------------------------------------------------
-    local tested, linkOk, exactOk, negOk, findOk, findNegOk = 0, 0, 0, 0, 0, 0;
+    -- A wrong-variant link must carry an id the export recognises; an unrecognised id
+    -- deliberately falls back to difficulty matching instead of rejecting.
+    local known = self:GetKnownVariantBonusIds();
+    local function ForeignVariantId(itemId)
+        local own = {};
+        for _, candidate in ipairs(self.state.wishlistIndex[itemId] or {}) do
+            for _, id in ipairs(self:GetVariantBonusIds(candidate) or {}) do own[id] = true end
+        end
+        for id in pairs(known) do
+            if not own[id] then return id end
+        end
+    end
+
+    local tested, linkOk, exactOk, negOk, findOk, findNegOk, fallbackOk = 0, 0, 0, 0, 0, 0, 0;
     for _, entry in ipairs(items) do
-        if not entry.isObtained and entry.bonusIds and #entry.bonusIds > 0 then
+        local variantIds = self:GetVariantBonusIds(entry);
+        if not entry.isObtained and variantIds and #variantIds > 0 then
             tested = tested + 1;
 
-            local link = self:BuildItemLink(entry.itemId, entry.bonusIds);
+            local link = self:BuildItemLink(entry.itemId, variantIds);
             local bonusIdSet = link and self:GetBonusIdsFromLink(link);
             if bonusIdSet then linkOk = linkOk + 1 end
             if bonusIdSet and self:EntryMatchesBonusIds(entry, bonusIdSet) then exactOk = exactOk + 1 end
             if not self:EntryMatchesBonusIds(entry, { [99999] = true }) then negOk = negOk + 1 end
 
             if self:FindWishlistMatch(entry.itemId, link) then findOk = findOk + 1 end
-            if not self:FindWishlistMatch(entry.itemId, self:BuildItemLink(entry.itemId, { 99999 })) then
+
+            local foreignId = ForeignVariantId(entry.itemId);
+            if foreignId and not self:FindWishlistMatch(entry.itemId, self:BuildItemLink(entry.itemId, { foreignId })) then
                 findNegOk = findNegOk + 1;
+            end
+
+            -- An Encounter Journal style link must behave exactly like having no link.
+            local ejLink = self:BuildItemLink(entry.itemId, { 3524 });
+            if self:FindWishlistMatch(entry.itemId, ejLink) == self:FindWishlistMatch(entry.itemId, nil) then
+                fallbackOk = fallbackOk + 1;
             end
         end
     end
@@ -113,6 +136,7 @@ function GoWWishlists:RunWishlistTests()
         Check(run, negOk == tested, "bonus ids: foreign id rejected", negOk .. total);
         Check(run, findOk == tested, "FindWishlistMatch: exact link hits", findOk .. total);
         Check(run, findNegOk == tested, "FindWishlistMatch: wrong-variant link misses", findNegOk .. total);
+        Check(run, fallbackOk == tested, "FindWishlistMatch: unrecognised link falls back to difficulty", fallbackOk .. total);
     end
 
     -- Difficulties the client can never name (+10+, Voidforged, ...) -------
@@ -121,10 +145,11 @@ function GoWWishlists:RunWishlistTests()
 
     local odd, oddHit = 0, 0;
     for _, entry in ipairs(items) do
+        local variantIds = self:GetVariantBonusIds(entry);
         if not entry.isObtained and entry.difficulty and not raidDiffs[entry.difficulty]
-            and entry.bonusIds and #entry.bonusIds > 0 then
+            and variantIds and #variantIds > 0 then
             odd = odd + 1;
-            if self:FindWishlistMatch(entry.itemId, self:BuildItemLink(entry.itemId, entry.bonusIds)) then
+            if self:FindWishlistMatch(entry.itemId, self:BuildItemLink(entry.itemId, variantIds)) then
                 oddHit = oddHit + 1;
             end
         end
@@ -146,7 +171,7 @@ function GoWWishlists:RunWishlistTests()
         end
 
         local marked = self:MarkWishlistObtained(target.itemId, nil,
-            self:BuildItemLink(target.itemId, target.bonusIds));
+            self:BuildItemLink(target.itemId, self:GetVariantBonusIds(target)));
 
         local flipped = false;
         for entry, previous in pairs(restore) do
@@ -168,10 +193,11 @@ function GoWWishlists:RunWishlistTests()
         local tried, hits = 0, 0;
         for _, charEntry in ipairs(guildData.wishlists) do
             for _, item in ipairs(charEntry.wishlist) do
-                if not item.isObtained and item.bonusIds and #item.bonusIds > 0 then
+                local variantIds = self:GetVariantBonusIds(item);
+                if not item.isObtained and variantIds and #variantIds > 0 then
                     tried = tried + 1;
                     local fullName = charEntry.name .. "-" .. (charEntry.realmNameNormalized or "");
-                    local link = self:BuildItemLink(item.itemId, item.bonusIds);
+                    local link = self:BuildItemLink(item.itemId, variantIds);
                     if RCGoW:GetPlayerWish(item.itemId, fullName, link) then hits = hits + 1 end
                     break;
                 end

@@ -78,6 +78,7 @@ end
 
 function GoWWishlists:BuildWishlistIndex()
     self.state.wishlistIndex = {};
+    self.state.knownVariantBonusIds = nil;
     self.state.allItems = {};
     self.state.hasPersonalWishlistEntry = false;
     self.state.guildWishlistData = nil;
@@ -206,24 +207,76 @@ function GoWWishlists:GetBonusIdsFromLink(itemLink)
     return next(bonusIds) and bonusIds or nil;
 end
 
--- The export carries only the ids that pin the variant; a real drop carries those
--- plus others, so a wish matches when its ids are a subset of the dropped item's.
-function GoWWishlists:EntryMatchesBonusIds(entry, bonusIdSet)
-    if not entry.bonusIds or #entry.bonusIds == 0 then return false end
+local function ContainsAllBonusIds(ids, bonusIdSet)
+    if not ids or #ids == 0 then return false end
 
-    for _, id in ipairs(entry.bonusIds) do
+    for _, id in ipairs(ids) do
         if not bonusIdSet[id] then return false end
     end
     return true;
 end
 
--- Prefers bonus id matching, but only when the link carries them and at least one
--- candidate does too; otherwise falls back to instance difficulty (nil = unknown).
+-- bonusIds is the level the wish was simmed at (usually max upgrade), which a boss can't
+-- drop at; dropBonusIds is the level it really drops at. Older exports carry only bonusIds.
+function GoWWishlists:GetVariantBonusIds(entry)
+    if entry.dropBonusIds and #entry.dropBonusIds > 0 then return entry.dropBonusIds end
+    return entry.bonusIds;
+end
+
+-- The export carries only the ids that pin the variant; a real drop carries those
+-- plus others, so a wish matches when its ids are a subset of the dropped item's.
+function GoWWishlists:EntryMatchesBonusIds(entry, bonusIdSet)
+    return ContainsAllBonusIds(self:GetVariantBonusIds(entry), bonusIdSet);
+end
+
+local function AddVariantIds(known, wishlist)
+    for _, item in ipairs(wishlist or {}) do
+        for _, id in ipairs(item.bonusIds or {}) do known[id] = true end
+        for _, id in ipairs(item.dropBonusIds or {}) do known[id] = true end
+    end
+end
+
+-- Every bonus id the export uses to pin a variant, across all personal and guild entries.
+-- The export is static for the session, so a late guild resolution doesn't invalidate it.
+function GoWWishlists:GetKnownVariantBonusIds()
+    local known = self.state.knownVariantBonusIds;
+    if known then return known end
+
+    known = {};
+    local data = ns.WISHLISTS;
+    if data then
+        for _, charEntry in ipairs(data.personalWishlists or {}) do
+            AddVariantIds(known, charEntry.wishlist);
+        end
+        for _, guildEntry in ipairs(data.guildWishlists or {}) do
+            for _, charEntry in ipairs(guildEntry.wishlists or {}) do
+                AddVariantIds(known, charEntry.wishlist);
+            end
+        end
+    end
+
+    self.state.knownVariantBonusIds = known;
+    return known;
+end
+
+-- Strict bonus id matching only when the link carries an id the export uses to pin a
+-- variant. A link without one (Encounter Journal previews carry a generic 3524, or a
+-- track renumbered since the last sync) can't say which variant it is, so it falls back
+-- to instance difficulty (nil = unknown) rather than matching nothing.
 function GoWWishlists:GetVariantMatcher(itemLink, entries, difficulty)
     local bonusIdSet = self:GetBonusIdsFromLink(itemLink);
-    if bonusIdSet and entries then
+    local pinsVariant = false;
+    if bonusIdSet then
+        local known = self:GetKnownVariantBonusIds();
+        for id in pairs(bonusIdSet) do
+            if known[id] then pinsVariant = true; break end
+        end
+    end
+
+    if pinsVariant and entries then
         for _, entry in ipairs(entries) do
-            if entry.bonusIds and #entry.bonusIds > 0 then
+            local variantIds = self:GetVariantBonusIds(entry);
+            if variantIds and #variantIds > 0 then
                 return function(e) return self:EntryMatchesBonusIds(e, bonusIdSet) end;
             end
         end
