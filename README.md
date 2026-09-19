@@ -117,5 +117,5 @@ The wishlist column sorting depends on the active display mode:
 Guilds of WoW website: https://guildsofwow.com
 Guilds of WoW support: https://guildsofwow.com/feedback
 
-[![Guilds of WoW on Discord](https://img.shields.io/static/v1?label=&logo=discord&message=GoW&color=7289DA)](https://discord.gg/guildsofwow)
-[![Guilds of WoW on Discord](https://img.shields.io/static/v1?label=&logo=x&message=GoW&color=000000)](https://x.com/guildsofwow)
+[![Guilds of WoW on Discord](https://img.shields.io/static/v1?label=&logo=discord&message=Guilds+of+WoW&color=7289DA)](https://discord.gg/guildsofwow)
+[![Guilds of WoW on Discord](https://img.shields.io/static/v1?label=&logo=x&message=Guilds+of+WoW&color=000000)](https://x.com/guildsofwow)
