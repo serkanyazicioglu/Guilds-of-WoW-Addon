@@ -2,8 +2,8 @@
   <img src="https://guildsofwow.com/assets/images/guilds-of-wow-logo.png" width="170" height="200" />
 </p>
 
-[![Guilds of WoW on Discord](https://img.shields.io/static/v1?label=Discord&message=GoW&color=7289DA)](https://discord.gg/guildsofwow)
-[![Guilds of WoW on Patreon](https://img.shields.io/static/v1?label=Patreon&message=GoW&color=f96854)](https://www.patreon.com/guildsofwow)
+[![Guilds of WoW on Discord](https://img.shields.io/static/v1?label=Discord&logo=discord&message=GoW&color=7289DA)](https://discord.gg/guildsofwow)
+[![Guilds of WoW on Patreon](https://img.shields.io/static/v1?label=Patreon&logo=patreon&message=GoW&color=f96854)](https://www.patreon.com/guildsofwow)
 
 # Guilds of WoW Addon
 
@@ -117,5 +117,5 @@ The wishlist column sorting depends on the active display mode:
 Guilds of WoW website: https://guildsofwow.com
 Guilds of WoW support: https://guildsofwow.com/feedback
 
-Discord: https://discord.gg/guildsofwow
-X: https://x.com/guildsofwow
+[![Guilds of WoW on Discord](https://img.shields.io/static/v1?label=Discord&logo=discord&message=GoW&color=7289DA)](https://discord.gg/guildsofwow)
+[![Guilds of WoW on Discord](https://img.shields.io/static/v1?label=X&logo=x&message=GoW&color=000000)](https://x.com/guildsofwow)
