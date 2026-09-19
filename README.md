@@ -25,7 +25,7 @@ https://guildsofwow.com/addon
 
 - Easier in-game recruitment management for inviting to guild, adding as friend or whispering.
 
-- Syncing back your guild's Mythic+ keystones to GoW and Discord (Supports AstralKeys, LibOpenRaid/Details, and LibKeystone/BigWigs).
+- Syncing back your guild's Mythic+ keystones to GoW and Discord (Supports AstralKeys, LibOpenRaid/Details).
 
 - Personal and guild-wide item wishlists with loot drop alerts, browser interface, and team filtering.
 
@@ -111,9 +111,7 @@ The wishlist column sorting depends on the active display mode:
 - **Display Mode**: Saved in your addon profile and persists across sessions
 
 Guilds of WoW website: https://guildsofwow.com
-
 Guilds of WoW support: https://guildsofwow.com/feedback
 
 Discord: https://discord.gg/guildsofwow
-
-Twitter: https://twitter.com/guildsofwow
+X: https://x.com/guildsofwow
