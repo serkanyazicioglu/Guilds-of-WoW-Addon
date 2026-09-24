@@ -46,6 +46,7 @@ function GoWWishlists:CreateWishlistCardRow(parent, options)
     local iconBorder, icon = self:CreateRowIcon(inner, iconSize, 4);
     row.iconBorder = iconBorder;
     row.icon = icon;
+    self:CreateSourceItemIcon(row, inner, iconBorder, math.max(12, math.floor(iconSize * 0.55)));
 
     local nameText = inner:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     nameText:SetPoint("TOPLEFT", iconBorder, "TOPRIGHT", 6, 2);
@@ -98,13 +99,55 @@ function GoWWishlists:PopulateItemRow(row, entry, itemLink)
     row.itemId = entry.itemId;
 
     local displayId = entry.catalystItemId or entry.itemId;
-    local itemName = self:SetItemIconAndName(row, entry.itemId, itemLink, entry.catalystItemId, entry.bonusIds);
-    if not itemName then
+    local bonusIds = entry.bonusIds;
+    local enchantId = entry.enchantId;
+    local gems = entry.gems;
+    if entry.catalystItemId then
+        bonusIds = entry.catalystBonusIds;
+        enchantId = entry.catalystEnchantId;
+        gems = entry.catalystGems;
+    end
+    local linkedItemId = itemLink and tonumber(itemLink:match("item:(%d+)")) or nil;
+    local primaryItemLink = itemLink;
+    local sourceItemLink = nil;
+    if entry.catalystItemId then
+        primaryItemLink = linkedItemId == entry.catalystItemId and itemLink or nil;
+        sourceItemLink = linkedItemId == entry.itemId and itemLink or nil;
+    end
+    local itemName, displayItemName = self:SetItemIconAndName(
+        row,
+        entry.itemId,
+        primaryItemLink,
+        entry.catalystItemId,
+        bonusIds,
+        enchantId,
+        gems,
+        entry.catalystItemId and entry.itemId or nil);
+    if not displayItemName then
         self:RegisterPendingItem(displayId, function()
             if row:GetParent() then
                 self:PopulateItemRow(row, entry, itemLink);
             end
         end);
+    end
+    local sourceItemName = nil;
+    if entry.catalystItemId then
+        sourceItemName = self:SetSourceItemIcon(
+            row,
+            entry.itemId,
+            sourceItemLink,
+            entry.bonusIds,
+            entry.enchantId,
+            entry.gems);
+        if not sourceItemName then
+            self:RegisterPendingItem(entry.itemId, function()
+                if row:GetParent() then
+                    self:PopulateItemRow(row, entry, itemLink);
+                end
+            end);
+        end
+    else
+        self:SetSourceItemIcon(row, nil);
     end
 
     row.infoText:SetText(self:BuildInfoLine(entry, row.showSource));

@@ -773,39 +773,125 @@ end
 
 -- item:ID:enchant:gem1:gem2:gem3:gem4:suffix:unique:linkLevel:specID:modifiersMask:itemContext:numBonusIDs:bonusID1:...
 -- Without the bonus ids the client renders the item's base record, not the ilvl it drops at.
-function GoWWishlists:BuildItemLink(itemId, bonusIds)
-    if not itemId or not bonusIds then return nil end
+function GoWWishlists:BuildItemLink(itemId, bonusIds, enchantId, gems)
+    if not itemId then return nil end
 
     local valid = {};
-    for _, bonusId in ipairs(bonusIds) do
+    for _, bonusId in ipairs(bonusIds or {}) do
         if bonusId ~= 0 then valid[#valid + 1] = bonusId end
     end
-    if #valid == 0 then return nil end
+    local hasEnchant = enchantId and enchantId ~= 0;
+    local hasGems = gems and #gems > 0;
+    if #valid == 0 and not hasEnchant and not hasGems then return nil end
 
-    local parts = { "item", itemId };
-    for _ = 1, 11 do parts[#parts + 1] = "" end
+    local parts = { "item", itemId, hasEnchant and enchantId or "" };
+    for index = 1, 4 do
+        local gem = gems and gems[index];
+        parts[#parts + 1] = gem and (gem.itemId or gem) or "";
+    end
+    for _ = 1, 6 do parts[#parts + 1] = "" end
     parts[#parts + 1] = #valid;
     for _, bonusId in ipairs(valid) do parts[#parts + 1] = bonusId end
 
     return table.concat(parts, ":");
 end
 
-function GoWWishlists:SetItemIconAndName(row, itemId, itemLink, displayItemId, bonusIds)
+function GoWWishlists:SetItemIconAndName(row, itemId, itemLink, displayItemId, bonusIds, enchantId, gems, nameItemId)
     local lookupId = displayItemId or itemId;
-    local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(lookupId);
+    local displayItemName, _, displayItemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(lookupId);
+    local itemName = displayItemName;
+    local nameItemQuality = displayItemQuality;
+    if nameItemId and nameItemId ~= lookupId then
+        itemName, _, nameItemQuality = C_Item.GetItemInfo(nameItemId);
+    end
     row.icon:SetTexture(itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
     row.tooltipItemId = lookupId;
-    row.tooltipItemLink = itemLink or self:BuildItemLink(lookupId, bonusIds);
+    row.tooltipItemLink = itemLink or self:BuildItemLink(lookupId, bonusIds, enchantId, gems);
 
-    if itemQuality then
-        local r, g, b, hex = C_Item.GetItemQualityColor(itemQuality);
+    if displayItemQuality then
+        local r, g, b = C_Item.GetItemQualityColor(displayItemQuality);
         row.iconBorder:SetVertexColor(r, g, b, 0.7);
-        row.nameText:SetText(itemLink or ("|c" .. hex .. (itemName or ("Item " .. lookupId)) .. "|r"));
     else
         row.iconBorder:SetVertexColor(0.4, 0.4, 0.4, 0.6);
-        row.nameText:SetText(itemLink or itemName or ("Item " .. lookupId));
     end
 
+    if itemLink and not nameItemId then
+        row.nameText:SetText(itemLink);
+    elseif nameItemQuality then
+        local _, _, _, hex = C_Item.GetItemQualityColor(nameItemQuality);
+        row.nameText:SetText("|c" .. hex .. (itemName or ("Item " .. (nameItemId or lookupId))) .. "|r");
+    else
+        row.nameText:SetText(itemName or ("Item " .. (nameItemId or lookupId)));
+    end
+
+    return itemName, displayItemName;
+end
+
+function GoWWishlists:CreateSourceItemIcon(row, parent, primaryIconBorder, sourceSize)
+    local sourceIconFrame = CreateFrame("Frame", nil, parent);
+    sourceIconFrame:SetSize(sourceSize, sourceSize);
+    sourceIconFrame:SetPoint("BOTTOMLEFT", primaryIconBorder, "BOTTOMLEFT", -3, -3);
+    sourceIconFrame:SetFrameLevel(parent:GetFrameLevel() + 5);
+    sourceIconFrame:EnableMouse(true);
+    sourceIconFrame:Hide();
+
+    local sourceIconBorder = sourceIconFrame:CreateTexture(nil, "OVERLAY", nil, 0);
+    sourceIconBorder:SetTexture("Interface\\Buttons\\WHITE8x8");
+    sourceIconBorder:SetAllPoints();
+    sourceIconBorder:SetVertexColor(0.4, 0.4, 0.4, 1);
+
+    local sourceIcon = sourceIconFrame:CreateTexture(nil, "OVERLAY", nil, 1);
+    sourceIcon:SetPoint("TOPLEFT", sourceIconFrame, "TOPLEFT", 1, -1);
+    sourceIcon:SetPoint("BOTTOMRIGHT", sourceIconFrame, "BOTTOMRIGHT", -1, 1);
+    sourceIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
+
+    sourceIconFrame:SetScript("OnEnter", function(self)
+        row.highlight:Show();
+        local tipLink = row.sourceTooltipItemLink;
+        local tipId = row.sourceTooltipItemId;
+        if tipLink or tipId then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+            if tipLink then
+                GameTooltip:SetHyperlink(tipLink);
+            else
+                GameTooltip:SetItemByID(tipId);
+            end
+            GameTooltip:Show();
+        end
+    end);
+    sourceIconFrame:SetScript("OnLeave", function()
+        row.highlight:Hide();
+        GameTooltip:Hide();
+    end);
+
+    row.sourceIconFrame = sourceIconFrame;
+    row.sourceIconBorder = sourceIconBorder;
+    row.sourceIcon = sourceIcon;
+end
+
+function GoWWishlists:SetSourceItemIcon(row, itemId, itemLink, bonusIds, enchantId, gems)
+    if not row.sourceIconFrame then return nil end
+
+    if not itemId then
+        row.sourceIconFrame:Hide();
+        row.sourceTooltipItemId = nil;
+        row.sourceTooltipItemLink = nil;
+        return nil;
+    end
+
+    local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(itemId);
+    row.sourceIcon:SetTexture(itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark");
+    row.sourceTooltipItemId = itemId;
+    row.sourceTooltipItemLink = itemLink or self:BuildItemLink(itemId, bonusIds, enchantId, gems);
+
+    if itemQuality then
+        local r, g, b = C_Item.GetItemQualityColor(itemQuality);
+        row.sourceIconBorder:SetVertexColor(r, g, b, 1);
+    else
+        row.sourceIconBorder:SetVertexColor(0.4, 0.4, 0.4, 1);
+    end
+
+    row.sourceIconFrame:Show();
     return itemName;
 end
 

@@ -55,6 +55,11 @@ local function NormalizeGuildLootSort(sortMode)
     return sortMode;
 end
 
+local function GetGuildItemExpansionKey(itemData)
+    local sourceToken = itemData.sourceItemId and (":source:" .. itemData.sourceItemId) or "";
+    return tostring(itemData.itemId) .. ":" .. (itemData.difficulty or "") .. sourceToken;
+end
+
 -- Returns an array of {id, name} for teams matching the current guild.
 function GoWWishlists:GetGuildTeams()
     local teams = {};
@@ -131,9 +136,14 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
                                 difficulty = item.difficulty,
                                 itemLevel = item.itemLevel,
                                 bonusIds = item.bonusIds,
+                                enchantId = item.enchantId,
+                                gems = item.gems,
                                 isTierSetPiece = item.isTierSetPiece,
                                 isCatalystItem = item.isCatalystItem,
                                 catalystItemId = item.catalystItemId,
+                                catalystBonusIds = item.catalystBonusIds,
+                                catalystEnchantId = item.catalystEnchantId,
+                                catalystGems = item.catalystGems,
                                 sourceItemId = item.sourceItemId,
                                 members = {},
                             };
@@ -142,6 +152,9 @@ function GoWWishlists:CollectGuildWishlistByBoss(difficultyFilter, rosterMemberS
                             if item.isCatalystItem then
                                 boss.items[itemKey].isCatalystItem = true;
                                 boss.items[itemKey].catalystItemId = boss.items[itemKey].catalystItemId or item.catalystItemId;
+                                boss.items[itemKey].catalystBonusIds = boss.items[itemKey].catalystBonusIds or item.catalystBonusIds;
+                                boss.items[itemKey].catalystEnchantId = boss.items[itemKey].catalystEnchantId or item.catalystEnchantId;
+                                boss.items[itemKey].catalystGems = boss.items[itemKey].catalystGems or item.catalystGems;
                             end
                         end
 
@@ -168,28 +181,45 @@ end
 function GoWWishlists:CreateGuildItemRow(parent)
     local isCompact = self.state.compactMode;
     local rowHeight = self:GetGuildItemRowHeight();
-    local row = CreateFrame("Frame", nil, parent);
+    local row = CreateFrame("Button", nil, parent);
     row:SetHeight(rowHeight);
+    row.isCollapsed = true;
+
+    local expandButton = CreateFrame("Button", nil, row);
+    expandButton:SetSize(12, 12);
+    expandButton:SetPoint("LEFT", row, "LEFT", 4, 0);
+    local expandArrow = expandButton:CreateTexture(nil, "OVERLAY");
+    expandArrow:SetAllPoints();
+    expandArrow:SetTexture("Interface\\Buttons\\UI-PlusButton-UP");
+    expandButton.arrow = expandArrow;
+    row.expandButton = expandButton;
 
     row.badgeCol = self:CreateBadgeColumn(row, {
         width = 30,
         difficultyOnly = true,
     });
+    row.badgeCol:ClearAllPoints();
+    row.badgeCol:SetPoint("TOPLEFT", row, "TOPLEFT", 18, 0);
+    row.badgeCol:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 18, 0);
 
     local iconSize = isCompact and 20 or 24;
-    local iconBorder, icon = self:CreateRowIcon(row, iconSize, 34);
+    local iconBorder, icon = self:CreateRowIcon(row, iconSize, 52);
     row.iconBorder = iconBorder;
     row.icon = icon;
+    self:CreateSourceItemIcon(row, row, iconBorder, math.max(10, math.floor(iconSize * 0.55)));
 
     local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     nameText:SetPoint("LEFT", iconBorder, "RIGHT", 6, 0);
     nameText:SetJustifyH("LEFT");
-    nameText:SetWordWrap(false);
+    nameText:SetJustifyV("MIDDLE");
+    nameText:SetWordWrap(true);
+    nameText:SetHeight(rowHeight - 4);
     row.nameText = nameText;
 
     local infoText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    infoText:SetPoint("LEFT", nameText, "RIGHT", 8, 0);
-    infoText:SetJustifyH("LEFT");
+    infoText:SetWidth(isCompact and 76 or 92);
+    infoText:SetJustifyH("RIGHT");
+    infoText:SetWordWrap(false);
     row.infoText = infoText;
 
     row.infoHover = self:CreateTextHoverTooltip(row, infoText, row);
@@ -204,17 +234,56 @@ function GoWWishlists:CreateGuildItemRow(parent)
     gainBadge:SetPoint("RIGHT", row, "RIGHT", -6, 0);
     row.gainBadge = gainBadge;
 
+    infoText:SetPoint("RIGHT", gainBadge, "LEFT", -6, 0);
+    nameText:SetPoint("RIGHT", infoText, "LEFT", -6, 0);
+
     row.highlight = L:CreateRowHighlight(row);
     self:CreateItemTooltipZone(row, iconBorder);
 
     return row;
 end
 
+function GoWWishlists:UpdateGuildItemRowArrow(row)
+    if not row or not row.expandButton then return end
+    row.expandButton.arrow:SetTexture(row.isCollapsed
+        and "Interface\\Buttons\\UI-PlusButton-UP"
+        or "Interface\\Buttons\\UI-MinusButton-UP");
+end
+
 function GoWWishlists:PopulateGuildItemRow(row, itemData)
     row.itemId = itemData.itemId;
 
-    local displayId = itemData.itemId;
-    local itemName = self:SetItemIconAndName(row, itemData.itemId, nil, nil, itemData.bonusIds);
+    local displayId = itemData.catalystItemId or itemData.itemId;
+    local bonusIds = itemData.bonusIds;
+    local enchantId = itemData.enchantId;
+    local gems = itemData.gems;
+    if itemData.catalystItemId then
+        bonusIds = itemData.catalystBonusIds;
+        enchantId = itemData.catalystEnchantId;
+        gems = itemData.catalystGems;
+    end
+    local itemName, displayItemName = self:SetItemIconAndName(
+        row,
+        itemData.itemId,
+        nil,
+        itemData.catalystItemId,
+        bonusIds,
+        enchantId,
+        gems,
+        itemData.catalystItemId and itemData.itemId or nil);
+
+    local sourceItemName = nil;
+    if itemData.catalystItemId then
+        sourceItemName = self:SetSourceItemIcon(
+            row,
+            itemData.itemId,
+            nil,
+            itemData.bonusIds,
+            itemData.enchantId,
+            itemData.gems);
+    else
+        self:SetSourceItemIcon(row, nil);
+    end
 
     if row.badgeCol then
         self:ApplyBadgeColumnState(row.badgeCol, itemData.difficulty, nil);
@@ -270,8 +339,15 @@ function GoWWishlists:PopulateGuildItemRow(row, itemData)
     end
     row.gainBadge:SetPoint("RIGHT", rightAnchor, anchorPoint, rightOffset, 0);
 
-    if not itemName then
+    if not displayItemName then
         self:RegisterPendingItem(displayId, function()
+            if row:GetParent() then
+                self:PopulateGuildItemRow(row, itemData);
+            end
+        end);
+    end
+    if itemData.catalystItemId and not sourceItemName then
+        self:RegisterPendingItem(itemData.itemId, function()
             if row:GetParent() then
                 self:PopulateGuildItemRow(row, itemData);
             end
@@ -293,27 +369,23 @@ function GoWWishlists:CreateGuildMemberRow(parent)
     local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
     nameText:SetPoint("LEFT", classBar, "RIGHT", 6, 0);
     nameText:SetJustifyH("LEFT");
+    nameText:SetWordWrap(false);
     row.nameText = nameText;
 
     local tagText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
-    tagText:SetPoint("LEFT", nameText, "RIGHT", 8, 0);
-    tagText:SetJustifyH("LEFT");
+    tagText:SetJustifyH("RIGHT");
     row.tagText = tagText;
 
     row.tagHover = self:CreateTextHoverTooltip(row, tagText, row, "Priority", 0, 1, 0);
 
     local gainBadge = self:CreateGainBadge(row);
-    gainBadge:SetPoint("LEFT", tagText, "RIGHT", 8, 0);
     row.gainBadge = gainBadge;
 
     row.officerNoteIcon = self:CreateNoteIconButton(row, row, "Interface\\Buttons\\UI-GuildButton-OfficerNote-Up", "Officer Note", 1, 0.5, 0);
-    row.officerNoteIcon:SetPoint("RIGHT", row, "RIGHT", -8, 0);
 
     row.noteIcon = self:CreateNoteIconButton(row, row, "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", "Note", 0, 1, 0);
-    row.noteIcon:SetPoint("RIGHT", row.officerNoteIcon, "LEFT", -4, 0);
 
     row.catalystBadge = self:CreateCatalystBadge(row);
-    row.catalystBadge:SetPoint("RIGHT", row.noteIcon, "LEFT", -4, 0);
 
     row.highlight = L:CreateRowHighlight(row, 0.03);
 
@@ -322,6 +394,32 @@ function GoWWishlists:CreateGuildMemberRow(parent)
     row:SetScript("OnLeave", function(self) self.highlight:Hide() end);
 
     return row;
+end
+
+function GoWWishlists:LayoutGuildMemberRow(row)
+    local rightAnchor = row;
+    local anchorPoint = "RIGHT";
+    local rightOffset = -8;
+
+    local function anchorVisible(element, isVisible, gap)
+        element:ClearAllPoints();
+        if not isVisible then return end
+
+        element:SetPoint("RIGHT", rightAnchor, anchorPoint, rightOffset, 0);
+        rightAnchor = element;
+        anchorPoint = "LEFT";
+        rightOffset = -(gap or 4);
+    end
+
+    anchorVisible(row.gainBadge, row.gainBadge:IsShown(), 6);
+    anchorVisible(row.tagText, row.tagText:GetText() and row.tagText:GetText() ~= "");
+    anchorVisible(row.catalystBadge, row.catalystBadge:IsShown());
+    anchorVisible(row.officerNoteIcon, row.officerNoteIcon:IsShown());
+    anchorVisible(row.noteIcon, row.noteIcon:IsShown());
+
+    row.nameText:ClearAllPoints();
+    row.nameText:SetPoint("LEFT", row.classBar, "RIGHT", 6, 0);
+    row.nameText:SetPoint("RIGHT", rightAnchor, anchorPoint, rightOffset, 0);
 end
 
 function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
@@ -355,6 +453,7 @@ function GoWWishlists:PopulateGuildMemberRow(row, member, guildRealm)
 
     self:UpdateNoteIcon(row.noteIcon, member.notes);
     self:UpdateNoteIcon(row.officerNoteIcon, self:HasGuildWishlistData() and member.officerNotes or nil);
+    self:LayoutGuildMemberRow(row);
 end
 
 function GoWWishlists:RelayoutGuildContent(frame)
@@ -399,12 +498,19 @@ function GoWWishlists:RelayoutGuildContent(frame)
                     itemRow:Show();
                     yOffset = yOffset + self:GetGuildItemRowHeight();
 
-                    for _, memberRow in ipairs(itemGroup.memberRows or {}) do
-                        memberRow:ClearAllPoints();
-                        memberRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
-                        memberRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
-                        memberRow:Show();
-                        yOffset = yOffset + self.constants.GUILD_MEMBER_ROW_HEIGHT;
+                    if not itemGroup.isCollapsed then
+                        itemGroup.ensureMemberRows();
+                        for _, memberRow in ipairs(itemGroup.memberRows or {}) do
+                            memberRow:ClearAllPoints();
+                            memberRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+                            memberRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+                            memberRow:Show();
+                            yOffset = yOffset + self.constants.GUILD_MEMBER_ROW_HEIGHT;
+                        end
+                    else
+                        for _, memberRow in ipairs(itemGroup.memberRows or {}) do
+                            memberRow:Hide();
+                        end
                     end
                 end
             else
@@ -426,12 +532,19 @@ function GoWWishlists:RelayoutGuildContent(frame)
                 itemRow:Show();
                 yOffset = yOffset + self:GetGuildItemRowHeight();
 
-                for _, memberRow in ipairs(itemGroup.memberRows or {}) do
-                    memberRow:ClearAllPoints();
-                    memberRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
-                    memberRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
-                    memberRow:Show();
-                    yOffset = yOffset + self.constants.GUILD_MEMBER_ROW_HEIGHT;
+                if not itemGroup.isCollapsed then
+                    itemGroup.ensureMemberRows();
+                    for _, memberRow in ipairs(itemGroup.memberRows or {}) do
+                        memberRow:ClearAllPoints();
+                        memberRow:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset);
+                        memberRow:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0);
+                        memberRow:Show();
+                        yOffset = yOffset + self.constants.GUILD_MEMBER_ROW_HEIGHT;
+                    end
+                else
+                    for _, memberRow in ipairs(itemGroup.memberRows or {}) do
+                        memberRow:Hide();
+                    end
                 end
             end
         end
@@ -749,6 +862,7 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
     self:ClearChildren(scrollChild);
     scrollChild:SetWidth(lootPanel.scrollFrame:GetWidth());
     if not lootPanel.expandedBosses then lootPanel.expandedBosses = {} end
+    if not lootPanel.expandedItems then lootPanel.expandedItems = {} end
 
     sortMode = NormalizeGuildLootSort(sortMode);
     if hideObtained == nil then hideObtained = true end
@@ -816,19 +930,50 @@ function GoWWishlists:PopulateGuildLootPanel(lootPanel, bossGroups, bossOrder, s
 
         local itemRow = self:CreateGuildItemRow(scrollChild);
         self:PopulateGuildItemRow(itemRow, itemData);
+        local expansionKey = GetGuildItemExpansionKey(itemData);
+        local itemGroup = {
+            row = itemRow,
+            itemData = itemData,
+            memberRows = nil,
+            isCollapsed = not lootPanel.expandedItems[expansionKey],
+        };
 
-        local memberRows = {};
-        for _, member in ipairs(itemData.members) do
-            local memberRow = self:CreateGuildMemberRow(scrollChild);
-            self:PopulateGuildMemberRow(memberRow, member, guildRealm);
-            memberRow:SetScript("OnClick", function()
-                GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm);
-            end);
-            memberRow:EnableMouse(true);
-            table.insert(memberRows, memberRow);
+        itemRow.isCollapsed = itemGroup.isCollapsed;
+        self:UpdateGuildItemRowArrow(itemRow);
+
+        itemGroup.ensureMemberRows = function()
+            if itemGroup.memberRows then return end
+
+            itemGroup.memberRows = {};
+            for _, member in ipairs(itemData.members) do
+                local memberRow = self:CreateGuildMemberRow(scrollChild);
+                self:PopulateGuildMemberRow(memberRow, member, guildRealm);
+                memberRow:SetScript("OnClick", function()
+                    GoWWishlists:PopulateGuildPlayerDetail(detailPanel, member, guildRealm);
+                end);
+                memberRow:EnableMouse(true);
+                table.insert(itemGroup.memberRows, memberRow);
+            end
+        end;
+
+        local function toggleItem()
+            itemGroup.isCollapsed = not itemGroup.isCollapsed;
+            itemRow.isCollapsed = itemGroup.isCollapsed;
+            lootPanel.expandedItems[expansionKey] = not itemGroup.isCollapsed or nil;
+            GoWWishlists:UpdateGuildItemRowArrow(itemRow);
+            GoWWishlists:RelayoutGuildContent(container);
         end
 
-        return { row = itemRow, memberRows = memberRows };
+        itemRow:SetScript("OnClick", toggleItem);
+        itemRow.expandButton:SetScript("OnClick", toggleItem);
+        itemRow.expandButton:SetScript("OnEnter", function()
+            itemRow.highlight:Show();
+        end);
+        itemRow.expandButton:SetScript("OnLeave", function()
+            itemRow.highlight:Hide();
+        end);
+
+        return itemGroup;
     end
 
     local function buildBossSection(bossName, itemSortKey)
